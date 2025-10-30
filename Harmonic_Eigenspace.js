@@ -242,7 +242,7 @@ function createNote(freq, harmonics, amplitudes, startTime) {
 
     // Equal-power crossfade (prevents volume dip in middle)
     dryGain.gain.value = Math.sqrt(1.0 - audioParams.dryWet);
-    wetGain.gain.value = Math.sqrt(audioParams.dryWet) * 2.5;
+    wetGain.gain.value = Math.sqrt(audioParams.dryWet) * 2.0;
 
     masterGain.connect(dryGain);
     masterGain.connect(wetGain);
