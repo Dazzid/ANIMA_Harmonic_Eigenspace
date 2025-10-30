@@ -181,6 +181,11 @@ function createReverb() {
 
 // Play chord with given frequency ratios -------------------------------------------------------------
 function playChord(alpha, beta, gamma, baseFreq = 220.0) {
+    // Guard: ensure audio is ready
+    if (!audioCtx || !reverbNode) {
+        console.log('Audio not ready yet');
+        return;
+    }
     // Resume context if suspended (browser autoplay policy)
     if (audioCtx.state === 'suspended') {
         audioCtx.resume();
