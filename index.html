@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Harmonic Eigenspace</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/addons/p5.sound.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="container">
+        <div id="header">
+            <h1>Harmonic Eigenspace</h1>
+            <p>Explore the dissonance landscape of harmonic structures</p>
+            <button id="viz-mode-toggle">
+                Switch to Full 3D View
+            </button>
+        </div>
+        <div id="progress-container" style="display:none;">
+            <div id="progress-bar"></div>
+            <div id="progress-text">Computing: 0%</div>
+        </div>
+        <div id="audio-gui-container"></div>
+        <div id="plot"></div>
+        <div id="click-output">Computing visualization...</div>
+    </div>
+    
+    <script src="Harmonic_Eigenspace.js"></script>
+    <!-- <script src="test.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <script src="adsr.js"></script>
+</body>
+
+</html>
