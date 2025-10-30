@@ -1355,7 +1355,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     const plotDiv = document.getElementById('plot');
 
     // Set initial camera
-    layout.scene.camera = { eye: { x: 1.0, y: 1.0, z: 1.0 } };
+    layout.scene.camera = { eye: { x: 0, y: 1.7, z: 0.25 } };
 
     Plotly.newPlot('plot', traces, layout, config).then(() => {
         const scene = document.getElementById('plot')._fullLayout.scene._scene;
@@ -1364,6 +1364,12 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         gl.depthFunc(gl.LEQUAL);
         gl.clearDepth(1.0);
         gl.clear(gl.DEPTH_BUFFER_BIT);
+    });
+
+    plotDiv.on('plotly_relayout', function (eventData) {
+        if (eventData['scene.camera']) {
+            console.log('Camera updated:', eventData['scene.camera']);
+        }
     });
 
     // Attach click event listener
