@@ -150,6 +150,7 @@ function refineNodeStochastic(node, baseFreq, numHarmonics, iterations = 100) {
 // Audio synthesis with p5.sound -----------------------------------------------------
 let audioCtx;
 let reverbNode;
+let audioInitialized = false;
 
 // Audio parameters - controlled by GUI
 let audioParams = {
@@ -179,8 +180,48 @@ function createReverb() {
     return convolver;
 }
 
+// Initialize audio on first user interaction
+async function initAudio() {
+    if (audioInitialized) return;
+
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        await audioCtx.resume();
+        reverbNode = createReverb();
+        reverbNode.connect(audioCtx.destination);
+
+        // PRE-WARM: Play a silent note to prime the audio graph
+        const warmupOsc = audioCtx.createOscillator();
+        const warmupGain = audioCtx.createGain();
+        warmupGain.gain.value = 0.0001;
+        warmupOsc.connect(warmupGain);
+        warmupGain.connect(audioCtx.destination);
+        warmupOsc.start();
+        warmupOsc.stop(audioCtx.currentTime + 0.01);
+
+        audioInitialized = true;
+        document.getElementById('click-output').textContent = 'Click any point to hear the chord';
+    } catch (e) {
+        console.error('Audio initialization failed:', e);
+    }
+}
+
 // Play chord with given frequency ratios -------------------------------------------------------------
 function playChord(alpha, beta, gamma, baseFreq = 220.0) {
+    // Initialize audio on first click
+    if (!audioInitialized) {
+        initAudio().then(() => {
+            playChord(alpha, beta, gamma, baseFreq); // Retry after init
+        });
+        return;
+    }
+
+    // Safety check
+    if (!audioCtx || !reverbNode) {
+        console.error('Audio not ready');
+        return;
+    }
+
     // Resume context if suspended (browser autoplay policy)
     if (audioCtx.state === 'suspended') {
         audioCtx.resume();
@@ -1467,33 +1508,17 @@ window.addEventListener('load', async () => {
     const harmonics = 6;
     const zoneNodes = 400;
 
-    // Initialize audio FIRST - before visualization
-    document.getElementById('click-output').textContent = 'Initializing audio...';
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    await audioCtx.resume();
-    reverbNode = createReverb();
-    reverbNode.connect(audioCtx.destination);
-
-    // PRE-WARM: Play a silent note to prime the audio graph
-    const warmupOsc = audioCtx.createOscillator();
-    const warmupGain = audioCtx.createGain();
-    warmupGain.gain.value = 0.0001; // Nearly silent
-    warmupOsc.connect(warmupGain);
-    warmupGain.connect(audioCtx.destination);
-    warmupOsc.start();
-    warmupOsc.stop(audioCtx.currentTime + 0.01);
-
     // Compute dissonance map ONCE - this is the expensive part
     globalDissonanceData = await calculate3dDissonanceMap(currentBaseFreq, 1.0, 2.0, zoneNodes, harmonics, "min");
 
-    // NOW create visualization - audio is ready
+    // Create visualization
     document.getElementById('click-output').textContent = 'Creating visualization...';
     createVisualization(globalDissonanceData, currentBaseFreq, localNodes);
 
     // Hide progress, ready to play
     document.getElementById('progress-container').style.display = 'none';
     document.getElementById('click-output').style.display = 'block';
-    document.getElementById('click-output').textContent = 'Click any point to hear the chord';
+    document.getElementById('click-output').textContent = 'Click any point to initialize audio and hear the chord';
 
     /// Add root note selector event listener (if it exists)
     const rootSelector = document.getElementById('root-select');
