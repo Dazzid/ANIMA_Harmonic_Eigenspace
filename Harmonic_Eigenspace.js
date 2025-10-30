@@ -895,7 +895,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
     // ========== CREATE FULL 3D TRACE (initially hidden) ==========
     // Use stratified sampling to ensure all dissonance ranges are represented
-    const samplingRate = 0.33;
+    const samplingRate = 0.25;
     const sampledX = [], sampledY = [], sampledZ = [], sampledD = [];
 
     // Group points by dissonance range to ensure even distribution
