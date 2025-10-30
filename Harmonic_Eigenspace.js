@@ -1074,10 +1074,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         console.log('Refining nodes with stochastic search...');
         cachedHarmonicNodes = rawNodes.map((node, idx) => {
             const refined = refineNodeStochastic(node, baseFreq, 6, 100);
-            const improvement = node.dissonance - refined.dissonance;
-            if (improvement > 0.001) {
-                console.log(`Node ${idx + 1}: improved by ${improvement.toFixed(4)}`);
-            }
+            // const improvement = node.dissonance - refined.dissonance;
+
             return refined;
         });
     }
