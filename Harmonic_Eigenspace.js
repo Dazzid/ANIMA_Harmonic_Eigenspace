@@ -1467,9 +1467,6 @@ window.addEventListener('load', async () => {
     const harmonics = 6;
     const zoneNodes = 400;
 
-    // Compute dissonance map ONCE - this is the expensive part
-    globalDissonanceData = await calculate3dDissonanceMap(currentBaseFreq, 1.0, 2.0, zoneNodes, harmonics, "min");
-
     // Initialize audio FIRST - before visualization
     document.getElementById('click-output').textContent = 'Initializing audio...';
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1485,6 +1482,9 @@ window.addEventListener('load', async () => {
     warmupGain.connect(audioCtx.destination);
     warmupOsc.start();
     warmupOsc.stop(audioCtx.currentTime + 0.01);
+
+    // Compute dissonance map ONCE - this is the expensive part
+    globalDissonanceData = await calculate3dDissonanceMap(currentBaseFreq, 1.0, 2.0, zoneNodes, harmonics, "min");
 
     // NOW create visualization - audio is ready
     document.getElementById('click-output').textContent = 'Creating visualization...';
