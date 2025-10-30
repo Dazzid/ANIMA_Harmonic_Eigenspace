@@ -190,7 +190,7 @@ async function initAudio() {
         reverbNode = createReverb();
         reverbNode.connect(audioCtx.destination);
 
-        // PRE-WARM: Play a silent note to prime the audio graph
+        // PRE-WARM
         const warmupOsc = audioCtx.createOscillator();
         const warmupGain = audioCtx.createGain();
         warmupGain.gain.value = 0.0001;
@@ -198,6 +198,13 @@ async function initAudio() {
         warmupGain.connect(audioCtx.destination);
         warmupOsc.start();
         warmupOsc.stop(audioCtx.currentTime + 0.01);
+
+        // KEEP CONTEXT ALIVE - prevent auto-suspend
+        setInterval(() => {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }, 1000);
 
         audioInitialized = true;
         document.getElementById('click-output').textContent = 'Click any point to hear the chord';
@@ -207,10 +214,10 @@ async function initAudio() {
 }
 
 // Play chord with given frequency ratios -------------------------------------------------------------
-async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
+function playChord(alpha, beta, gamma, baseFreq = 220.0) {
     // Initialize audio on first click
     if (!audioInitialized) {
-        await initAudio();
+        initAudio();
         return playChord(alpha, beta, gamma, baseFreq);
     }
 
@@ -222,7 +229,7 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
 
     // Resume context if suspended (MUST AWAIT!)
     if (audioCtx.state === 'suspended') {
-        await audioCtx.resume();
+        audioCtx.resume();
     }
 
     const t = audioCtx.currentTime;
