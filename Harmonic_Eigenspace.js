@@ -242,7 +242,7 @@ function createNote(freq, harmonics, amplitudes, startTime) {
 
     // Equal-power crossfade (prevents volume dip in middle)
     dryGain.gain.value = Math.sqrt(1.0 - audioParams.dryWet);
-    wetGain.gain.value = Math.sqrt(audioParams.dryWet);
+    wetGain.gain.value = Math.sqrt(audioParams.dryWet) * 2.5;
 
     masterGain.connect(dryGain);
     masterGain.connect(wetGain);
@@ -1355,7 +1355,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     const plotDiv = document.getElementById('plot');
 
     // Set initial camera
-    layout.scene.camera = { eye: { x: 0, y: 1.7, z: 0.25 } };
+    layout.scene.camera = { eye: { x: 0, y: 1.7, z: 0.4 } };
 
     Plotly.newPlot('plot', traces, layout, config).then(() => {
         const scene = document.getElementById('plot')._fullLayout.scene._scene;
@@ -1366,11 +1366,11 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         gl.clear(gl.DEPTH_BUFFER_BIT);
     });
 
-    plotDiv.on('plotly_relayout', function (eventData) {
-        if (eventData['scene.camera']) {
-            console.log('Camera updated:', eventData['scene.camera']);
-        }
-    });
+    // plotDiv.on('plotly_relayout', function (eventData) {
+    //     if (eventData['scene.camera']) {
+    //         console.log('Camera updated:', eventData['scene.camera']);
+    //     }
+    // });
 
     // Attach click event listener
     plotDiv.on('plotly_click', function (eventData) {
