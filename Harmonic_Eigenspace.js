@@ -317,7 +317,7 @@ function get12TETChordPositions() {
         ["Maj6", r(4), r(7), r(9)],
         ["min6", r(3), r(7), r(9)],
         ["power", r(5), r(7), r(12)],
-        ["Dm7", r(2), r(5), r(12)]
+        // ["iim7", r(2), r(5), r(12)]
     );
     return chords;
 }
