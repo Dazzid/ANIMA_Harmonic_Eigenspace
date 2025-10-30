@@ -10,8 +10,8 @@ let currentBaseFreq = 220.0;
 let cachedHarmonicNodes = null; // Cache node positions (in ratio space)
 let visualizationMode = 'sectioned'; // 'sectioned' or 'full3d'
 
-const zoneSize = 3.0;
-const zoneFull = 1.5;
+const zoneSize = 2.0;
+const zoneFull = 2.0;
 const chordSize = 9.0;
 
 // Keyboard shortcuts for root note selection
@@ -181,11 +181,6 @@ function createReverb() {
 
 // Play chord with given frequency ratios -------------------------------------------------------------
 function playChord(alpha, beta, gamma, baseFreq = 220.0) {
-    // Guard: ensure audio is ready
-    if (!audioCtx || !reverbNode) {
-        console.log('Audio not ready yet');
-        return;
-    }
     // Resume context if suspended (browser autoplay policy)
     if (audioCtx.state === 'suspended') {
         audioCtx.resume();
@@ -1475,15 +1470,8 @@ window.addEventListener('load', async () => {
     // Compute dissonance map ONCE - this is the expensive part
     globalDissonanceData = await calculate3dDissonanceMap(currentBaseFreq, 1.0, 2.0, zoneNodes, harmonics, "min");
 
-    // Hide progress, show click output
-    document.getElementById('progress-container').style.display = 'none';
-    document.getElementById('click-output').style.display = 'block';
-    document.getElementById('click-output').textContent = 'Click any point to hear the chord';
-
-    // Create initial visualization (starts in sectioned mode)
-    createVisualization(globalDissonanceData, currentBaseFreq, localNodes);
-
-    // Pre-initialize audio context
+    // Initialize audio FIRST - before visualization
+    document.getElementById('click-output').textContent = 'Initializing audio...';
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     await audioCtx.resume();
     reverbNode = createReverb();
@@ -1497,6 +1485,15 @@ window.addEventListener('load', async () => {
     warmupGain.connect(audioCtx.destination);
     warmupOsc.start();
     warmupOsc.stop(audioCtx.currentTime + 0.01);
+
+    // NOW create visualization - audio is ready
+    document.getElementById('click-output').textContent = 'Creating visualization...';
+    createVisualization(globalDissonanceData, currentBaseFreq, localNodes);
+
+    // Hide progress, ready to play
+    document.getElementById('progress-container').style.display = 'none';
+    document.getElementById('click-output').style.display = 'block';
+    document.getElementById('click-output').textContent = 'Click any point to hear the chord';
 
     /// Add root note selector event listener (if it exists)
     const rootSelector = document.getElementById('root-select');
