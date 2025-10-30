@@ -190,7 +190,7 @@ async function initAudio() {
         reverbNode = createReverb();
         reverbNode.connect(audioCtx.destination);
 
-        // PRE-WARM
+        // PRE-WARM: Play a silent note to prime the audio graph
         const warmupOsc = audioCtx.createOscillator();
         const warmupGain = audioCtx.createGain();
         warmupGain.gain.value = 0.0001;
@@ -198,13 +198,6 @@ async function initAudio() {
         warmupGain.connect(audioCtx.destination);
         warmupOsc.start();
         warmupOsc.stop(audioCtx.currentTime + 0.01);
-
-        // KEEP CONTEXT ALIVE - prevent auto-suspend
-        setInterval(() => {
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-        }, 1000);
 
         audioInitialized = true;
         document.getElementById('click-output').textContent = 'Click any point to hear the chord';
@@ -215,29 +208,24 @@ async function initAudio() {
 
 // Play chord with given frequency ratios -------------------------------------------------------------
 function playChord(alpha, beta, gamma, baseFreq = 220.0) {
-    // Initialize audio on first click
     if (!audioInitialized) {
         initAudio();
-        return playChord(alpha, beta, gamma, baseFreq);
-    }
-
-    // Safety check
-    if (!audioCtx || !reverbNode) {
-        console.error('Audio not ready');
         return;
     }
 
-    // Resume context if suspended (MUST AWAIT!)
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
+    if (!audioCtx || !reverbNode) {
+        return;
     }
 
+    // Remove this entire block - it's causing the delay
+    // if (audioCtx.state === 'suspended') {
+    //     audioCtx.resume();
+    // }
+
     const t = audioCtx.currentTime;
-    // Harmonics for rich sound
     const harmonics = [1, 2, 3, 4, 5, 6];
     const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
 
-    // Play all 4 notes (root, alpha, beta, gamma) - they overlap naturally
     const notes = [1, alpha, beta, gamma];
     for (let multiplier of notes) {
         createNote(baseFreq * multiplier, harmonics, amplitudes, t);
