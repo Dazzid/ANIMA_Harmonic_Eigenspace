@@ -207,13 +207,11 @@ async function initAudio() {
 }
 
 // Play chord with given frequency ratios -------------------------------------------------------------
-function playChord(alpha, beta, gamma, baseFreq = 220.0) {
+async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
     // Initialize audio on first click
     if (!audioInitialized) {
-        initAudio().then(() => {
-            playChord(alpha, beta, gamma, baseFreq); // Retry after init
-        });
-        return;
+        await initAudio();
+        return playChord(alpha, beta, gamma, baseFreq);
     }
 
     // Safety check
@@ -222,9 +220,9 @@ function playChord(alpha, beta, gamma, baseFreq = 220.0) {
         return;
     }
 
-    // Resume context if suspended (browser autoplay policy)
+    // Resume context if suspended (MUST AWAIT!)
     if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
+        await audioCtx.resume();
     }
 
     const t = audioCtx.currentTime;
