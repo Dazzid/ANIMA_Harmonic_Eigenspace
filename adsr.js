@@ -68,9 +68,9 @@ function draw() {
     fill(5, 213, 255);
     noStroke();
    
-    textSize(15);
+    textSize(13);
     textAlign(LEFT);
-    text('Audio Settings', padding-2, 15);
+    text('Audio Settings', padding, 12);
     
     // Draw wave type buttons
     textAlign(CENTER, CENTER);
@@ -186,7 +186,8 @@ function draw() {
    
     fill(220);
     textAlign(RIGHT);
-    text(`${totalTime.toFixed(2)}s`, W - padding, valuesY -15);
+    textSize(11);
+    text(`${totalTime.toFixed(1)}s`, W - padding, valuesY -15);
 
     // Dry/Wet knob
     const knobX = dryWetKnob.x;
