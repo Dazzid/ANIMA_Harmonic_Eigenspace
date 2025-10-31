@@ -1338,16 +1338,16 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             const alpha = point.x;
             const beta = point.y;
             const gamma = point.z;
-
-            const freqRoot = currentBaseFreq;
-            const freqAlpha = alpha * currentBaseFreq;
-            const freqBeta = beta * currentBaseFreq;
-            const freqGamma = gamma * currentBaseFreq;
-
-            document.getElementById('click-output').textContent =
-                `Playing: ${freqRoot.toFixed(2)} Hz | α=${freqAlpha.toFixed(2)} Hz | β=${freqBeta.toFixed(2)} Hz | γ=${freqGamma.toFixed(2)} Hz`;
-
             playChord(alpha, beta, gamma, currentBaseFreq);
+
+
+            // const freqRoot = currentBaseFreq;
+            // const freqAlpha = alpha * currentBaseFreq;
+            // const freqBeta = beta * currentBaseFreq;
+            // const freqGamma = gamma * currentBaseFreq;
+
+            // document.getElementById('click-output').textContent =
+            //     `Playing: ${freqRoot.toFixed(2)} Hz | α=${freqAlpha.toFixed(2)} Hz | β=${freqBeta.toFixed(2)} Hz | γ=${freqGamma.toFixed(2)} Hz`;
         }
     });
 }
@@ -1488,7 +1488,7 @@ window.testRootChange = function (newFreq) {
     createVisualization(globalDissonanceData, currentBaseFreq, 77);
 };
 
-// Run computation
+// Run computation -------------------------------------------------------------------------------------------------------------------------
 window.addEventListener('load', async () => {
     currentBaseFreq = 220.0;
     const localNodes = 77;
