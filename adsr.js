@@ -64,15 +64,23 @@ function draw() {
     fill(25);
     rect(0, 0, W, H, round);
 
+    drawWaveTypeButtons();
+    drawADSR();
+    drawKnob();
+
+    
+
+    updateAudioParams();
+}
+
+function drawADSR() {
     // Title
     fill(5, 213, 255);
     noStroke();
-   
+
     textSize(13);
     textAlign(LEFT);
     text('Audio Settings', padding, 12);
-    
-    drawWaveTypeButtons();
 
     fill(5, 213, 255);
     textAlign(LEFT);
@@ -105,12 +113,12 @@ function draw() {
     // Draw filled area under envelope with rounded corners
     fill(0, 155, 255, 100);
     noStroke();
-    
+
     beginShape();
     // Envelope line
     for (let i = drawPoints.length - 1; i >= 0; i--) {
         vertex(drawPoints[i].x, drawPoints[i].y);
-    } 
+    }
     endShape(CLOSE);
 
     // Draw envelope line
@@ -157,21 +165,11 @@ function draw() {
     // text(`A.Level: ${audioParams.attackLevel.toFixed(2)}`, padding + 160, valuesY);
     // text(`S.Level: ${audioParams.sustainLevel.toFixed(2)}`, padding + 160, valuesY + 18);
 
-   
+
     fill(220);
     textAlign(RIGHT);
     textSize(11);
-    text(`${totalTime.toFixed(1)}s`, W - padding, valuesY -15);
-
-    drawKnob();
-
-    // Value display (restore this!)
-    fill(255);
-    noStroke();
-    textSize(10);
-    text(`${(audioParams.dryWet * 100).toFixed(0)}%`, knobX, knobY + knobR + 15);
-
-    updateAudioParams();
+    text(`${totalTime.toFixed(1)}s`, W - padding, valuesY - 15);
 }
 
 function drawWaveTypeButtons() {
@@ -234,6 +232,11 @@ function drawKnob() {
     const indicatorX = knobX + cos(angle) * (knobR - 5);
     const indicatorY = knobY + sin(angle) * (knobR - 5);
     line(knobX, knobY, indicatorX, indicatorY);
+    // Value display (restore this!)
+    fill(255);
+    noStroke();
+    textSize(10);
+    text(`${(audioParams.dryWet * 100).toFixed(0)}%`, knobX, knobY + knobR + 15);
 }
 
 function updateAudioParams() {
