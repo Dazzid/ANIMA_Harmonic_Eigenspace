@@ -37,37 +37,16 @@ const freqToName = {
     207.65: 'G#3', 220.00: 'A3', 233.08: 'A#3', 246.94: 'B3', 261.63: 'C4'
 };
 
-
+//Second version of the dissonance measure with less selective parameters
 function dissmeasure(fvec, amp, model = "min") {
     const sorted = fvec.map((f, i) => [f, amp[i]]).sort((a, b) => a[0] - b[0]);
     const fr_sorted = sorted.map(x => x[0]);
     const am_sorted = sorted.map(x => x[1]);
 
-    const Dstar = 0.24, S1 = 0.0207, S2 = 18.96;
-    // More selective - only the sharpest consonances
-    const C1 = 8, C2 = -8, A1 = -5.0, A2 = -7.0;
-
-    let total = 0;
-    for (let i = 0; i < fr_sorted.length; i++) {
-        for (let j = i + 1; j < fr_sorted.length; j++) {
-            const Fmin = fr_sorted[i];
-            const S = Dstar / (S1 * Fmin + S2);
-            const Fdif = fr_sorted[j] - fr_sorted[i];
-            const a = model === "min" ? Math.min(am_sorted[i], am_sorted[j]) : am_sorted[i] * am_sorted[j];
-            const SFdif = S * Fdif;
-            total += a * (C1 * Math.exp(A1 * SFdif) + C2 * Math.exp(A2 * SFdif));
-        }
-    }
-    return total;
-}
-
-//Second version of the dissonance measure with less selective parameters
-function dissmeasure_2(fvec, amp, model = "min") {
-    const sorted = fvec.map((f, i) => [f, amp[i]]).sort((a, b) => a[0] - b[0]);
-    const fr_sorted = sorted.map(x => x[0]);
-    const am_sorted = sorted.map(x => x[1]);
-
-    const Dstar = 0.24, S1 = 0.0207, S2 = 18.96;
+    const Dstar = 0.24;
+    const S1 = 0.0207; 
+    const S2 = 18.96;
+    // const C1 = 8, C2 = -8, A1 = -5.0, A2 = -7.0;
     const C1 = 5, C2 = -5, A1 = -3.51, A2 = -5.75;
 
     let total = 0;
@@ -711,7 +690,7 @@ async function calculate3dDissonanceMap(baseFreq, rLow, rHigh, nPoints, numHarmo
                     ...freqBase.map(x => x * gamma)
                 ];
                 const a = [...ampBase, ...ampBase, ...ampBase, ...ampBase];
-                dissonance3d[i][j][k] = dissmeasure_2(f, a, method);
+                dissonance3d[i][j][k] = dissmeasure(f, a, method);
             }
         }
     }
@@ -888,7 +867,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
     // ========== CREATE FULL 3D TRACE (initially hidden) ==========
     // Use stratified sampling to ensure all dissonance ranges are represented
-    const samplingRate = 0.25;
+    const samplingRate = 0.2;
     const sampledX = [], sampledY = [], sampledZ = [], sampledD = [];
 
     // Group points by dissonance range to ensure even distribution
@@ -940,7 +919,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             colorscale: myColor,
             cmin: vmin,
             cmax: vmax,
-            colorbar: { title: 'Dissonance', len: 0.7, y: 0.9, yanchor: 'top' },
+            colorbar: { title: 'Dissonance', len: 0.7, y: 0.9, yanchor: 'top'},
             opacity: 0.75
         },
         name: 'Full 3D View',

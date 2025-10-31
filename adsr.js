@@ -2,9 +2,9 @@
 // P5.JS AUDIO GUI - ADSR Envelope Editor (GLOBAL MODE)
 // ============================================================================
 
-const W = 380;
-const H = 380;
-const padding = 20;
+const W = 350;
+const H = 320;
+const padding = 10;
 
 // ADSR Section
 const adsrTop = 120;
@@ -27,8 +27,8 @@ let adsrPoints = [
 let draggingPoint = null;
 
 let dryWetKnob = {
-    x: W - 100,
-    y: 60,
+    x: W - 80,
+    y: 65,
     radius: 25,
     dragging: false
 };
@@ -175,17 +175,16 @@ function draw() {
     const valuesY = adsrTop + adsrHeight + 25;
 
     let totalTime = audioParams.attack + audioParams.sustain + audioParams.release;
-    text(`Attack: ${audioParams.attack.toFixed(2)}s`, padding, valuesY);
-    text(`Sustain: ${audioParams.sustain.toFixed(2)}s`, padding, valuesY + 18);
-    text(`Release: ${audioParams.release.toFixed(2)}s`, padding, valuesY + 36);
+    // text(`Attack: ${audioParams.attack.toFixed(2)}s`, padding, valuesY);
+    // text(`Sustain: ${audioParams.sustain.toFixed(2)}s`, padding, valuesY + 18);
+    // text(`Release: ${audioParams.release.toFixed(2)}s`, padding, valuesY + 36);
 
-    // ADD AMPLITUDE DISPLAY
-    text(`A.Level: ${audioParams.attackLevel.toFixed(2)}`, padding + 160, valuesY);
-    text(`S.Level: ${audioParams.sustainLevel.toFixed(2)}`, padding + 160, valuesY + 18);
+    // // ADD AMPLITUDE DISPLAY
+    // text(`A.Level: ${audioParams.attackLevel.toFixed(2)}`, padding + 160, valuesY);
+    // text(`S.Level: ${audioParams.sustainLevel.toFixed(2)}`, padding + 160, valuesY + 18);
 
    
-    fill(100, 240, 80);
-    
+    fill(220);
     textAlign(RIGHT);
     text(`${totalTime.toFixed(2)}s`, W - padding, valuesY -15);
 
