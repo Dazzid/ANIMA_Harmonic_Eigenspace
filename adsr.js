@@ -217,7 +217,7 @@ function drawKnob() {
 
     fill(15);
     stroke(60);
-    strokeWeight(2);
+    strokeWeight(3);
     circle(knobX, knobY, knobR * 2);
 
     // FILLED ARC showing value
@@ -229,10 +229,10 @@ function drawKnob() {
 
     // Indicator line (restore this!)
     const angle = map(audioParams.dryWet, 0, 1, -PI * 0.75, PI * 0.75) - HALF_PI;
-    stroke(0, 200, 255);
-    strokeWeight(3);
-    const indicatorX = knobX + cos(angle) * (knobR - 5);
-    const indicatorY = knobY + sin(angle) * (knobR - 5);
+    stroke(255);
+    strokeWeight(2);
+    const indicatorX = knobX + cos(angle) * (knobR - 1);
+    const indicatorY = knobY + sin(angle) * (knobR - 1);
     line(knobX, knobY, indicatorX, indicatorY);
     // Value display (restore this!)
     fill(255);
