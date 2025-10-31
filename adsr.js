@@ -210,7 +210,7 @@ function drawKnob() {
     const knobY = dryWetKnob.y;
     const knobR = dryWetKnob.radius;
 
-    fill(5, 213, 255);
+    fill(0, 111, 229);
     textAlign(CENTER);
     textSize(12);
     text('Dry/Wet', knobX, knobY - knobR - 10);
@@ -223,7 +223,7 @@ function drawKnob() {
     // FILLED ARC showing value
     const startAngle = -PI * 0.75 - HALF_PI;
     const endAngle = map(audioParams.dryWet, 0, 1, -PI * 0.75, PI * 0.75) - HALF_PI;
-    fill(0, 155, 255, 180);
+    fill(0, 155, 255);
     noStroke();
     arc(knobX, knobY, knobR * 2, knobR * 2, startAngle, endAngle, PIE);
 
