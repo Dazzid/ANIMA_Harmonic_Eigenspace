@@ -111,7 +111,7 @@ const colorbarSketch = (p) => {
 
         // Title
         p.textAlign(p.CENTER);
-        p.text('Dissonance', x + BAR_WIDTH / 2, y - 20);
+        p.text('Dissonance', x + BAR_WIDTH / 2, y - 10);
 
         // Max value (top)
         p.textAlign(p.RIGHT, p.CENTER);
