@@ -1,7 +1,7 @@
 body {
     margin: 0;
     padding: 0;
-    font-family: monaco, Figtree, Arial, sans-serif;
+    font-family: monaco, monaco, Arial, sans-serif;
     background: rgb(0, 0, 0);
     color: white;
 }
@@ -24,7 +24,8 @@ body {
 #header h1 {
     margin: 0px;
     padding: 0px;
-    font-size: 25px;
+    font-size: 30px;
+    font-weight: normal;
 }
 
 #header p {
