@@ -8,8 +8,8 @@ const colorbarSketch = (p) => {
     const BAR_WIDTH = 50;
     const BAR_HEIGHT = window.innerHeight * 0.5;  // 50% of screen height
     const CANVAS_WIDTH = 120;
-    const CANVAS_HEIGHT = window.innerHeight * 0.6;  // 60% for padding
-    const PADDING = 10;
+    const CANVAS_HEIGHT = window.innerHeight * 0.55;  // 55% of screen height
+    const PADDING = 35;
 
     // Slider state
     let sliderPos = 1; // 0 to 1 (top to bottom)
@@ -39,7 +39,10 @@ const colorbarSketch = (p) => {
     };
 
     p.draw = function () {
-        p.background(0);
+        // p.background(0, 20);
+        p.noStroke();
+        p.fill(0);
+        p.rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 20);
 
         // Calculate bar position
         const barX = PADDING;
