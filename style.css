@@ -139,9 +139,12 @@ body {
     position: fixed;
     top: 10px;
     left: 10px;
-    width: 320px;
+    width: 350px;
+    height: 320px;
+    border-radius: 20px;
     z-index: 100;
     font-family: monaco, Figtree, Arial, sans-serif;
+    box-shadow: 1px 1px 5px rgba(163, 163, 163, 0.5);
 }
 
 #colorbar-container {

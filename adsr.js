@@ -33,6 +33,7 @@ let dryWetKnob = {
     dragging: false
 };
 
+// ------------------------------------------------------------
 function setup() {
 
     textFont('monaco');
@@ -60,6 +61,7 @@ function setup() {
     console.log('Setup complete!');
 }
 
+// ------------------------------------------------------------
 function draw() {
     fill(25);
     rect(0, 0, W, H, round);
@@ -67,12 +69,10 @@ function draw() {
     drawWaveTypeButtons();
     drawADSR();
     drawKnob();
-
-    
-
     updateAudioParams();
 }
 
+// ------------------------------------------------------------
 function drawADSR() {
     // Title
     fill(5, 213, 255);
@@ -172,6 +172,7 @@ function drawADSR() {
     text(`${totalTime.toFixed(1)}s`, W - padding, valuesY - 15);
 }
 
+//--------------------------------------------------------------------
 function drawWaveTypeButtons() {
     // Draw wave type buttons
     textAlign(CENTER, CENTER);
@@ -202,6 +203,7 @@ function drawWaveTypeButtons() {
     }
 }
 
+//--------------------------------------------------------------------
 function drawKnob() {
     // Dry/Wet knob
     const knobX = dryWetKnob.x;
@@ -239,6 +241,7 @@ function drawKnob() {
     text(`${(audioParams.dryWet * 100).toFixed(0)}%`, knobX, knobY + knobR + 15);
 }
 
+//--------------------------------------------------------------------
 function updateAudioParams() {
     const maxTime = 2.0;
     const totalWidth = W - 2 * padding;
@@ -253,6 +256,7 @@ function updateAudioParams() {
     audioParams.sustainLevel = map(adsrPoints[2].y, 0, H, 1.0, 0.001);
 }
 
+//--------------------------------------------------------------------
 function mousePressed() {
     // Check button clicks
 
@@ -284,6 +288,7 @@ function mousePressed() {
     }
 }
 
+//--------------------------------------------------------------------
 function mouseDragged() {
     if (draggingPoint !== null && draggingPoint > 0 && draggingPoint < adsrPoints.length - 1) {
 
@@ -312,6 +317,7 @@ function mouseDragged() {
     }
 }
 
+//--------------------------------------------------------------------
 function mouseReleased() {
     draggingPoint = null;
     draggingPoint = null;
