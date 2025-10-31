@@ -61,7 +61,7 @@ function setup() {
 }
 
 function draw() {
-    fill(30);
+    fill(25);
     rect(0, 0, W, H, round);
 
     // Title
@@ -72,33 +72,7 @@ function draw() {
     textAlign(LEFT);
     text('Audio Settings', padding, 12);
     
-    // Draw wave type buttons
-    textAlign(CENTER, CENTER);
-    textSize(11);
-    for (let btn of buttons) {
-        let isActive = audioParams.waveType === btn.type;
-        let isHover = mouseX > btn.x && mouseX < btn.x + btn.w &&
-            mouseY > btn.y && mouseY < btn.y + btn.h;
-
-        // Button background
-        if (isActive) {
-            fill(0, 111, 229);
-            stroke(5, 213, 255);
-        } else if (isHover) {
-            fill(40);
-            stroke(100);
-        } else {
-            fill(25);
-            stroke(60);
-        }
-        strokeWeight(0.5);
-        rect(btn.x, btn.y, btn.w, btn.h, 5);
-
-        // Button text
-        fill(255);
-        noStroke();
-        text(btn.label, btn.x + btn.w / 2, btn.y + btn.h / 2);
-    }
+    drawWaveTypeButtons();
 
     fill(5, 213, 255);
     textAlign(LEFT);
@@ -189,6 +163,48 @@ function draw() {
     textSize(11);
     text(`${totalTime.toFixed(1)}s`, W - padding, valuesY -15);
 
+    drawKnob();
+
+    // Value display (restore this!)
+    fill(255);
+    noStroke();
+    textSize(10);
+    text(`${(audioParams.dryWet * 100).toFixed(0)}%`, knobX, knobY + knobR + 15);
+
+    updateAudioParams();
+}
+
+function drawWaveTypeButtons() {
+    // Draw wave type buttons
+    textAlign(CENTER, CENTER);
+    textSize(11);
+    for (let btn of buttons) {
+        let isActive = audioParams.waveType === btn.type;
+        let isHover = mouseX > btn.x && mouseX < btn.x + btn.w &&
+            mouseY > btn.y && mouseY < btn.y + btn.h;
+
+        // Button background
+        if (isActive) {
+            fill(0, 111, 229);
+            stroke(5, 213, 255);
+        } else if (isHover) {
+            fill(40);
+            stroke(100);
+        } else {
+            fill(15);
+            stroke(60);
+        }
+        strokeWeight(0.5);
+        rect(btn.x, btn.y, btn.w, btn.h, 5);
+
+        // Button text
+        fill(255);
+        noStroke();
+        text(btn.label, btn.x + btn.w / 2, btn.y + btn.h / 2);
+    }
+}
+
+function drawKnob() {
     // Dry/Wet knob
     const knobX = dryWetKnob.x;
     const knobY = dryWetKnob.y;
@@ -199,7 +215,7 @@ function draw() {
     textSize(12);
     text('Dry/Wet', knobX, knobY - knobR - 10);
 
-    fill(20);
+    fill(15);
     stroke(60);
     strokeWeight(2);
     circle(knobX, knobY, knobR * 2);
@@ -207,7 +223,7 @@ function draw() {
     // FILLED ARC showing value
     const startAngle = -PI * 0.75 - HALF_PI;
     const endAngle = map(audioParams.dryWet, 0, 1, -PI * 0.75, PI * 0.75) - HALF_PI;
-    fill(0, 155, 255, 100);
+    fill(0, 155, 255, 180);
     noStroke();
     arc(knobX, knobY, knobR * 2, knobR * 2, startAngle, endAngle, PIE);
 
@@ -218,14 +234,6 @@ function draw() {
     const indicatorX = knobX + cos(angle) * (knobR - 5);
     const indicatorY = knobY + sin(angle) * (knobR - 5);
     line(knobX, knobY, indicatorX, indicatorY);
-
-    // Value display (restore this!)
-    fill(255);
-    noStroke();
-    textSize(10);
-    text(`${(audioParams.dryWet * 100).toFixed(0)}%`, knobX, knobY + knobR + 15);
-
-    updateAudioParams();
 }
 
 function updateAudioParams() {

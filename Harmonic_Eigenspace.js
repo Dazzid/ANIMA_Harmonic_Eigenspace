@@ -861,7 +861,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     ];
 
     let numLayers = 200;
-    let windowSize = (vmax - vmin) / 15;
+    let windowSize = (vmax - vmin) / 25;
     let thresholds = linspace(vmin, vmax, numLayers);
     const tracesPerLayer = ENABLE_DISTANCE_LINES ? 2 : 1;
 
