@@ -79,11 +79,11 @@ const colorbarSketch = (p) => {
     function drawSliderHandle(x, y) {
         const handleY = y + sliderPos * BAR_HEIGHT;
         const handleWidth = BAR_WIDTH + 20;
-        const handleHeight = 8;
+        const handleHeight = 9;
 
         // Handle background
         p.fill(255, 200);
-        p.stroke(0);
+        p.stroke(255);
         p.strokeWeight(1);
         p.rect(x - 10, handleY - handleHeight / 2, handleWidth, handleHeight, 5);
 
