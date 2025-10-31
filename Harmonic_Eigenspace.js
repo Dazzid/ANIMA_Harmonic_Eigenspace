@@ -217,7 +217,7 @@ function createNote(freq, harmonics, amplitudes, startTime) {
     const dryGain = audioCtx.createGain();
     const wetGain = audioCtx.createGain();
 
-    console.log(audioParams.dryWet);
+    // console.log(audioParams.dryWet);
 
     // Equal-power crossfade (prevents volume dip in middle)
     dryGain.gain.value = Math.sqrt(1.0 - audioParams.dryWet);
