@@ -10,8 +10,8 @@ let currentBaseFreq = 220.0;
 let cachedHarmonicNodes = null; // Cache node positions (in ratio space)
 let visualizationMode = 'sectioned'; // 'sectioned' or 'full3d'
 
-const zoneSize = 3.0;
-const zoneFull = 1.5;
+const zoneSize = 2.0;
+const zoneFull = 2.0;
 const chordSize = 9.0;
 
 // Keyboard shortcuts for root note selection
@@ -37,37 +37,16 @@ const freqToName = {
     207.65: 'G#3', 220.00: 'A3', 233.08: 'A#3', 246.94: 'B3', 261.63: 'C4'
 };
 
-
+//Second version of the dissonance measure with less selective parameters
 function dissmeasure(fvec, amp, model = "min") {
     const sorted = fvec.map((f, i) => [f, amp[i]]).sort((a, b) => a[0] - b[0]);
     const fr_sorted = sorted.map(x => x[0]);
     const am_sorted = sorted.map(x => x[1]);
 
-    const Dstar = 0.24, S1 = 0.0207, S2 = 18.96;
-    // More selective - only the sharpest consonances
-    const C1 = 8, C2 = -8, A1 = -5.0, A2 = -7.0;
-
-    let total = 0;
-    for (let i = 0; i < fr_sorted.length; i++) {
-        for (let j = i + 1; j < fr_sorted.length; j++) {
-            const Fmin = fr_sorted[i];
-            const S = Dstar / (S1 * Fmin + S2);
-            const Fdif = fr_sorted[j] - fr_sorted[i];
-            const a = model === "min" ? Math.min(am_sorted[i], am_sorted[j]) : am_sorted[i] * am_sorted[j];
-            const SFdif = S * Fdif;
-            total += a * (C1 * Math.exp(A1 * SFdif) + C2 * Math.exp(A2 * SFdif));
-        }
-    }
-    return total;
-}
-
-//Second version of the dissonance measure with less selective parameters
-function dissmeasure_2(fvec, amp, model = "min") {
-    const sorted = fvec.map((f, i) => [f, amp[i]]).sort((a, b) => a[0] - b[0]);
-    const fr_sorted = sorted.map(x => x[0]);
-    const am_sorted = sorted.map(x => x[1]);
-
-    const Dstar = 0.24, S1 = 0.0207, S2 = 18.96;
+    const Dstar = 0.24;
+    const S1 = 0.0207;
+    const S2 = 18.96;
+    // const C1 = 8, C2 = -8, A1 = -5.0, A2 = -7.0;
     const C1 = 5, C2 = -5, A1 = -3.51, A2 = -5.75;
 
     let total = 0;
@@ -150,6 +129,7 @@ function refineNodeStochastic(node, baseFreq, numHarmonics, iterations = 100) {
 // Audio synthesis with p5.sound -----------------------------------------------------
 let audioCtx;
 let reverbNode;
+let audioInitialized = false;
 
 // Audio parameters - controlled by GUI
 let audioParams = {
@@ -179,19 +159,52 @@ function createReverb() {
     return convolver;
 }
 
+// Initialize audio on first user interaction
+async function initAudio() {
+    if (audioInitialized) return;
+
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        await audioCtx.resume();
+        reverbNode = createReverb();
+        reverbNode.connect(audioCtx.destination);
+
+        // PRE-WARM: Play a silent note to prime the audio graph
+        const warmupOsc = audioCtx.createOscillator();
+        const warmupGain = audioCtx.createGain();
+        warmupGain.gain.value = 0.0001;
+        warmupOsc.connect(warmupGain);
+        warmupGain.connect(audioCtx.destination);
+        warmupOsc.start();
+        warmupOsc.stop(audioCtx.currentTime + 0.01);
+
+        audioInitialized = true;
+        document.getElementById('click-output').textContent = 'Click any point to hear the chord';
+    } catch (e) {
+        console.error('Audio initialization failed:', e);
+    }
+}
+
 // Play chord with given frequency ratios -------------------------------------------------------------
 function playChord(alpha, beta, gamma, baseFreq = 220.0) {
-    // Resume context if suspended (browser autoplay policy)
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
+    if (!audioInitialized) {
+        initAudio();
+        return;
     }
 
+    if (!audioCtx || !reverbNode) {
+        return;
+    }
+
+    // Remove this entire block - it's causing the delay
+    // if (audioCtx.state === 'suspended') {
+    //     audioCtx.resume();
+    // }
+
     const t = audioCtx.currentTime;
-    // Harmonics for rich sound
     const harmonics = [1, 2, 3, 4, 5, 6];
     const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
 
-    // Play all 4 notes (root, alpha, beta, gamma) - they overlap naturally
     const notes = [1, alpha, beta, gamma];
     for (let multiplier of notes) {
         createNote(baseFreq * multiplier, harmonics, amplitudes, t);
@@ -208,7 +221,7 @@ function createNote(freq, harmonics, amplitudes, startTime) {
 
     // Equal-power crossfade (prevents volume dip in middle)
     dryGain.gain.value = Math.sqrt(1.0 - audioParams.dryWet);
-    wetGain.gain.value = Math.sqrt(audioParams.dryWet);
+    wetGain.gain.value = Math.sqrt(audioParams.dryWet) * 2.0;
 
     masterGain.connect(dryGain);
     masterGain.connect(wetGain);
@@ -276,7 +289,7 @@ function get12TETChordPositions() {
         ["Maj6", r(4), r(7), r(9)],
         ["min6", r(3), r(7), r(9)],
         ["power", r(5), r(7), r(12)],
-        ["Dm7", r(2), r(5), r(12)]
+        // ["iim7", r(2), r(5), r(12)]
     );
     return chords;
 }
@@ -677,7 +690,7 @@ async function calculate3dDissonanceMap(baseFreq, rLow, rHigh, nPoints, numHarmo
                     ...freqBase.map(x => x * gamma)
                 ];
                 const a = [...ampBase, ...ampBase, ...ampBase, ...ampBase];
-                dissonance3d[i][j][k] = dissmeasure_2(f, a, method);
+                dissonance3d[i][j][k] = dissmeasure(f, a, method);
             }
         }
     }
@@ -854,7 +867,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
     // ========== CREATE FULL 3D TRACE (initially hidden) ==========
     // Use stratified sampling to ensure all dissonance ranges are represented
-    const samplingRate = 0.33;
+    const samplingRate = 0.2;
     const sampledX = [], sampledY = [], sampledZ = [], sampledD = [];
 
     // Group points by dissonance range to ensure even distribution
@@ -906,7 +919,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             colorscale: myColor,
             cmin: vmin,
             cmax: vmax,
-            colorbar: { title: 'Dissonance', len: 0.7, y: 0.9, yanchor: 'top' },
+            showscale: false,  // Hide Plotly colorbar - we use P5 instead
             opacity: 0.75
         },
         name: 'Full 3D View',
@@ -1016,7 +1029,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 colorscale: myColor,
                 cmin: vmin,
                 cmax: vmax,
-                colorbar: { title: 'Dissonance', len: 0.7, y: 0.9, yanchor: 'top' },
+                showscale: false,  // Hide Plotly colorbar - we use P5 instead
                 opacity: 0.5
             },
             name: `${(threshold - windowSize / 2).toFixed(3)} - ${(threshold + windowSize / 2).toFixed(3)}`,
@@ -1040,10 +1053,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         console.log('Refining nodes with stochastic search...');
         cachedHarmonicNodes = rawNodes.map((node, idx) => {
             const refined = refineNodeStochastic(node, baseFreq, 6, 100);
-            const improvement = node.dissonance - refined.dissonance;
-            if (improvement > 0.001) {
-                console.log(`Node ${idx + 1}: improved by ${improvement.toFixed(4)}`);
-            }
+            // const improvement = node.dissonance - refined.dissonance;
+
             return refined;
         });
     }
@@ -1221,30 +1232,30 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             },
             xaxis: {
                 title: 'α (2nd note)',
-                gridcolor: 'rgba(145, 145, 145, 1)',
+                gridcolor: 'rgba(90, 90, 90, 1)',
                 showspikes: true,
                 spikecolor: 'rgba(255, 200, 0, 0.8)',
-                spikethickness: 1,
+                spikethickness: 1.5,
                 spikesides: true,
                 spikedash: 'solid',
                 range: [1.0, 2.0]
             },
             yaxis: {
                 title: 'β (3rd note)',
-                gridcolor: 'rgba(145, 145, 145, 1)',
+                gridcolor: 'rgba(90, 90, 90, 1)',
                 showspikes: true,
                 spikecolor: 'rgba(255, 200, 0, 0.8)',
-                spikethickness: 1,
+                spikethickness: 1.5,
                 spikesides: true,
                 spikedash: 'solid',
                 range: [1.0, 2.0]
             },
             zaxis: {
                 title: 'γ (4th note)',
-                gridcolor: 'rgba(145, 145, 145, 1)',
+                gridcolor: 'rgba(90, 90, 90, 1)',
                 showspikes: true,
                 spikecolor: 'rgba(255, 200, 0, 0.8)',
-                spikethickness: 1,
+                spikethickness: 1.5,
                 spikesides: true,
                 spikedash: 'solid',
                 range: [1.0, 2.0]
@@ -1268,48 +1279,19 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         hovermode: 'closest'
     };
 
-    // Create slider steps for sectioned mode
-    const steps = [];
-    // Calculate how many layer traces we have (start at index 1, after full 3D trace)
+    // ========== SLIDER (REMOVED - Using P5 colorbar slider instead) ==========
+    // Calculate layer info for P5 slider
     const layerStartIndex = 1;
     const actualNumLayers = Math.floor((traces.length - layerStartIndex - 4) / tracesPerLayer); // -4 for nodes and chords
 
-    for (let i = 0; i < actualNumLayers; i++) {
-        const layerVisibility = Array(actualNumLayers * tracesPerLayer).fill(false);
-
-        if (ENABLE_DISTANCE_LINES) {
-            layerVisibility[i * 2] = true;
-            layerVisibility[i * 2 + 1] = true;
-        } else {
-            layerVisibility[i] = true;
-        }
-
-        const layerIndices = Array.from({ length: actualNumLayers * tracesPerLayer }, (_, idx) => layerStartIndex + idx);
-
-        steps.push({
-            method: 'restyle',
-            args: ['visible', layerVisibility, layerIndices],
-            label: `${(thresholds[i] - windowSize / 2).toFixed(3)}-${(thresholds[i] + windowSize / 2).toFixed(3)}`
-        });
-    }
-
-    layout.sliders = [{
-        yanchor: 'bottom',
-        y: 0.02,
-        xanchor: 'center',
-        x: 0.5,
-        currentvalue: {
-            prefix: 'Range: ',
-            visible: true,
-            xanchor: 'right',
-            font: { size: 11 }
-        },
-        pad: { l: 5, r: 5, t: 5, b: 5 },
-        len: 0.6,
-        active: 0,
-        visible: true, // Will be toggled based on mode
-        steps
-    }];
+    // Store thresholds and layer info globally for P5 slider to use
+    window.plotlyLayerInfo = {
+        thresholds: thresholds,
+        windowSize: windowSize,
+        tracesPerLayer: tracesPerLayer,
+        layerStartIndex: layerStartIndex,
+        actualNumLayers: actualNumLayers
+    };
 
     // ========== RENDER ==========
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -1323,7 +1305,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     const plotDiv = document.getElementById('plot');
 
     // Set initial camera
-    layout.scene.camera = { eye: { x: 1.0, y: 1.0, z: 1.0 } };
+    layout.scene.camera = { eye: { x: 0, y: 1.7, z: 0.4 } };
 
     Plotly.newPlot('plot', traces, layout, config).then(() => {
         const scene = document.getElementById('plot')._fullLayout.scene._scene;
@@ -1332,7 +1314,22 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         gl.depthFunc(gl.LEQUAL);
         gl.clearDepth(1.0);
         gl.clear(gl.DEPTH_BUFFER_BIT);
+
+        // Initialize P5 colorbar slider with threshold data
+        if (typeof colorbarP5 !== 'undefined' && window.plotlyLayerInfo) {
+            colorbarP5.setThresholds(
+                window.plotlyLayerInfo.thresholds,
+                window.plotlyLayerInfo.windowSize,
+                0  // Start at first layer
+            );
+        }
     });
+
+    // plotDiv.on('plotly_relayout', function (eventData) {
+    //     if (eventData['scene.camera']) {
+    //         console.log('Camera updated:', eventData['scene.camera']);
+    //     }
+    // });
 
     // Attach click event listener
     plotDiv.on('plotly_click', function (eventData) {
@@ -1382,8 +1379,8 @@ function toggleVisualizationMode() {
             visibilityArray[i] = true;
         }
 
-        // Single update: visibility + hide slider
-        Plotly.update(plotDiv, { visible: visibilityArray }, { 'sliders[0].visible': false });
+        // Single update: visibility only (no Plotly slider)
+        Plotly.update(plotDiv, { visible: visibilityArray }, {});
 
     } else {
         // Switch to SECTIONED mode
@@ -1391,14 +1388,20 @@ function toggleVisualizationMode() {
 
         visibilityArray[0] = false; // Full 3D trace hidden
 
-        // First layer visible, rest hidden
+        // Get current step from P5 slider (maintains position)
+        let currentLayer = 0;
+        if (typeof colorbarP5 !== 'undefined' && colorbarP5.getCurrentStep) {
+            currentLayer = colorbarP5.getCurrentStep();
+        }
+
+        // Show the layer at current slider position
         const actualNumLayers = Math.floor(numLayerTraces / tracesPerLayer);
         for (let i = 0; i < actualNumLayers; i++) {
             if (ENABLE_DISTANCE_LINES) {
-                visibilityArray[1 + i * 2] = (i === 0);
-                visibilityArray[1 + i * 2 + 1] = (i === 0);
+                visibilityArray[1 + i * 2] = (i === currentLayer);
+                visibilityArray[1 + i * 2 + 1] = (i === currentLayer);
             } else {
-                visibilityArray[1 + i] = (i === 0);
+                visibilityArray[1 + i] = (i === currentLayer);
             }
         }
 
@@ -1407,12 +1410,37 @@ function toggleVisualizationMode() {
             visibilityArray[i] = true;
         }
 
-        // Single update: visibility + show slider
-        Plotly.update(plotDiv, { visible: visibilityArray }, {
-            'sliders[0].visible': true,
-            'sliders[0].active': 0
-        });
+        // Single update: visibility only (no Plotly slider)
+        Plotly.update(plotDiv, { visible: visibilityArray }, {});
     }
+}
+
+// Function to update layer visibility - called by P5 colorbar slider
+window.updatePlotlyLayer = function (layerIndex) {
+    const plotDiv = document.getElementById('plot');
+    const totalTraces = plotDiv.data.length;
+    const tracesPerLayer = ENABLE_DISTANCE_LINES ? 2 : 1;
+    const numChordTraces = 4; // nodes + 12TET + 31TET + 53TET
+    const numLayerTraces = totalTraces - 1 - numChordTraces;
+    const actualNumLayers = Math.floor(numLayerTraces / tracesPerLayer);
+
+    // Only update if in sectioned mode
+    if (visualizationMode !== 'sectioned') return;
+
+    // Build visibility array
+    const layerVisibility = Array(actualNumLayers * tracesPerLayer).fill(false);
+
+    if (ENABLE_DISTANCE_LINES) {
+        layerVisibility[layerIndex * 2] = true;
+        layerVisibility[layerIndex * 2 + 1] = true;
+    } else {
+        layerVisibility[layerIndex] = true;
+    }
+
+    const layerIndices = Array.from({ length: actualNumLayers * tracesPerLayer }, (_, idx) => 1 + idx);
+
+    // Update only the layer traces
+    Plotly.restyle(plotDiv, 'visible', layerVisibility, layerIndices);
 }
 
 // Save binary
@@ -1470,28 +1498,14 @@ window.addEventListener('load', async () => {
     // Compute dissonance map ONCE - this is the expensive part
     globalDissonanceData = await calculate3dDissonanceMap(currentBaseFreq, 1.0, 2.0, zoneNodes, harmonics, "min");
 
-    // Hide progress, show click output
-    document.getElementById('progress-container').style.display = 'none';
-    document.getElementById('click-output').style.display = 'block';
-    document.getElementById('click-output').textContent = 'Click any point to hear the chord';
-
-    // Create initial visualization (starts in sectioned mode)
+    // Create visualization
+    document.getElementById('click-output').textContent = 'Creating visualization...';
     createVisualization(globalDissonanceData, currentBaseFreq, localNodes);
 
-    // Pre-initialize audio context
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    await audioCtx.resume();
-    reverbNode = createReverb();
-    reverbNode.connect(audioCtx.destination);
-
-    // PRE-WARM: Play a silent note to prime the audio graph
-    const warmupOsc = audioCtx.createOscillator();
-    const warmupGain = audioCtx.createGain();
-    warmupGain.gain.value = 0.0001; // Nearly silent
-    warmupOsc.connect(warmupGain);
-    warmupGain.connect(audioCtx.destination);
-    warmupOsc.start();
-    warmupOsc.stop(audioCtx.currentTime + 0.01);
+    // Hide progress, ready to play
+    document.getElementById('progress-container').style.display = 'none';
+    document.getElementById('click-output').style.display = 'block';
+    document.getElementById('click-output').textContent = 'Click any point to initialize audio and hear the chord';
 
     /// Add root note selector event listener (if it exists)
     const rootSelector = document.getElementById('root-select');

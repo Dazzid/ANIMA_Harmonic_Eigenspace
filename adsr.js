@@ -68,9 +68,9 @@ function draw() {
     fill(5, 213, 255);
     noStroke();
    
-    textSize(18);
+    textSize(15);
     textAlign(LEFT);
-    text('Audio Settings', padding, 15);
+    text('Audio Settings', padding-2, 15);
     
     // Draw wave type buttons
     textAlign(CENTER, CENTER);

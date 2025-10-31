@@ -143,6 +143,15 @@ body {
     font-family: monaco, Figtree, Arial, sans-serif;
 }
 
+#colorbar-container {
+    position: fixed;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    z-index: 100;
+    font-family: monaco, Figtree, Arial, sans-serif;
+}
+
 #viz-mode-toggle {
     background: rgba(0, 111, 229, 0.8);
     color: white;

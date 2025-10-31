@@ -44,7 +44,7 @@ function dissmeasure(fvec, amp, model = "min") {
     const am_sorted = sorted.map(x => x[1]);
 
     const Dstar = 0.24;
-    const S1 = 0.0207; 
+    const S1 = 0.0207;
     const S2 = 18.96;
     // const C1 = 8, C2 = -8, A1 = -5.0, A2 = -7.0;
     const C1 = 5, C2 = -5, A1 = -3.51, A2 = -5.75;
@@ -919,7 +919,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             colorscale: myColor,
             cmin: vmin,
             cmax: vmax,
-            colorbar: { title: 'Dissonance', len: 0.7, y: 0.9, yanchor: 'top'},
+            showscale: false,  // Hide Plotly colorbar - we use P5 instead
             opacity: 0.75
         },
         name: 'Full 3D View',
@@ -1029,7 +1029,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 colorscale: myColor,
                 cmin: vmin,
                 cmax: vmax,
-                colorbar: { title: 'Dissonance', len: 0.7, y: 0.9, yanchor: 'top' },
+                showscale: false,  // Hide Plotly colorbar - we use P5 instead
                 opacity: 0.5
             },
             name: `${(threshold - windowSize / 2).toFixed(3)} - ${(threshold + windowSize / 2).toFixed(3)}`,
@@ -1279,48 +1279,19 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         hovermode: 'closest'
     };
 
-    // Create slider steps for sectioned mode
-    const steps = [];
-    // Calculate how many layer traces we have (start at index 1, after full 3D trace)
+    // ========== SLIDER (REMOVED - Using P5 colorbar slider instead) ==========
+    // Calculate layer info for P5 slider
     const layerStartIndex = 1;
     const actualNumLayers = Math.floor((traces.length - layerStartIndex - 4) / tracesPerLayer); // -4 for nodes and chords
 
-    for (let i = 0; i < actualNumLayers; i++) {
-        const layerVisibility = Array(actualNumLayers * tracesPerLayer).fill(false);
-
-        if (ENABLE_DISTANCE_LINES) {
-            layerVisibility[i * 2] = true;
-            layerVisibility[i * 2 + 1] = true;
-        } else {
-            layerVisibility[i] = true;
-        }
-
-        const layerIndices = Array.from({ length: actualNumLayers * tracesPerLayer }, (_, idx) => layerStartIndex + idx);
-
-        steps.push({
-            method: 'restyle',
-            args: ['visible', layerVisibility, layerIndices],
-            label: `${(thresholds[i] - windowSize / 2).toFixed(3)}-${(thresholds[i] + windowSize / 2).toFixed(3)}`
-        });
-    }
-
-    layout.sliders = [{
-        yanchor: 'bottom',
-        y: 0.02,
-        xanchor: 'center',
-        x: 0.5,
-        currentvalue: {
-            prefix: 'Range: ',
-            visible: true,
-            xanchor: 'right',
-            font: { size: 11 }
-        },
-        pad: { l: 5, r: 5, t: 5, b: 5 },
-        len: 0.6,
-        active: 0,
-        visible: true, // Will be toggled based on mode
-        steps
-    }];
+    // Store thresholds and layer info globally for P5 slider to use
+    window.plotlyLayerInfo = {
+        thresholds: thresholds,
+        windowSize: windowSize,
+        tracesPerLayer: tracesPerLayer,
+        layerStartIndex: layerStartIndex,
+        actualNumLayers: actualNumLayers
+    };
 
     // ========== RENDER ==========
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
@@ -1343,6 +1314,15 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         gl.depthFunc(gl.LEQUAL);
         gl.clearDepth(1.0);
         gl.clear(gl.DEPTH_BUFFER_BIT);
+
+        // Initialize P5 colorbar slider with threshold data
+        if (typeof colorbarP5 !== 'undefined' && window.plotlyLayerInfo) {
+            colorbarP5.setThresholds(
+                window.plotlyLayerInfo.thresholds,
+                window.plotlyLayerInfo.windowSize,
+                0  // Start at first layer
+            );
+        }
     });
 
     // plotDiv.on('plotly_relayout', function (eventData) {
@@ -1399,8 +1379,8 @@ function toggleVisualizationMode() {
             visibilityArray[i] = true;
         }
 
-        // Single update: visibility + hide slider
-        Plotly.update(plotDiv, { visible: visibilityArray }, { 'sliders[0].visible': false });
+        // Single update: visibility only (no Plotly slider)
+        Plotly.update(plotDiv, { visible: visibilityArray }, {});
 
     } else {
         // Switch to SECTIONED mode
@@ -1408,14 +1388,20 @@ function toggleVisualizationMode() {
 
         visibilityArray[0] = false; // Full 3D trace hidden
 
-        // First layer visible, rest hidden
+        // Get current step from P5 slider (maintains position)
+        let currentLayer = 0;
+        if (typeof colorbarP5 !== 'undefined' && colorbarP5.getCurrentStep) {
+            currentLayer = colorbarP5.getCurrentStep();
+        }
+
+        // Show the layer at current slider position
         const actualNumLayers = Math.floor(numLayerTraces / tracesPerLayer);
         for (let i = 0; i < actualNumLayers; i++) {
             if (ENABLE_DISTANCE_LINES) {
-                visibilityArray[1 + i * 2] = (i === 0);
-                visibilityArray[1 + i * 2 + 1] = (i === 0);
+                visibilityArray[1 + i * 2] = (i === currentLayer);
+                visibilityArray[1 + i * 2 + 1] = (i === currentLayer);
             } else {
-                visibilityArray[1 + i] = (i === 0);
+                visibilityArray[1 + i] = (i === currentLayer);
             }
         }
 
@@ -1424,12 +1410,37 @@ function toggleVisualizationMode() {
             visibilityArray[i] = true;
         }
 
-        // Single update: visibility + show slider
-        Plotly.update(plotDiv, { visible: visibilityArray }, {
-            'sliders[0].visible': true,
-            'sliders[0].active': 0
-        });
+        // Single update: visibility only (no Plotly slider)
+        Plotly.update(plotDiv, { visible: visibilityArray }, {});
     }
+}
+
+// Function to update layer visibility - called by P5 colorbar slider
+window.updatePlotlyLayer = function (layerIndex) {
+    const plotDiv = document.getElementById('plot');
+    const totalTraces = plotDiv.data.length;
+    const tracesPerLayer = ENABLE_DISTANCE_LINES ? 2 : 1;
+    const numChordTraces = 4; // nodes + 12TET + 31TET + 53TET
+    const numLayerTraces = totalTraces - 1 - numChordTraces;
+    const actualNumLayers = Math.floor(numLayerTraces / tracesPerLayer);
+
+    // Only update if in sectioned mode
+    if (visualizationMode !== 'sectioned') return;
+
+    // Build visibility array
+    const layerVisibility = Array(actualNumLayers * tracesPerLayer).fill(false);
+
+    if (ENABLE_DISTANCE_LINES) {
+        layerVisibility[layerIndex * 2] = true;
+        layerVisibility[layerIndex * 2 + 1] = true;
+    } else {
+        layerVisibility[layerIndex] = true;
+    }
+
+    const layerIndices = Array.from({ length: actualNumLayers * tracesPerLayer }, (_, idx) => 1 + idx);
+
+    // Update only the layer traces
+    Plotly.restyle(plotDiv, 'visible', layerVisibility, layerIndices);
 }
 
 // Save binary
