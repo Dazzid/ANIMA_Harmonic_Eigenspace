@@ -12,6 +12,9 @@ const adsrHeight = 180;
 
 const round = 20;
 
+//Define the color
+let textColor = 'rgba(189, 189, 189, 1)';
+
 // Wave type buttons
 const waveTypes = ['sine', 'triangle', 'sawtooth', 'square'];
 let buttons = [];
@@ -38,7 +41,7 @@ function setup() {
 
     textFont('monaco');
     let canvas = createCanvas(W, H);
-    console.log('Container found:', container);
+    // console.log('Container found:', container);
     canvas.parent('audio-gui-container');
     
     // Create wave type buttons
@@ -75,14 +78,13 @@ function draw() {
 // ------------------------------------------------------------
 function drawADSR() {
     // Title
-    fill(5, 213, 255);
+    fill(textColor);
     noStroke();
-
     textSize(13);
     textAlign(LEFT);
     text('Audio Settings', padding, 12);
 
-    fill(5, 213, 255);
+    fill(textColor);
     textAlign(LEFT);
     textSize(13);
     text('Envelope', padding, adsrTop - 10);
@@ -166,7 +168,7 @@ function drawADSR() {
     // text(`S.Level: ${audioParams.sustainLevel.toFixed(2)}`, padding + 160, valuesY + 18);
 
 
-    fill(220);
+    fill(textColor);
     textAlign(RIGHT);
     textSize(11);
     text(`${totalTime.toFixed(1)}s`, W - padding, valuesY - 15);
@@ -210,7 +212,7 @@ function drawKnob() {
     const knobY = dryWetKnob.y;
     const knobR = dryWetKnob.radius;
 
-    fill(0, 111, 229);
+    fill(textColor);
     textAlign(CENTER);
     textSize(12);
     text('Dry/Wet', knobX, knobY - knobR - 10);
@@ -231,8 +233,8 @@ function drawKnob() {
     const angle = map(audioParams.dryWet, 0, 1, -PI * 0.75, PI * 0.75) - HALF_PI;
     stroke(255);
     strokeWeight(2);
-    const indicatorX = knobX + cos(angle) * (knobR - 1);
-    const indicatorY = knobY + sin(angle) * (knobR - 1);
+    const indicatorX = knobX + cos(angle) * (knobR - 3);
+    const indicatorY = knobY + sin(angle) * (knobR - 3);
     line(knobX, knobY, indicatorX, indicatorY);
     // Value display (restore this!)
     fill(255);
