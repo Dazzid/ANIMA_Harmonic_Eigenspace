@@ -82,23 +82,23 @@ const colorbarSketch = (p) => {
         const handleHeight = 8;
 
         // Handle background
-        p.fill(255);
+        p.fill(255, 200);
         p.stroke(0);
-        p.strokeWeight(2);
-        p.rect(x - 10, handleY - handleHeight / 2, handleWidth, handleHeight, 2);
+        p.strokeWeight(1);
+        p.rect(x - 10, handleY - handleHeight / 2, handleWidth, handleHeight, 5);
 
         // Hover/drag state
         if (isDragging) {
             p.stroke(255, 200, 0);
-            p.strokeWeight(3);
+            p.strokeWeight(1);
             p.noFill();
-            p.rect(x - 10, handleY - handleHeight / 2, handleWidth, handleHeight, 2);
+            p.rect(x - 10, handleY - handleHeight / 2, handleWidth, handleHeight, 5);
         }
 
         // Handle lines (grip)
         p.stroke(100);
         p.strokeWeight(1);
-        for (let i = -1; i <= 1; i++) {
+        for (let i = -3; i <= 3; i++) {
             p.line(x + BAR_WIDTH / 2 + i * 5, handleY - 2, x + BAR_WIDTH / 2 + i * 5, handleY + 2);
         }
     }
@@ -115,7 +115,7 @@ const colorbarSketch = (p) => {
 
         // Max value (top)
         p.textAlign(p.RIGHT, p.CENTER);
-        p.textSize(10);
+        p.textSize(11);
         p.text('High', x - 5, y + 10);
 
         // Min value (bottom)
@@ -128,10 +128,10 @@ const colorbarSketch = (p) => {
             const upperBound = threshold + windowSize / 2;
 
             p.textAlign(p.CENTER);
-            p.textSize(9);
-            p.fill(255, 200, 0);
-            p.text(`${lowerBound.toFixed(3)}`, x + BAR_WIDTH / 2, y + BAR_HEIGHT + 20);
-            p.text(`${upperBound.toFixed(3)}`, x + BAR_WIDTH / 2, y + BAR_HEIGHT + 32);
+            p.textSize(11);
+            p.fill(255);
+            p.text(`${lowerBound.toFixed(3)}`, x + BAR_WIDTH / 2, y + BAR_HEIGHT + 10);
+            p.text(`${upperBound.toFixed(3)}`, x + BAR_WIDTH / 2, y + BAR_HEIGHT + 22);
         }
     }
 
