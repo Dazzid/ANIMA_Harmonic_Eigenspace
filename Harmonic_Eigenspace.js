@@ -1476,7 +1476,7 @@ window.addEventListener('keydown', function (e) {
     const freq = keyToFreq[e.key.toLowerCase()];
     if (freq) {
         currentBaseFreq = freq;
-        rootSelector.value = freq;
+        // rootSelector.value = freq;
         document.getElementById('click-output').textContent =
             `Root: ${freqToName[freq]} (${freq.toFixed(2)} Hz) - Click any point to hear`;
     }
