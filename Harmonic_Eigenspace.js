@@ -1223,7 +1223,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         });
     }
 
-    // ================ LAYOUT ================
+    // ======================= LAYOUT ======================= 
     const layout = {
         scene: {
             domain: {
