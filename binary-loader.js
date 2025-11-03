@@ -59,20 +59,22 @@ async function loadDissonanceMap(baseFreq = 220, nodes = 400, onProgress) {
 
         console.log('✓ Metadata parsed');
 
-        // Load chunks until 404
-        if (typeof onProgress === 'function') onProgress(8, 'Loading dataset…');
+    // Load chunks until reaching expected size (preferred) or 404 (fallback)
+    if (typeof onProgress === 'function') onProgress(8, 'Loading dataset…');
         const chunks = [];
         const maxRetries = 3;
-        const MAX_CHUNKS_GUARD = 200;
-        let totalSize = 0;
+            const TOTAL_CHUNKS = 10; // dataset is split into exactly 10 chunks
+    let totalSize = 0; // number of Float32 elements accumulated
         let loadedChunks = 0;
+    const expectedSize = nodes * nodes * nodes; // exact element count
 
-        for (let idx = 1; idx <= MAX_CHUNKS_GUARD; idx++) {
+            for (let idx = 1; idx <= TOTAL_CHUNKS; idx++) {
             const chunkNum = String(idx).padStart(3, '0');
             const chunkUrl = `dataset/${baseFilename}-chunk${chunkNum}.bin`;
 
             let attempt = 0;
             let loaded = false;
+            let reachedTarget = false;
             while (attempt < maxRetries) {
                 try {
                     const response = await fetch(chunkUrl);
@@ -89,9 +91,12 @@ async function loadDissonanceMap(baseFreq = 220, nodes = 400, onProgress) {
                     totalSize += chunk.length;
                     loadedChunks++;
                     loaded = true;
+                        if (totalSize >= expectedSize) {
+                        reachedTarget = true;
+                    }
                     if (typeof onProgress === 'function') {
-                        const percent = Math.min(99, loadedChunks * 100);
-                        onProgress(percent, `Loading dataset… (${loadedChunks})`);
+                            const percent = Math.min(99, Math.floor((loadedChunks) * 100));
+                            onProgress(percent, `Loading dataset… (${loadedChunks}/${TOTAL_CHUNKS})`);
                     }
                     break;
                 } catch (err) {
@@ -108,8 +113,12 @@ async function loadDissonanceMap(baseFreq = 220, nodes = 400, onProgress) {
                     await new Promise(r => setTimeout(r, 300 * attempt));
                 }
             }
-            if (!loaded) {
-                // likely 404 -> end
+                if (!loaded) {
+                    // likely 404 -> end
+                    break;
+                }
+            if (reachedTarget) {
+                // We've loaded all expected elements; stop without probing next chunk
                 break;
             }
         }
