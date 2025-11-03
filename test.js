@@ -1511,7 +1511,8 @@ window.addEventListener('load', async () => {
     if (progressText) progressText.textContent = 'Loading pre-computed data…';
 
     const onProgress = (percent, text) => {
-        if (progressBar) progressBar.style.setProperty('--progress', `${Math.max(0, Math.min(100, percent))}%`);
+        console.log(`Progress: ${percent}% - ${text}`);
+        if (progressBar) progressBar.style.setProperty('--progress', `${percent+5}%`);
         if (progressText && text) progressText.textContent = text;
     };
 
