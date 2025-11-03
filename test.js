@@ -46,8 +46,10 @@ function dissmeasure(fvec, amp, model = "min") {
     const Dstar = 0.24;
     const S1 = 0.0207;
     const S2 = 18.96;
-    // const C1 = 8, C2 = -8, A1 = -5.0, A2 = -7.0;
-    const C1 = 5, C2 = -5, A1 = -3.51, A2 = -5.75;
+    const C1 = 5;
+    const C2 = -5;
+    const A1 = -3.51;
+    const A2 = -5.75;
 
     let total = 0;
     for (let i = 0; i < fr_sorted.length; i++) {
@@ -829,7 +831,7 @@ function getDissonanceAtPoint(alpha, beta, gamma, alphaRange, betaRange, gammaRa
 function createVisualization(data, baseFreq, numNodes = 15) {
     const { alphaRange, betaRange, gammaRange, dissonance3d } = data;
 
-    // Sample the data
+    // Sample the data exactly as in the reference implementation
     const sampleRate = 2;
     const xData = [], yData = [], zData = [], dData = [];
 
@@ -847,9 +849,9 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         }
     }
 
-    const allD = dissonance3d.flat(2);
-    const vmin = percentile(allD, 5);
-    const vmax = percentile(allD, 95);
+    // Compute percentile bounds from the sampled scalar values (TypedArrays don't flatten with flat())
+    const vmin = percentile(dData, 5);
+    const vmax = percentile(dData, 95);
 
     const traces = [];
     const myColor = [
@@ -860,12 +862,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         [1.0, 'rgba(255, 0, 0, 1)']
     ];
 
-    let numLayers = 200;
-    let windowSize = (vmax - vmin) / 15;
-    let thresholds = linspace(vmin, vmax, numLayers);
-    const tracesPerLayer = ENABLE_DISTANCE_LINES ? 2 : 1;
-
-    // ========== CREATE FULL 3D TRACE (initially hidden) ==========
+    // ========== CREATE FULL 3D TRACE (first trace, initially hidden) ==========
     // Use stratified sampling to ensure all dissonance ranges are represented
     const samplingRate = 0.2;
     const sampledX = [], sampledY = [], sampledZ = [], sampledD = [];
@@ -905,7 +902,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             sampledD.push(dData[idx]);
         }
     }
-    // full zone-node visualization
+
+    // Add full zone-node visualization as the FIRST trace
     traces.push({
         type: 'scatter3d',
         mode: 'markers',
@@ -922,8 +920,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             showscale: false,  // Hide Plotly colorbar - we use P5 instead
             opacity: 0.75
         },
-        name: 'Full 3D View',
-        visible: false, // Hidden initially
+    name: 'Full 3D View',
+    visible: false,  // Start hidden; toggle button will show this trace
         hovertemplate: '<span style="font-family:monaco">' +
             '<b>Ratios</b><br>' +
             'α = %{x:.4f}<br>' +
@@ -931,6 +929,11 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             'γ = %{z:.4f}' +
             '</span><extra></extra>'
     });
+
+    let numLayers = 200;
+    let windowSize = (vmax - vmin) / 25;
+    let thresholds = linspace(vmin, vmax, numLayers);
+    const tracesPerLayer = ENABLE_DISTANCE_LINES ? 2 : 1;
 
     // ========== CREATE SECTIONED LAYER TRACES ==========
     for (let i = 0; i < numLayers; i++) {
@@ -1223,11 +1226,11 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         });
     }
 
-    // ========== LAYOUT ==========
+    // ======================= LAYOUT ======================= 
     const layout = {
         scene: {
             domain: {
-                x: [0.1, 1.0],
+                x: [0, 1.0],
                 y: [0, 1.0]
             },
             xaxis: {
@@ -1281,6 +1284,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
     // ========== SLIDER (REMOVED - Using P5 colorbar slider instead) ==========
     // Calculate layer info for P5 slider
+
+
     const layerStartIndex = 1;
     const actualNumLayers = Math.floor((traces.length - layerStartIndex - 4) / tracesPerLayer); // -4 for nodes and chords
 
@@ -1338,16 +1343,16 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             const alpha = point.x;
             const beta = point.y;
             const gamma = point.z;
-
-            const freqRoot = currentBaseFreq;
-            const freqAlpha = alpha * currentBaseFreq;
-            const freqBeta = beta * currentBaseFreq;
-            const freqGamma = gamma * currentBaseFreq;
-
-            document.getElementById('click-output').textContent =
-                `Playing: ${freqRoot.toFixed(2)} Hz | α=${freqAlpha.toFixed(2)} Hz | β=${freqBeta.toFixed(2)} Hz | γ=${freqGamma.toFixed(2)} Hz`;
-
             playChord(alpha, beta, gamma, currentBaseFreq);
+
+
+            // const freqRoot = currentBaseFreq;
+            // const freqAlpha = alpha * currentBaseFreq;
+            // const freqBeta = beta * currentBaseFreq;
+            // const freqGamma = gamma * currentBaseFreq;
+
+            // document.getElementById('click-output').textContent =
+            //     `Playing: ${freqRoot.toFixed(2)} Hz | α=${freqAlpha.toFixed(2)} Hz | β=${freqBeta.toFixed(2)} Hz | γ=${freqGamma.toFixed(2)} Hz`;
         }
     });
 }
@@ -1476,7 +1481,7 @@ window.addEventListener('keydown', function (e) {
     const freq = keyToFreq[e.key.toLowerCase()];
     if (freq) {
         currentBaseFreq = freq;
-        rootSelector.value = freq;
+        // rootSelector.value = freq;
         document.getElementById('click-output').textContent =
             `Root: ${freqToName[freq]} (${freq.toFixed(2)} Hz) - Click any point to hear`;
     }
@@ -1488,24 +1493,58 @@ window.testRootChange = function (newFreq) {
     createVisualization(globalDissonanceData, currentBaseFreq, 77);
 };
 
-// Run computation
+// Run computation -------------------------------------------------------------------------------------------------------------------------
 window.addEventListener('load', async () => {
     currentBaseFreq = 220.0;
     const localNodes = 77;
     const harmonics = 6;
     const zoneNodes = 400;
 
-    // Compute dissonance map ONCE - this is the expensive part
-    globalDissonanceData = await calculate3dDissonanceMap(currentBaseFreq, 1.0, 2.0, zoneNodes, harmonics, "min");
+    // Try to load pre-computed data first, with progress bar updates
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const clickOutput = document.getElementById('click-output');
+
+    if (progressContainer) progressContainer.style.display = 'block';
+    if (clickOutput) clickOutput.style.display = 'none';
+    if (progressText) progressText.textContent = 'Loading pre-computed data…';
+
+    const onProgress = (percent, text) => {
+        if (progressBar) progressBar.style.setProperty('--progress', `${Math.max(0, Math.min(100, percent))}%`);
+        if (progressText && text) progressText.textContent = text;
+    };
+
+    try {
+        globalDissonanceData = await loadDissonanceMap(currentBaseFreq, zoneNodes, onProgress);
+    } catch (e) {
+        console.warn('Precomputed dataset failed to load, falling back to compute:', e);
+        if (progressText) progressText.textContent = 'Computing dissonance map (this may take a while)…';
+        globalDissonanceData = await calculate3dDissonanceMap(currentBaseFreq, 1.0, 2.0, zoneNodes, harmonics, "min");
+    }
 
     // Create visualization
     document.getElementById('click-output').textContent = 'Creating visualization...';
+    // If precomputed harmonic nodes were loaded with the dataset, use them
+    if (globalDissonanceData && Array.isArray(globalDissonanceData.nodes) && globalDissonanceData.nodes.length > 0) {
+        // Cache nodes so createVisualization won't attempt to re-compute them
+        cachedHarmonicNodes = globalDissonanceData.nodes.map(n => ({
+            alpha: n.alpha,
+            beta: n.beta,
+            gamma: n.gamma,
+            dissonance: n.dissonance
+        }));
+        console.log('Using precomputed harmonic nodes from metadata, count=', cachedHarmonicNodes.length);
+    }
+
     createVisualization(globalDissonanceData, currentBaseFreq, localNodes);
 
     // Hide progress, ready to play
-    document.getElementById('progress-container').style.display = 'none';
-    document.getElementById('click-output').style.display = 'block';
-    document.getElementById('click-output').textContent = 'Click any point to initialize audio and hear the chord';
+    if (progressContainer) progressContainer.style.display = 'none';
+    if (clickOutput) {
+        clickOutput.style.display = 'block';
+        clickOutput.textContent = 'Click any point to initialize audio and hear the chord';
+    }
 
     /// Add root note selector event listener (if it exists)
     const rootSelector = document.getElementById('root-select');
