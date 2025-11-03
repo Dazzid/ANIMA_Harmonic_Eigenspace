@@ -46,8 +46,10 @@ function dissmeasure(fvec, amp, model = "min") {
     const Dstar = 0.24;
     const S1 = 0.0207;
     const S2 = 18.96;
-    // const C1 = 8, C2 = -8, A1 = -5.0, A2 = -7.0;
-    const C1 = 5, C2 = -5, A1 = -3.51, A2 = -5.75;
+    const C1 = 5;
+    const C2 = -5; 
+    const A1 = -3.51; 
+    const A2 = -5.75;
 
     let total = 0;
     for (let i = 0; i < fr_sorted.length; i++) {
@@ -1281,6 +1283,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
     // ========== SLIDER (REMOVED - Using P5 colorbar slider instead) ==========
     // Calculate layer info for P5 slider
+
+    
     const layerStartIndex = 1;
     const actualNumLayers = Math.floor((traces.length - layerStartIndex - 4) / tracesPerLayer); // -4 for nodes and chords
 
