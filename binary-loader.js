@@ -95,8 +95,8 @@ async function loadDissonanceMap(baseFreq = 220, nodes = 400, onProgress) {
                         reachedTarget = true;
                     }
                     if (typeof onProgress === 'function') {
-                            const percent = Math.min(99, Math.floor((loadedChunks) * 10));
-                            onProgress(percent, `Loading dataset… (${loadedChunks}/${TOTAL_CHUNKS})`);
+                        percent = loadedChunks * 150;
+                        onProgress(percent, `Loading dataset… (${loadedChunks}/${TOTAL_CHUNKS})`);
                     }
                     break;
                 } catch (err) {
