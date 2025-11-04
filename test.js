@@ -12,7 +12,8 @@ let visualizationMode = 'sectioned'; // 'sectioned' or 'full3d'
 
 const zoneSize = 2.0;
 const zoneFull = 2.0;
-const chordSize = 9.0;
+const chordSize = 7.0;
+const localMinSize = 7.0;
 
 // Keyboard shortcuts for root note selection
 const keyToFreq = {
@@ -198,10 +199,10 @@ function playChord(alpha, beta, gamma, baseFreq = 220.0) {
         return;
     }
 
-    // Remove this entire block - it's causing the delay
-    // if (audioCtx.state === 'suspended') {
-    //     audioCtx.resume();
-    // }
+    // Update chord visualization
+    if (typeof setChordVisualization === 'function') {
+        setChordVisualization(alpha, beta, gamma, baseFreq);
+    }
 
     const t = audioCtx.currentTime;
     const harmonics = [1, 2, 3, 4, 5, 6];
@@ -920,8 +921,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             showscale: false,  // Hide Plotly colorbar - we use P5 instead
             opacity: 0.75
         },
-    name: 'Full 3D View',
-    visible: false,  // Start hidden; toggle button will show this trace
+        name: 'Full 3D View',
+        visible: false,  // Start hidden; toggle button will show this trace
         hovertemplate: '<span style="font-family:monaco">' +
             '<b>Ratios</b><br>' +
             'α = %{x:.4f}<br>' +
@@ -1072,14 +1073,14 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             y: nodes.map(n => n.beta),
             z: nodes.map(n => n.gamma),
             marker: {
-                size: chordSize,
+                size: localMinSize,
                 color: 'rgba(235, 235, 235, 1)',
                 symbol: 'circle',
                 opacity: 1
             },
             text: nodes.map((_, i) => String(i + 1)),
             textposition: 'middle center',
-            textfont: { size: 10, color: 'rgba(41, 41, 41, 1)', font: 'avenir' },
+            textfont: { size: 10, color: 'rgba(41, 41, 41, 1)', font: 'monaco' },
             name: 'Harmonic Nodes',
             visible: true,
             hovertemplate: '<span style="font-family:monaco">' +
@@ -1267,13 +1268,14 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             aspectmode: 'cube'
         },
         legend: {
-            x: 0,
-            y: 0.5,
-            xanchor: 'left',
-            yanchor: 'middle',
-            bgcolor: 'rgba(0,0,0,0.7)',
+            x: 0.98,
+            y: 1,
+            xanchor: 'right',
+            yanchor: 'top',
+            bgcolor: 'rgba(0,0,0,0.8)',
             bordercolor: 'rgba(255,255,255,0.3)',
-            borderwidth: 1
+            borderwidth: 1,
+            font: { size: 12 }
         },
         paper_bgcolor: 'rgba(0, 0, 0, 1)',
         font: { color: 'white' },
@@ -1304,7 +1306,10 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         displayModeBar: true,
         scrollZoom: true,
         responsive: true,
-        plotGlPixelRatio: isSafari ? 2.0 : 1.0
+        plotGlPixelRatio: isSafari ? 2.0 : 1.0,
+        modeBarButtonsToRemove: ['pan2d', 'select2d', 'lasso2d', 'autoScale2d'],
+        modeBarButtonsToAdd: [],
+        displaylogo: false
     };
 
     const plotDiv = document.getElementById('plot');
@@ -1345,14 +1350,18 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             const gamma = point.z;
             playChord(alpha, beta, gamma, currentBaseFreq);
 
+            // Update chord visualization with clicked frequencies
+            if (typeof setChordVisualization === 'function') {
+                setChordVisualization(alpha, beta, gamma, currentBaseFreq);
+            }
 
-            // const freqRoot = currentBaseFreq;
-            // const freqAlpha = alpha * currentBaseFreq;
-            // const freqBeta = beta * currentBaseFreq;
-            // const freqGamma = gamma * currentBaseFreq;
+            const freqRoot = currentBaseFreq;
+            const freqAlpha = alpha * currentBaseFreq;
+            const freqBeta = beta * currentBaseFreq;
+            const freqGamma = gamma * currentBaseFreq;
 
-            // document.getElementById('click-output').textContent =
-            //     `Playing: ${freqRoot.toFixed(2)} Hz | α=${freqAlpha.toFixed(2)} Hz | β=${freqBeta.toFixed(2)} Hz | γ=${freqGamma.toFixed(2)} Hz`;
+            document.getElementById('click-output').textContent =
+                `Playing: ${freqRoot.toFixed(2)} Hz | α=${freqAlpha.toFixed(2)} Hz | β=${freqBeta.toFixed(2)} Hz | γ=${freqGamma.toFixed(2)} Hz`;
         }
     });
 }
@@ -1484,8 +1493,35 @@ window.addEventListener('keydown', function (e) {
         // rootSelector.value = freq;
         document.getElementById('click-output').textContent =
             `Root: ${freqToName[freq]} (${freq.toFixed(2)} Hz) - Click any point to hear`;
+
+        // Update chord visualization root
+        if (typeof setRootVisualization === 'function') {
+            setRootVisualization(freq);
+        }
+
+        // Clear any playing chord when root changes
+        if (typeof clearChordVisualization === 'function') {
+            clearChordVisualization();
+        }
     }
 });
+
+// Function to update root from chord visualization clicks
+window.updateGlobalRoot = function (freq) {
+    currentBaseFreq = freq;
+    document.getElementById('click-output').textContent =
+        `Root: ${freqToName[freq]} (${freq.toFixed(2)} Hz) - Click any point to hear`;
+
+    // Update chord visualization root
+    if (typeof setRootVisualization === 'function') {
+        setRootVisualization(freq);
+    }
+
+    // Clear any playing chord when root changes
+    if (typeof clearChordVisualization === 'function') {
+        clearChordVisualization();
+    }
+};
 
 // Manual test function - call from console: testRootChange(130.81)
 window.testRootChange = function (newFreq) {
@@ -1511,8 +1547,7 @@ window.addEventListener('load', async () => {
     if (progressText) progressText.textContent = 'Loading pre-computed data…';
 
     const onProgress = (percent, text) => {
-        console.log(`Progress: ${percent}% - ${text}`);
-        if (progressBar) progressBar.style.setProperty('--progress', `${percent+5}%`);
+        if (progressBar) progressBar.style.setProperty('--progress', `${Math.max(0, Math.min(100, percent))}%`);
         if (progressText && text) progressText.textContent = text;
     };
 
@@ -1540,6 +1575,11 @@ window.addEventListener('load', async () => {
 
     createVisualization(globalDissonanceData, currentBaseFreq, localNodes);
 
+    // Initialize chord visualization with current root
+    if (typeof setRootVisualization === 'function') {
+        setRootVisualization(currentBaseFreq);
+    }
+
     // Hide progress, ready to play
     if (progressContainer) progressContainer.style.display = 'none';
     if (clickOutput) {
@@ -1556,6 +1596,16 @@ window.addEventListener('load', async () => {
             const rootName = e.target.options[e.target.selectedIndex].text;
 
             document.getElementById('click-output').textContent = `Root: ${rootName} (${currentBaseFreq.toFixed(2)} Hz) - Click any point to hear`;
+            
+            // Update chord visualization root
+            if (typeof setRootVisualization === 'function') {
+                setRootVisualization(currentBaseFreq);
+            }
+            
+            // Clear any playing chord when root changes
+            if (typeof clearChordVisualization === 'function') {
+                clearChordVisualization();
+            }
         });
     }
 

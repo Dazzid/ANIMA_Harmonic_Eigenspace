@@ -143,10 +143,11 @@ body {
     border-radius: 20px;
     z-index: 100;
     font-family: monaco, Figtree, Arial, sans-serif;
-    box-shadow: 1px 1px 5px rgba(163, 163, 163, 0.5);
+    /* box-shadow: 1px 1px 5px rgba(108, 108, 108, 0.75); */
 }
 
 #colorbar-container {
+    /* background: rgba(0, 0, 0, 0); */
     position: fixed;
     top: 50%;
     right: 10px;
@@ -170,4 +171,27 @@ body {
 
 #viz-mode-toggle:hover {
     background: rgba(0, 111, 229, 1);
+    /* transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); */
+}
+
+/* Position Plotly's modebar (node visibility toggles) to top-right */
+.modebar {
+    position: fixed !important;
+    top: 60px !important;
+    right: 15px !important;
+    z-index: 150 !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+    border-radius: 6px !important;
+    padding: 4px !important;
+}
+
+.modebar-btn {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 4px !important;
+    margin: 2px !important;
+}
+
+.modebar-btn:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
 }

@@ -13,7 +13,7 @@ const adsrHeight = 180;
 const round = 20;
 
 //Define the color
-let textColor = 'rgba(189, 189, 189, 1)';
+let textColor = 'rgba(250, 250, 250, 1)';
 
 // Wave type buttons
 const waveTypes = ['sine', 'triangle', 'sawtooth', 'square'];
