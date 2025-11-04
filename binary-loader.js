@@ -63,12 +63,14 @@ async function loadDissonanceMap(baseFreq = 220, nodes = 400, onProgress) {
     if (typeof onProgress === 'function') onProgress(8, 'Loading dataset…');
         const chunks = [];
         const maxRetries = 3;
-            const TOTAL_CHUNKS = 10; // dataset is split into exactly 10 chunks
-    let totalSize = 0; // number of Float32 elements accumulated
+        const TOTAL_CHUNKS = 10; // dataset is split into exactly 10 chunks
+        let totalSize = 0; // number of Float32 elements accumulated
         let loadedChunks = 0;
-    const expectedSize = nodes * nodes * nodes; // exact element count
+        const expectedSize = nodes * nodes * nodes; // exact element count
+        let percent = 0;
+        let easing = 0.99;
 
-            for (let idx = 1; idx <= TOTAL_CHUNKS; idx++) {
+        for (let idx = 1; idx <= TOTAL_CHUNKS; idx++) {
             const chunkNum = String(idx).padStart(3, '0');
             const chunkUrl = `dataset/${baseFilename}-chunk${chunkNum}.bin`;
 
@@ -95,7 +97,8 @@ async function loadDissonanceMap(baseFreq = 220, nodes = 400, onProgress) {
                         reachedTarget = true;
                     }
                     if (typeof onProgress === 'function') {
-                        const percent = loadedChunks * 10;
+                        percent += (loadedChunks * 10 - percent) * easing;
+                        percent = Math.floor(percent * 100) / 100;
                         onProgress(percent, `Loading dataset… (${percent+9}%)`);
                     }
                     break;
