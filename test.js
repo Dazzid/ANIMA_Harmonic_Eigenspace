@@ -11,7 +11,7 @@ let cachedHarmonicNodes = null; // Cache node positions (in ratio space)
 let visualizationMode = 'sectioned'; // 'sectioned' or 'full3d'
 
 const zoneSize = 3.0;
-const zoneFull = 3.0;
+const zoneFull = 2.5;
 const chordSize = 7.0;
 const localMinSize = 9.0;
 
@@ -905,17 +905,30 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         }
     }
 
+    // Sort sampled data by z-coordinate (gamma) from low to high for proper depth perception from top view
+    const sampledPoints = sampledX.map((x, i) => ({
+        x: x,
+        y: sampledY[i], 
+        z: sampledZ[i],
+        d: sampledD[i]
+    })).sort((a, b) => a.z - b.z); // Low z-values rendered first (appear behind when viewed from top)
+
+    const sortedSampledX = sampledPoints.map(p => p.x);
+    const sortedSampledY = sampledPoints.map(p => p.y);
+    const sortedSampledZ = sampledPoints.map(p => p.z);
+    const sortedSampledD = sampledPoints.map(p => p.d);
+
     // Add full zone-node visualization as the FIRST trace
     traces.push({
         type: 'scatter3d',
         mode: 'markers',
-        x: sampledX,
-        y: sampledY,
-        z: sampledZ,
+        x: sortedSampledX,
+        y: sortedSampledY,
+        z: sortedSampledZ,
         marker: {
             symbol: 'pentagon',
             size: zoneFull,
-            color: sampledD,
+            color: sortedSampledD,
             colorscale: myColor,
             cmin: vmin,
             cmax: vmax,
