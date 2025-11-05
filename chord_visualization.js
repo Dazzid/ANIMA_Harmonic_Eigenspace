@@ -14,12 +14,12 @@ class ChordVisualization {
         this.maxFreq = 523.25;  // C5
 
         // Visual parameters
-        this.padding = 30;
-        this.spectrumX = 50;
+        this.padding = 10;
+        this.spectrumX = 10;
         this.spectrumWidth = 240;
         this.spectrumHeight = this.H - 100;
         this.spectrumY = 50;
-        this.positionKeys = 67;
+        this.positionKeys = 41;
 
         // Currently playing frequencies
         this.activeFreqs = [];
@@ -68,8 +68,8 @@ class ChordVisualization {
 
         this.colors = [
             [255, 255, 255],    // Root (white)
-            [255, 119, 0],    // rgba(255, 119, 0, 1)
-            [118, 236, 0],        // rgba(118, 236, 0, 1)
+            [255, 119, 0],      // rgba(255, 119, 0, 1)
+            [118, 236, 0],      // rgba(118, 236, 0, 1)
             [0, 128, 255]       // rgba(0, 128, 255, 1)
         ];
     }
@@ -90,14 +90,14 @@ class ChordVisualization {
         // Draw title
         p.fill(this.textColor);
         p.textAlign(p.LEFT);
-        p.textSize(13);
+        p.textSize(14);
         p.text('Frequency Spectrum', this.padding, 25);
 
         // Draw background spectrum area
         this.drawSpectrumBackground(p);
 
         // Draw frequency axis
-        this.drawFrequencyAxis(p);
+        // this.drawFrequencyAxis(p);
 
         // Draw note markers
         this.drawNoteMarkers(p);
@@ -117,7 +117,7 @@ class ChordVisualization {
         p.fill(this.backgroundPiano); // Darker black background
         p.stroke(60, 60, 60); // Dark gray border
         p.strokeWeight(1);
-        const bgX = this.spectrumX - 15;
+        const bgX = this.spectrumX;
         const bgY = this.spectrumY - 10;
         const bgWidth = 300;
         const bgHeight = this.spectrumHeight + 20;
@@ -254,23 +254,23 @@ class ChordVisualization {
                 if (Math.abs(note.freq - this.rootFreq) < 0.1) {
                     p.fill(0, 200, 255, 80);
                     p.noStroke();
-                    p.rect(this.positionKeys - 8, y - 6, this.spectrumWidth + 35, 12, 2);
+                    p.rect(this.positionKeys - 20, y - 9, this.spectrumWidth + 45, 18, 4);
                 }
                 // Show hover feedback for clickable notes
                 else if (isHovered) {
                     p.fill(255, 255, 255, 40);
                     p.noStroke();
-                    p.rect(this.positionKeys - 8, y - 6, this.spectrumWidth + 16, 12, 2);
+                    p.rect(this.positionKeys - 20, y - 10, this.spectrumWidth + 45, 20, 4);
                 }
 
-                // Note marker - precise horizontal line
-                p.stroke(80);
-                p.strokeWeight(1);
-                p.line(this.positionKeys - 8, y, this.positionKeys + 8, y);
+                // // Note marker - precise horizontal line
+                // p.stroke(80);
+                // p.strokeWeight(1);
+                // p.line(this.positionKeys - 8, y, this.positionKeys + 8, y);
 
                 // Tiny tick on the main axis
                 p.stroke(100);
-                p.line(this.positionKeys - 3, y, this.positionKeys + 3, y);
+                p.line(this.positionKeys - 15, y, this.positionKeys, y);
 
                 // Key label - highlight if hovered
                 if (isHovered) {
@@ -280,8 +280,8 @@ class ChordVisualization {
                 }
                 p.noStroke();
                 p.textAlign(p.CENTER);
-                p.textSize(10);
-                p.text(note.key.toUpperCase(), this.positionKeys - 25, y + 2);
+                p.textSize(11);
+                p.text(note.key.toUpperCase(), this.positionKeys - 23, y + 4);
                 
                 // Show note name on hover
                 if (isHovered) {
@@ -300,7 +300,7 @@ class ChordVisualization {
         // Root frequency line (extends across the spectrum)
         p.stroke(0, 200, 255, 150);
         p.strokeWeight(1);
-        p.line(this.spectrumX + 10, y, this.spectrumX + 220, y);
+        p.line(this.spectrumX + 25, y, this.spectrumX + 220, y);
 
         // Root label with better positioning
         p.fill(0, 200, 255);
@@ -309,10 +309,7 @@ class ChordVisualization {
         const rootNote = this.getNoteName(this.rootFreq);
         // Position label to avoid overlap with bars
         const labelY = y < this.spectrumY + 40 ? y + 25 : y - 10;
-        p.text(`Root: ${rootNote}`, this.spectrumX + 225, labelY);
-        p.textSize(10);
-        p.fill(250);
-        p.text(`${this.rootFreq.toFixed(3)} Hz`, this.spectrumX + 225, labelY + 14);
+        p.text(`Root: ${rootNote}`, this.spectrumX + 235, labelY + 14);
     }
 
     //----------------------------------------------------------------------------------------
@@ -379,7 +376,7 @@ class ChordVisualization {
         p.noStroke();
         
         // ALL bars aligned at the same horizontal position, starting from the frequency axis
-        const barX = this.spectrumX;
+        const barX = this.spectrumX + 10;
         const barY = y - Math.floor(barHeight / 2);
         p.rect(barX, barY, barWidth, barHeight, 1);
 
@@ -397,17 +394,17 @@ class ChordVisualization {
         // Legend for the colors
         const y = this.spectrumY + this.spectrumHeight + 25;
         p.textAlign(p.LEFT);
-        p.textSize(10);
+        p.textSize(11);
 
         const labels = [
-            { color: this.colors[0], text: 'Root' },
+            { color: this.colors[0], text: 'R' },
             { color: this.colors[1], text: 'α' },
             { color: this.colors[2], text: 'β' },
             { color: this.colors[3], text: 'γ' }
         ];
-
+        p.noStroke();
         for (let i = 0; i < labels.length; i++) {
-            const x = this.spectrumX + i * 70;
+            const x = (this.spectrumX + i * 70) + 25;
             p.fill(labels[i].color[0], labels[i].color[1], labels[i].color[2]);
             p.rect(x, y, 15, 10, 2);
             p.fill(150);
@@ -502,15 +499,15 @@ class ChordVisualization {
     //----------------------------------------------------------------------------------------
     getHoveredNote(mouseX, mouseY) {
         // Check if mouse is within the note area
-        const clickAreaLeft = this.positionKeys - 35;
-        const clickAreaRight = this.positionKeys + this.spectrumWidth + 16;
+        const clickAreaLeft = this.positionKeys - 25;
+        const clickAreaRight = this.positionKeys + this.spectrumWidth + 25;
         
         if (mouseX >= clickAreaLeft && mouseX <= clickAreaRight) {
             // Check each clickable note
             for (let note of this.noteFreqs) {
                 if (note.key) {
                     const y = this.freqToY(note.freq);
-                    const noteHeight = 12;
+                    const noteHeight = 20;
                     
                     if (mouseY >= y - noteHeight/2 && mouseY <= y + noteHeight/2) {
                         return note;
@@ -524,14 +521,14 @@ class ChordVisualization {
     handleMouseClick(mouseX, mouseY) {
         // Check if click is within the note area (where keyboard notes are displayed)
         const clickAreaLeft = this.positionKeys - 35;
-        const clickAreaRight = this.positionKeys + this.spectrumWidth + 16;
+        const clickAreaRight = this.positionKeys + this.spectrumWidth + 25;
         
         if (mouseX >= clickAreaLeft && mouseX <= clickAreaRight) {
             // Check each clickable note (only notes with keyboard shortcuts)
             for (let note of this.noteFreqs) {
                 if (note.key) {
                     const y = this.freqToY(note.freq);
-                    const noteHeight = 12; // Height of clickable area around each note
+                    const noteHeight = 20; // Height of clickable area around each note
                     
                     if (mouseY >= y - noteHeight/2 && mouseY <= y + noteHeight/2) {
                         // Note was clicked! Update root frequency

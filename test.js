@@ -13,7 +13,7 @@ let visualizationMode = 'sectioned'; // 'sectioned' or 'full3d'
 const zoneSize = 2.0;
 const zoneFull = 2.0;
 const chordSize = 7.0;
-const localMinSize = 7.0;
+const localMinSize = 9.0;
 
 // Keyboard shortcuts for root note selection
 const keyToFreq = {
@@ -1228,6 +1228,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     }
 
     // ======================= LAYOUT ======================= 
+    
     const layout = {
         scene: {
             domain: {
@@ -1238,8 +1239,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 title: 'α (2nd note)',
                 gridcolor: 'rgba(90, 90, 90, 1)',
                 showspikes: true,
-                spikecolor: 'rgba(255, 200, 0, 0.8)',
-                spikethickness: 1.5,
+                spikecolor: 'rgba(255, 119, 0, 1.0)',
+                spikethickness: 2.0,
                 spikesides: true,
                 spikedash: 'solid',
                 range: [1.0, 2.0]
@@ -1248,8 +1249,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 title: 'β (3rd note)',
                 gridcolor: 'rgba(90, 90, 90, 1)',
                 showspikes: true,
-                spikecolor: 'rgba(255, 200, 0, 0.8)',
-                spikethickness: 1.5,
+                spikecolor: 'rgba(118, 236, 0, 1.0)',
+                spikethickness: 2.0,
                 spikesides: true,
                 spikedash: 'solid',
                 range: [1.0, 2.0]
@@ -1258,8 +1259,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 title: 'γ (4th note)',
                 gridcolor: 'rgba(90, 90, 90, 1)',
                 showspikes: true,
-                spikecolor: 'rgba(255, 200, 0, 0.8)',
-                spikethickness: 1.5,
+                spikecolor: 'rgba(0, 128, 255, 1.0)',
+                spikethickness: 2.0,
                 spikesides: true,
                 spikedash: 'solid',
                 range: [1.0, 2.0]

@@ -23,7 +23,7 @@ let buttons = [];
 let adsrPoints = [
     { x: padding, y: H, label: 'Start', draggable: false },  // NEW - at true bottom
     { x: 55, y: 175, label: 'A', draggable: true },
-    { x: 220, y: 320, label: 'S', draggable: true },
+    { x: 270, y: 320, label: 'S', draggable: true },
     { x: W - padding, y: H, label: 'End', draggable: false }  // NEW - at true bottom
 ];
 
