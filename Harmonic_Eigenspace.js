@@ -944,7 +944,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
         const lowerBound = threshold - windowSize / 2;
         const upperBound = threshold + windowSize / 2;
-        const minSpacing = 0.001;
+        const minSpacing = 0.0;
 
         for (let j = 0; j < xData.length; j++) {
             if (dData[j] >= lowerBound && dData[j] <= upperBound) {
