@@ -39,7 +39,6 @@ const colorbarSketch = (p) => {
     };
 
     p.draw = function () {
-        // p.background(0, 20);
         p.noStroke();
         p.fill(0);
         p.rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 20);
@@ -70,10 +69,10 @@ const colorbarSketch = (p) => {
         }
 
         // Border
-        p.noFill();
-        p.stroke(100);
-        p.strokeWeight(1);
-        p.rect(x, y, BAR_WIDTH, BAR_HEIGHT);
+        // p.noFill();
+        // p.stroke(255);
+        // p.strokeWeight(1);
+        // p.rect(x, y, BAR_WIDTH, BAR_HEIGHT);
     }
 
     function drawSliderHandle(x, y) {
