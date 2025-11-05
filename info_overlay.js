@@ -67,15 +67,25 @@ class InfoOverlay {
                 <div class="section">
                     <h3>The Eigenspace View</h3>
                     <p>
-                        What you see is a <strong>3D slice</strong> through the 4D space. The dissonance values are computed 
-                        using the <em>Plomp-Levelt</em> psychoacoustic model, which quantifies the sensory roughness 
-                        created by interacting harmonics.
+                        What you see is a <strong>3D visualization</strong> of tetrachord dissonance relationships. Each axis represents 
+                        the interaction of <strong>6 harmonics</strong> (1, 2, 3, 4, 5, 6) at different frequency ratios, computed using 
+                        the <em>Plomp-Levelt</em> roughness model from Sethares' <em>Tuning, Timbre, Spectrum, Scale</em>.
                     </p>
                     <p>
-                        This creates an <strong>eigenspace</strong> - a mathematical space where each point represents 
-                        a unique chord configuration, and the "valleys" represent consonant combinations discovered 
-                        through acoustic physics. 
+                        The color scale reveals <strong>intersection zones</strong> where harmonic interactions create varying 
+                        dissonance levels: blue regions indicate low dissonance (consonance), 
+                        white areas show moderate roughness, and red zones represent high dissonance.
                     </p>
+                    <p>
+                        Like Helmholtz's roughness curves and Plomp-Levelt's consonance curves, this dissonance map shows 
+                        that <strong>familiar musical intervals occur near minima</strong> - the "valleys" where multiple 
+                        harmonic series align with minimal beating between partials.
+                    </p>
+                    
+                    <div class="eigenspace-image">
+                        <img src="figures/EigenSpace.png" alt="Harmonic Eigenspace Visualization" />
+                        <p class="image-caption">Dissonance landscape showing consonant valleys where harmonic series align</p>
+                    </div>
                 </div>
 
                 <div class="section">
