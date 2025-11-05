@@ -10,8 +10,8 @@ let currentBaseFreq = 220.0;
 let cachedHarmonicNodes = null; // Cache node positions (in ratio space)
 let visualizationMode = 'sectioned'; // 'sectioned' or 'full3d'
 
-const zoneSize = 2.0;
-const zoneFull = 2.0;
+const zoneSize = 3.0;
+const zoneFull = 3.0;
 const chordSize = 7.0;
 const localMinSize = 9.0;
 
@@ -913,14 +913,14 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         y: sampledY,
         z: sampledZ,
         marker: {
-            symbol: 'circle',
+            symbol: 'pentagon',
             size: zoneFull,
             color: sampledD,
             colorscale: myColor,
             cmin: vmin,
             cmax: vmax,
             showscale: false,  // Hide Plotly colorbar - we use P5 instead
-            opacity: 0.75
+            opacity: 0.8
         },
         name: 'Full 3D View',
         visible: false,  // Start hidden; toggle button will show this trace
@@ -1028,14 +1028,14 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             y: layerY,
             z: layerZ,
             marker: {
-                symbol: 'square',
+                symbol: 'pentagon', //circle , square , diamond , cross , x , triangle , pentagon , hexagram , star , hourglass , bowtie , asterisk , hash , y , and line
                 size: zoneSize,
                 color: layerD,
                 colorscale: myColor,
                 cmin: vmin,
                 cmax: vmax,
                 showscale: false,  // Hide Plotly colorbar - we use P5 instead
-                opacity: 0.5
+                opacity: 0.25
             },
             name: `${(threshold - windowSize / 2).toFixed(3)} - ${(threshold + windowSize / 2).toFixed(3)}`,
             visible: i === 0, // Only first layer visible
