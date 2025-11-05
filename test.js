@@ -1228,7 +1228,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     }
 
     // ======================= LAYOUT ======================= 
-    
+    let thickness = 4.0;
     const layout = {
         scene: {
             domain: {
@@ -1239,8 +1239,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 title: 'α (2nd note)',
                 gridcolor: 'rgba(90, 90, 90, 1)',
                 showspikes: true,
-                spikecolor: 'rgba(255, 119, 0, 1.0)',
-                spikethickness: 2.0,
+                spikecolor: 'rgba(255, 119, 0, 0.5)',
+                spikethickness: thickness,
                 spikesides: true,
                 spikedash: 'solid',
                 range: [1.0, 2.0]
@@ -1249,8 +1249,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 title: 'β (3rd note)',
                 gridcolor: 'rgba(90, 90, 90, 1)',
                 showspikes: true,
-                spikecolor: 'rgba(118, 236, 0, 1.0)',
-                spikethickness: 2.0,
+                spikecolor: 'rgba(118, 236, 0, 0.5)',
+                spikethickness: thickness,
                 spikesides: true,
                 spikedash: 'solid',
                 range: [1.0, 2.0]
@@ -1259,8 +1259,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 title: 'γ (4th note)',
                 gridcolor: 'rgba(90, 90, 90, 1)',
                 showspikes: true,
-                spikecolor: 'rgba(0, 128, 255, 1.0)',
-                spikethickness: 2.0,
+                spikecolor: 'rgba(0, 128, 255, 0.5)',
+                spikethickness: thickness,
                 spikesides: true,
                 spikedash: 'solid',
                 range: [1.0, 2.0]

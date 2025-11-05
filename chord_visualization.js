@@ -19,7 +19,7 @@ class ChordVisualization {
         this.spectrumWidth = 240;
         this.spectrumHeight = this.H - 100;
         this.spectrumY = 50;
-        this.positionKeys = 41;
+        this.positionKeys = 40;
 
         // Currently playing frequencies
         this.activeFreqs = [];
