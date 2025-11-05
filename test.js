@@ -189,10 +189,11 @@ async function initAudio() {
 }
 
 // Play chord with given frequency ratios -------------------------------------------------------------
-function playChord(alpha, beta, gamma, baseFreq = 220.0) {
+async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
     if (!audioInitialized) {
-        initAudio();
-        return;
+        await initAudio();
+        // If initialization failed, don't continue
+        if (!audioInitialized) return;
     }
 
     if (!audioCtx || !reverbNode) {
@@ -1080,7 +1081,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             },
             text: nodes.map((_, i) => String(i + 1)),
             textposition: 'middle center',
-            textfont: { size: 10, color: 'rgba(41, 41, 41, 1)', font: 'monaco' },
+            textfont: { size: localMinSize-1, color: 'rgba(41, 41, 41, 1)', font: 'monaco' },
             name: 'Harmonic Nodes',
             visible: true,
             hovertemplate: '<span style="font-family:monaco">' +
@@ -1119,7 +1120,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 cmin: vmin,
                 cmax: vmax,
                 symbol: 'square',
-                line: { color: 'rgba(255, 255, 255, 1)', width: 1 },
+                // line: { color: 'rgba(255, 255, 255, 1)', width: 1 },
                 opacity: 1
             },
             text: chordData12TET.map(c => c[0]),
@@ -1163,7 +1164,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 cmin: vmin,
                 cmax: vmax,
                 symbol: 'diamond',
-                line: { color: 'rgba(255, 200, 0, 1)', width: 2 },
+                // line: { color: 'rgba(255, 200, 0, 1)', width: 2 },
                 opacity: 1,
                 showscale: false
             },
@@ -1209,7 +1210,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 cmin: vmin,
                 cmax: vmax,
                 symbol: 'circle',
-                line: { color: 'rgba(202, 202, 202, 1)', width: 1 },
+                // line: { color: 'rgba(202, 202, 202, 1)', width: 1 },
                 opacity: 1,
                 showscale: false  // Don't show separate colorbar for chords
             },
@@ -1228,7 +1229,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     }
 
     // ======================= LAYOUT ======================= 
-    let thickness = 4.0;
+    let thickness = 2.0;
     const layout = {
         scene: {
             domain: {
@@ -1463,13 +1464,13 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     });
 
     // Attach click event listener
-    plotDiv.on('plotly_click', function (eventData) {
+    plotDiv.on('plotly_click', async function (eventData) {
         if (eventData.points && eventData.points.length > 0) {
             const point = eventData.points[0];
             const alpha = point.x;
             const beta = point.y;
             const gamma = point.z;
-            playChord(alpha, beta, gamma, currentBaseFreq);
+            await playChord(alpha, beta, gamma, currentBaseFreq);
 
             // Update chord visualization with clicked frequencies
             if (typeof setChordVisualization === 'function') {
@@ -1705,7 +1706,7 @@ window.addEventListener('load', async () => {
     if (progressContainer) progressContainer.style.display = 'none';
     if (clickOutput) {
         clickOutput.style.display = 'block';
-        clickOutput.textContent = 'Click any point to initialize audio and hear the chord';
+        clickOutput.textContent = 'Click any point to hear the chord';
     }
 
     /// Add root note selector event listener (if it exists)

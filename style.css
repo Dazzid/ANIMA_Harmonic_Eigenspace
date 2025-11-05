@@ -200,38 +200,149 @@ body {
    INFO OVERLAY STYLING - Enhanced Visual Effects
    ============================================================================ */
 
-/* Custom scrollbar for the info panel */
-#info-overlay div::-webkit-scrollbar {
-    width: 15px;
+/* Info overlay backdrop */
+#info-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
-#info-overlay div::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
+/* Info panel container */
+.info-panel {
+    background: rgb(255, 250, 240);
+    border: none;
     border-radius: 10px;
+    padding: 40px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 85vh;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    position: relative;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+    overflow-y: auto !important;
+    /* scrollbar-width: thin !important; */
+    scrollbar-color: rgba(209, 209, 209, 0.8) rgba(240, 240, 240, 0.0) !important;
 }
 
-#info-overlay div::-webkit-scrollbar-thumb {
-    background: rgb(219, 219, 219);
-    border-radius: 10px;
-    transition: background 0.2s ease;
+/* Info panel content styling */
+.info-panel .header-section {
+    text-align: center;
+    margin-bottom: 30px;
 }
 
-#info-overlay div::-webkit-scrollbar-thumb:hover {
-    background: rgba(5, 213, 255, 0.5);
+.info-panel .main-title {
+    color: rgba(16, 16, 16, 1);
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 28px;
+    margin: 0 0 10px 0;
+    font-weight: light;
 }
 
-/* Firefox scrollbar styling */
-#info-overlay div {
-    scrollbar-width: normal;
-    scrollbar-color: rgb(204, 204, 204) rgba(255, 255, 255, 0.05);
+.info-panel .subtitle {
+    color: rgba(16, 16, 16, 1);
+    font-family: 'Monaco', monospace;
+    font-size: 14px;
+    letter-spacing: 2px;
+    font-weight: light;
+}
+
+.info-panel .content-section {
+    color: rgba(16, 16, 16, 1);
+    font-family: 'Monaco', monospace;
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+.info-panel .section {
+    margin-bottom: 25px;
+}
+
+.info-panel .section h3 {
+    color: rgba(16, 16, 16, 1);
+    font-size: 16px;
+    margin: 0 0 10px 0;
+    font-weight: light;
+}
+
+.info-panel .section p {
+    margin: 0 0 10px 0;
+}
+
+.info-panel .section ul {
+    margin: 0 0 10px 20px;
+    padding: 0;
+}
+
+.info-panel .section li {
+    margin-bottom: 8px;
+}
+
+.info-panel .alpha-color { color: rgb(255, 119, 0); }
+.info-panel .beta-color { color: rgb(86, 173, 0); }
+.info-panel .gamma-color { color: rgb(0, 128, 255); }
+.info-panel .root-color { color: rgba(0, 0, 0, 1); }
+
+.info-panel .technical-note {
+    background: rgba(0, 174, 255, 0.5);
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 25px;
+    font-size: 12px;
+}
+
+.info-panel .close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: transparent;
+    border: 1px solid rgba(150, 150, 150, 0.5);
+    color: rgba(150, 150, 150, 1);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: light;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Arial, sans-serif;
+}
+
+.info-panel .button-section {
+    text-align: center;
+    margin-top: 30px;
+}
+
+.info-panel .got-it-btn {
+    background: rgba(31, 125, 255, 1);
+    border: none;
+    color: white;
+    padding: 12px 40px;
+    font-size: 14px;
+    font-family: 'Monaco', monospace;
+    font-weight: light;
+    border-radius: 8px;
+    cursor: pointer;
 }
 
 /* Responsive design */
 @media screen and (max-width: 768px) {
     #info-overlay>div {
-        padding: 30px 20px !important;
+        padding: 20px 20px !important;
         max-width: 95% !important;
-        font-size: 13px !important;
+        font-size: 12px !important;
     }
 
     #info-overlay h1 {
@@ -241,9 +352,9 @@ body {
     #info-overlay h3 {
         font-size: 14px !important;
     }
-
+    
     #info-button {
-        top: 10px !important;
+        bottom: 10px !important;
         right: 10px !important;
         padding: 8px 16px !important;
         font-size: 12px !important;
@@ -284,7 +395,26 @@ body {
     transition: all 0.2s ease;
 }
 
-#info-overlay a:hover {
-    color: rgba(118, 236, 0, 1);
-    border-bottom-color: rgba(118, 236, 0, 0.5);
+#info-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 111, 229, 0.8);
+    border: none;
+    color: white;
+    padding: 8px 20px;
+    font-size: 14px;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-weight: light;
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+#info-button:hover {
+    background: rgba(0, 111, 229, 1);
 }
