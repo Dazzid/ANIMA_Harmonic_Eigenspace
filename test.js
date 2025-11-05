@@ -920,7 +920,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             cmin: vmin,
             cmax: vmax,
             showscale: false,  // Hide Plotly colorbar - we use P5 instead
-            opacity: 0.8
+            opacity: 0.5
         },
         name: 'Full 3D View',
         visible: false,  // Start hidden; toggle button will show this trace

@@ -136,7 +136,7 @@ class InfoOverlay {
     createInfoButton() {
         this.infoButton = document.createElement('button');
         this.infoButton.id = 'info-button';
-        this.infoButton.innerHTML = 'ℹ Info';
+        this.infoButton.innerHTML = 'Info';
         // Styling is now handled in style.css via #info-button selector
 
         this.infoButton.addEventListener('click', () => this.show());
