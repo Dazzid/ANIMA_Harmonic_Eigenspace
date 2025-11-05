@@ -6,6 +6,8 @@
     <title>Harmonic Eigenspace</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <link rel="stylesheet" href="style.css">
+    <!-- ✅ ADD THIS: Info Overlay CSS (in the <head>, not in <body>) -->
+    <link rel="stylesheet" href="info_overlay.css">
 </head>
 
 <body>
@@ -16,6 +18,7 @@
                 Switch to Full 3D View
             </button>
         </div>
+
         <div id="progress-container" style="display:none;">
             <div id="progress-bar"></div>
             <div id="progress-text">Computing: 0%</div>
@@ -27,12 +30,14 @@
         <div id="click-output">Computing visualization...</div>
     </div>
 
+    <!-- Your existing scripts -->
     <script src="binary-loader.js"></script>
     <script src="test.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
     <script src="adsr.js"></script>
     <script src="colorbar-slider.js"></script>
     <script src="chord_visualization.js"></script>
+    <script src="info_overlay.js"></script>
 </body>
 
 </html>

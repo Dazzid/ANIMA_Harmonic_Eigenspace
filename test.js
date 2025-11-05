@@ -1275,8 +1275,9 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             yanchor: 'top',
             bgcolor: 'rgba(0,0,0,0.8)',
             bordercolor: 'rgba(255,255,255,0.3)',
-            borderwidth: 1,
-            font: { size: 12 }
+            borderwidth: 0,
+            font: { size: 13 },
+            fontFamily: 'monaco'
         },
         paper_bgcolor: 'rgba(0, 0, 0, 1)',
         font: { color: 'white' },
@@ -1309,22 +1310,141 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         responsive: true,
         plotGlPixelRatio: isSafari ? 2.0 : 1.0,
         modeBarButtonsToRemove: ['pan2d', 'select2d', 'lasso2d', 'autoScale2d'],
-        modeBarButtonsToAdd: [],
+        modeBarButtonsToAdd: [{
+            name: 'center',
+            title: 'Center view on chord nodes',
+            icon: Plotly.Icons.autoscale,
+            attr: 'data-title',
+            val: 'center',
+            click: function(gd) {
+                const camera = {
+                    center: { x: -0.2730976653225596, y: -0.02881156623103831, z: 0.33368750844216766 },
+                    eye: { x: -0.27292369375114334, y: 0.32303500457365386, z: 0.3835990385131691 },
+                    projection: { type: 'perspective' },
+                    up: { x: -0.00153875592856815, y: -0.14044893400507186, z: 0.9900867281036707 }
+                };
+                Plotly.relayout(gd, { 'scene.camera': camera });
+            }
+        }],
         displaylogo: false
     };
 
     const plotDiv = document.getElementById('plot');
 
-    // Set initial camera
-    layout.scene.camera = { eye: { x: 0, y: 1.7, z: 0.4 } };
+    // Set initial camera to optimal viewing position
+    layout.scene.camera = {
+        center: { x: -0.2730976653225596, y: -0.02881156623103831, z: 0.33368750844216766 },
+        eye: { x: -0.28211018700032187, y: 0.6829744133578857, z: 0.3294558403646424 },
+        projection: { type: 'perspective' },
+        up: { x: 0.0013124728315837674, y: 0.005961648647514917, z: 0.9999813679066577 }
+    };
 
     Plotly.newPlot('plot', traces, layout, config).then(() => {
         const scene = document.getElementById('plot')._fullLayout.scene._scene;
         const gl = scene.glplot.gl;
         gl.enable(gl.DEPTH_TEST);
-        gl.depthFunc(gl.LEQUAL);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.clearDepth(1.0);
         gl.clear(gl.DEPTH_BUFFER_BIT);
+
+        // Add colorful styling to modebar icons - aggressive approach
+        setTimeout(() => {
+            // Function to color the SVG paths directly
+            function colorizeButton(btn, color, hoverColor = null) {
+                const svg = btn.querySelector('svg');
+                const paths = btn.querySelectorAll('path');
+                
+                if (svg && paths.length > 0) {
+                    // Set the fill color directly on all path elements
+                    paths.forEach(path => {
+                        path.style.fill = color;
+                        path.style.transition = 'all 0.2s ease';
+                    });
+                    
+                    // Add hover effects if specified
+                    if (hoverColor) {
+                        btn.addEventListener('mouseenter', () => {
+                            paths.forEach(path => path.style.fill = hoverColor);
+                            btn.style.transform = 'scale(1.05)';
+                        });
+                        
+                        btn.addEventListener('mouseleave', () => {
+                            paths.forEach(path => path.style.fill = color);
+                            btn.style.transform = 'scale(1)';
+                        });
+                    }
+                }
+            }
+            
+            // Direct JavaScript reorganization of modebar
+            function organizeModebar() {
+                const modebar = document.querySelector('.modebar');
+                if (!modebar) return;
+                
+                // Apply direct styles to modebar container
+                modebar.style.display = 'flex';
+                modebar.style.alignItems = 'center';
+                modebar.style.gap = '8px';
+                modebar.style.padding = '6px 10px';
+                modebar.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
+                modebar.style.borderRadius = '6px';
+                
+                // Find all button groups
+                const groups = modebar.querySelectorAll('.modebar-group');
+                groups.forEach((group, index) => {
+                    // Style each group
+                    group.style.display = 'flex';
+                    group.style.alignItems = 'center';
+                    group.style.gap = '3px';
+                    
+                    // Add separator between groups (except last)
+                    if (index < groups.length - 1) {
+                        group.style.marginRight = '8px';
+                        group.style.paddingRight = '8px';
+                        group.style.borderRight = '1px solid rgba(255, 255, 255, 0.2)';
+                    }
+                });
+            }
+            
+            // Apply organization
+            organizeModebar();
+            
+            // Find and style all modebar buttons with unified theme and consistent sizing
+            const buttons = document.querySelectorAll('.modebar-btn');
+            buttons.forEach(btn => {
+                // Uniform button sizing and spacing
+                btn.style.width = '28px';
+                btn.style.height = '28px';
+                btn.style.display = 'flex';
+                btn.style.alignItems = 'center';
+                btn.style.justifyContent = 'center';
+                btn.style.margin = '0 1px';
+                btn.style.padding = '4px';
+                btn.style.borderRadius = '4px';
+                btn.style.transition = 'all 0.2s ease';
+                
+                // Standardize SVG size
+                const svg = btn.querySelector('svg');
+                if (svg) {
+                    svg.style.width = '16px';
+                    svg.style.height = '16px';
+                }
+                
+                // All buttons use the same color scheme for clean, unified look
+                colorizeButton(btn, '#1d96ffff', '#6ed1feff');
+                
+                // Add general hover background effect
+                btn.addEventListener('mouseenter', () => {
+                    btn.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                });
+                btn.addEventListener('mouseleave', () => {
+                    btn.style.backgroundColor = 'transparent';
+                });
+            });
+            
+            console.log(`Colored ${buttons.length} modebar buttons`);
+        }, 200);
 
         // Initialize P5 colorbar slider with threshold data
         if (typeof colorbarP5 !== 'undefined' && window.plotlyLayerInfo) {
@@ -1336,11 +1456,11 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         }
     });
 
-    // plotDiv.on('plotly_relayout', function (eventData) {
-    //     if (eventData['scene.camera']) {
-    //         console.log('Camera updated:', eventData['scene.camera']);
-    //     }
-    // });
+    plotDiv.on('plotly_relayout', function (eventData) {
+        if (eventData['scene.camera']) {
+            console.log('Camera updated:', eventData['scene.camera']);
+        }
+    });
 
     // Attach click event listener
     plotDiv.on('plotly_click', function (eventData) {

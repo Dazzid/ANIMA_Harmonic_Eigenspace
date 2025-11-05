@@ -195,3 +195,96 @@ body {
 .modebar-btn:hover {
     background: rgba(255, 255, 255, 0.2) !important;
 }
+
+/* ============================================================================
+   INFO OVERLAY STYLING - Enhanced Visual Effects
+   ============================================================================ */
+
+/* Custom scrollbar for the info panel */
+#info-overlay div::-webkit-scrollbar {
+    width: 15px;
+}
+
+#info-overlay div::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+#info-overlay div::-webkit-scrollbar-thumb {
+    background: rgb(219, 219, 219);
+    border-radius: 10px;
+    transition: background 0.2s ease;
+}
+
+#info-overlay div::-webkit-scrollbar-thumb:hover {
+    background: rgba(5, 213, 255, 0.5);
+}
+
+/* Firefox scrollbar styling */
+#info-overlay div {
+    scrollbar-width: normal;
+    scrollbar-color: rgb(204, 204, 204) rgba(255, 255, 255, 0.05);
+}
+
+/* Responsive design */
+@media screen and (max-width: 768px) {
+    #info-overlay>div {
+        padding: 30px 20px !important;
+        max-width: 95% !important;
+        font-size: 13px !important;
+    }
+
+    #info-overlay h1 {
+        font-size: 22px !important;
+    }
+
+    #info-overlay h3 {
+        font-size: 14px !important;
+    }
+
+    #info-button {
+        top: 10px !important;
+        right: 10px !important;
+        padding: 8px 16px !important;
+        font-size: 12px !important;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    #info-overlay>div {
+        padding: 20px 15px !important;
+        border-radius: 15px !important;
+    }
+
+    #info-overlay h1 {
+        font-size: 18px !important;
+    }
+
+    #info-overlay ul {
+        margin-left: 20px !important;
+    }
+}
+
+/* Selection styling */
+#info-overlay ::selection {
+    background: rgba(8, 98, 255, 0.3);
+    color: white;
+}
+
+#info-overlay ::-moz-selection {
+    background: rgba(5, 213, 255, 0.3);
+    color: white;
+}
+
+/* Link styling (if you add any links) */
+#info-overlay a {
+    color: rgba(5, 213, 255, 1);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(5, 213, 255, 0.3);
+    transition: all 0.2s ease;
+}
+
+#info-overlay a:hover {
+    color: rgba(118, 236, 0, 1);
+    border-bottom-color: rgba(118, 236, 0, 0.5);
+}
