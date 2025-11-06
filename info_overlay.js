@@ -18,13 +18,8 @@ class InfoOverlay {
         // Create the info button
         this.createInfoButton();
 
-        // Show on first load
-        setTimeout(() => {
-            if (!this.hasShownOnLoad) {
-                this.show();
-                this.hasShownOnLoad = true;
-            }
-        }, 500);
+        // Don't show automatically anymore - wait for data to be ready
+        // The show() method will be called from test.js when visualization is complete
     }
 
     createOverlay() {
@@ -182,6 +177,14 @@ class InfoOverlay {
             // Restore body scroll
             document.body.style.overflow = '';
         }, 300);
+    }
+
+    // Show for the first time after data is loaded
+    showWhenReady() {
+        if (!this.hasShownOnLoad) {
+            this.show();
+            this.hasShownOnLoad = true;
+        }
     }
 
     toggle() {

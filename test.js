@@ -995,7 +995,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         y: sortedSampledY,
         z: sortedSampledZ,
         marker: {
-            symbol: 'pentagon',
+            symbol: 'square', //circle , square , diamond , cross , x , triangle , pentagon , hexagram , star , hourglass , bowtie , asterisk , hash , y , and line
             size: zoneFull,
             color: sortedSampledD,
             colorscale: myColor,
@@ -1111,7 +1111,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             y: layerY,
             z: layerZ,
             marker: {
-                symbol: 'pentagon', //circle , square , diamond , cross , x , triangle , pentagon , hexagram , star , hourglass , bowtie , asterisk , hash , y , and line
+                symbol: 'square', //circle , square , diamond , cross , x , triangle , pentagon , hexagram , star , hourglass , bowtie , asterisk , hash , y , and line
                 size: zoneSize,
                 color: layerD,
                 colorscale: myColor,
@@ -1840,6 +1840,14 @@ window.addEventListener('load', async () => {
         clickOutput.style.display = 'block';
         clickOutput.textContent = 'Click any point to hear the chord';
     }
+
+    // Show info overlay now that data is loaded and visualization is ready
+    // Small delay to ensure plot is fully rendered
+    setTimeout(() => {
+        if (window.infoOverlay && typeof window.infoOverlay.showWhenReady === 'function') {
+            window.infoOverlay.showWhenReady();
+        }
+    }, 200);
 
     /// Add root note selector event listener (if it exists)
     const rootSelector = document.getElementById('root-select');
