@@ -97,9 +97,9 @@ class InfoOverlay {
                         combinations of three simultaneous ratios (α, β, γ) relative to a root tone.
                     </p>
                     <p>
-                        Within this harmonic landscape, we identify the most stable regions—<strong>local dissonance minima</strong>—that correspond to just intonation ratios.
-                        The visualization reveals <em>why</em> these ratios sound consonant: they are positioned at valleys in the dissonance terrain where harmonic partials align optimally.
-                        These spots appear as numbered white nodes, marking coordinates in the harmonic topological space. Click any point to hear that chord/sound combination.
+                        Within this harmonic landscape, we identify the most stable regions—<strong>local dissonance minima</strong>—that correspond to natural just intonation ratios.
+                        The visualization reveals <em>why</em> these ratios sound consonant: they are positioned at <em>confluences</em> where multiple dissonance rivers meet and merge.
+                        These spots appear as numbered white nodes, marking precise coordinates in the harmonic topological space. Click any point to hear that chord/sound combination.
                     </p>
                 </div>
 
