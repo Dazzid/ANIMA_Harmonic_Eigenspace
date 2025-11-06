@@ -69,7 +69,7 @@ class InfoOverlay {
                     <p>
                         What you see is a <strong>3D visualization</strong> of tetrachord dissonance relationships. Each axis represents 
                         the interaction of <strong>6 first harmonics</strong> at different frequency ratios, computed using 
-                        the <em>Plomp-Levelt</em> roughness model from Sethares' <a href="https://sethares.engr.wisc.edu/ttss.html" target="_blank"><em>Tuning, Timbre, Spectrum, Scale</em>[1]</a>.
+                        the <em>Plomp-Levelt</em> roughness model from Sethares' <a href="https://sethares.engr.wisc.edu/ttss.html" target="_blank"><em>Tuning, Timbre, Spectrum, Scale</em> [1]</a>.
                         The visualization maps dissonance values across all possible combinations of the three frequency ratios, creating a 3D landscape of psychoacoustic roughness.
                     </p>
                     <p>
@@ -84,7 +84,7 @@ class InfoOverlay {
                     </p>
                     
                     <div class="eigenspace-image">
-                        <img src="figures/EigenSpace_2.png" alt="Harmonic Eigenspace Visualization" />
+                        <img src="figures/EigenSpace.png" alt="Harmonic Eigenspace Visualization" />
                         <p class="image-caption">Dissonance landscape showing consonant valleys where harmonic series align</p>
                     </div>
                 </div>
