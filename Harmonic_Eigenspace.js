@@ -134,6 +134,9 @@ let audioCtx;
 let reverbNode;
 let audioInitialized = false;
 
+// Track currently playing oscillators so we can stop them
+let currentlyPlaying = [];
+
 // Audio parameters - controlled by GUI
 let audioParams = {
     waveType: 'sine',
@@ -200,23 +203,36 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
         return;
     }
 
+    // Stop any currently playing audio to prevent overlap
+    //stopAllAudio();
+
     // Update chord visualization
     if (typeof setChordVisualization === 'function') {
         setChordVisualization(alpha, beta, gamma, baseFreq);
     }
 
-    const t = audioCtx.currentTime;
+    const t = audioCtx.currentTime + 0.06; // Small delay to allow fadeout
     const harmonics = [1, 2, 3, 4, 5, 6];
     const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
 
-    const notes = [1, alpha, beta, gamma];
-    for (let multiplier of notes) {
-        createNote(baseFreq * multiplier, harmonics, amplitudes, t);
+    // Get doubling flags from chord visualization
+    const doublingFlags = typeof window.getDoublingFlags === 'function' ?
+        window.getDoublingFlags() : { R: false, α: false, β: false, γ: false };
+
+    // Apply frequency doubling based on flags
+    const ratios = [1, alpha, beta, gamma];
+    const labels = ['R', 'α', 'β', 'γ'];
+
+    for (let i = 0; i < ratios.length; i++) {
+        const baseNoteFreq = baseFreq * ratios[i];
+        const isDoubled = doublingFlags[labels[i]];
+        const actualFreq = isDoubled ? baseNoteFreq * 2 : baseNoteFreq;
+        createNote(actualFreq, harmonics, amplitudes, t, isDoubled);
     }
 }
 
 // Create Note with ADSR envelope and amplitude levels -------------------------------------------------
-function createNote(freq, harmonics, amplitudes, startTime) {
+function createNote(freq, harmonics, amplitudes, startTime, isDoubled = false) {
     const masterGain = audioCtx.createGain();
     const dryGain = audioCtx.createGain();
     const wetGain = audioCtx.createGain();
@@ -232,7 +248,10 @@ function createNote(freq, harmonics, amplitudes, startTime) {
     dryGain.connect(audioCtx.destination);
     wetGain.connect(reverbNode);
 
-    masterGain.gain.value = 0.15; //0.20 = louder, clip on consonant chords
+    // Reduce gain for doubled (higher octave) frequencies
+    const baseGain = 0.15; // 0.20 = louder, clip on consonant chords
+    const doubledGainReduction = 0.7; // Reduce to 70% of original gain for doubled frequencies
+    masterGain.gain.value = isDoubled ? baseGain * doubledGainReduction : baseGain;
 
     // Create each harmonic as separate oscillator
     for (let i = 0; i < harmonics.length; i++) {
@@ -244,6 +263,12 @@ function createNote(freq, harmonics, amplitudes, startTime) {
 
         osc.connect(gain);
         gain.connect(masterGain);
+
+        // Track this oscillator so we can stop it if needed
+        currentlyPlaying.push({
+            oscillator: osc,
+            gainNode: gain
+        });
 
         let attack = audioParams.attack;
         let sustain = audioParams.sustain;
@@ -261,7 +286,41 @@ function createNote(freq, harmonics, amplitudes, startTime) {
         const length = attack + sustain + release;
         osc.start(startTime);
         osc.stop(startTime + length);
+
+        // Remove from tracking when it naturally ends
+        osc.addEventListener('ended', () => {
+            const index = currentlyPlaying.findIndex(item => item.oscillator === osc);
+            if (index !== -1) {
+                currentlyPlaying.splice(index, 1);
+            }
+        });
     }
+}
+
+// Function to stop all currently playing audio
+function stopAllAudio() {
+    const currentTime = audioCtx ? audioCtx.currentTime : 0;
+
+    for (let playingItem of currentlyPlaying) {
+        try {
+            // Quick fade out to avoid clicks
+            if (playingItem.gainNode) {
+                playingItem.gainNode.gain.cancelScheduledValues(currentTime);
+                playingItem.gainNode.gain.setValueAtTime(playingItem.gainNode.gain.value, currentTime);
+                playingItem.gainNode.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.05);
+            }
+
+            // Stop oscillator after fade
+            if (playingItem.oscillator) {
+                playingItem.oscillator.stop(currentTime + 0.05);
+            }
+        } catch (e) {
+            // Oscillator might already be stopped, ignore errors
+        }
+    }
+
+    // Clear the tracking array
+    currentlyPlaying = [];
 }
 //End audio synthesis ------------------------------------------------------------------
 
@@ -1283,8 +1342,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             aspectmode: 'cube'
         },
         legend: {
-            x: 0.98,
-            y: 1,
+            x: 0.99,
+            y: 0.94,
             xanchor: 'right',
             yanchor: 'top',
             bgcolor: 'rgba(0,0,0,0.8)',
@@ -1490,13 +1549,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 setChordVisualization(alpha, beta, gamma, currentBaseFreq);
             }
 
-            const freqRoot = currentBaseFreq;
-            const freqAlpha = alpha * currentBaseFreq;
-            const freqBeta = beta * currentBaseFreq;
-            const freqGamma = gamma * currentBaseFreq;
-
-            document.getElementById('click-output').textContent =
-                `Playing: ${freqRoot.toFixed(2)} Hz | α=${freqAlpha.toFixed(2)} Hz | β=${freqBeta.toFixed(2)} Hz | γ=${freqGamma.toFixed(2)} Hz`;
+            // Update the frequency display with doubling indicators
+            updateFrequencyDisplay(alpha, beta, gamma, currentBaseFreq);
         }
     });
 }
@@ -1531,9 +1585,21 @@ function toggleVisualizationMode() {
         // Single update: visibility only (no Plotly slider)
         Plotly.update(plotDiv, { visible: visibilityArray }, {});
 
+        // Hide slider with smooth animation
+        const colorbarContainer = document.getElementById('colorbar-container');
+        if (colorbarContainer) {
+            colorbarContainer.classList.add('hidden');
+        }
+
     } else {
         // Switch to SECTIONED mode
         visualizationMode = 'sectioned';
+
+        // Show slider with smooth animation
+        const colorbarContainer = document.getElementById('colorbar-container');
+        if (colorbarContainer) {
+            colorbarContainer.classList.remove('hidden');
+        }
 
         visibilityArray[0] = false; // Full 3D trace hidden
 
@@ -1657,6 +1723,48 @@ window.updateGlobalRoot = function (freq) {
         clearChordVisualization();
     }
 };
+
+// Function to update chord with current doubling settings
+window.updateChordWithDoubling = function () {
+    // Get the current playing frequencies from the chord visualization
+    const playbackFreqs = typeof window.getActualPlaybackFrequencies === 'function' ?
+        window.getActualPlaybackFrequencies() : [];
+
+    if (playbackFreqs.length === 4) {
+        // We have a complete chord playing, replay it with new doubling settings
+        // Extract the ratios from the original frequencies
+        const rootFreq = playbackFreqs[0].originalFreq;
+        const alpha = playbackFreqs[1].originalFreq / rootFreq;
+        const beta = playbackFreqs[2].originalFreq / rootFreq;
+        const gamma = playbackFreqs[3].originalFreq / rootFreq;
+
+        // Play the chord with the updated doubling
+        playChord(alpha, beta, gamma, currentBaseFreq);
+
+        // Update the display to show which frequencies are doubled
+        updateFrequencyDisplay(alpha, beta, gamma, currentBaseFreq);
+    }
+};
+
+// Function to update frequency display with doubling indicators
+function updateFrequencyDisplay(alpha, beta, gamma, baseFreq) {
+    const doublingFlags = typeof window.getDoublingFlags === 'function' ?
+        window.getDoublingFlags() : { R: false, α: false, β: false, γ: false };
+
+    const freqRoot = baseFreq;
+    const freqAlpha = alpha * baseFreq;
+    const freqBeta = beta * baseFreq;
+    const freqGamma = gamma * baseFreq;
+
+    // Add [x2] indicators for doubled frequencies
+    const rootDisplay = doublingFlags.R ? `${freqRoot.toFixed(2)} Hz [x2]` : `${freqRoot.toFixed(2)} Hz`;
+    const alphaDisplay = doublingFlags.α ? `${freqAlpha.toFixed(2)} Hz [x2]` : `${freqAlpha.toFixed(2)} Hz`;
+    const betaDisplay = doublingFlags.β ? `${freqBeta.toFixed(2)} Hz [x2]` : `${freqBeta.toFixed(2)} Hz`;
+    const gammaDisplay = doublingFlags.γ ? `${freqGamma.toFixed(2)} Hz [x2]` : `${freqGamma.toFixed(2)} Hz`;
+
+    document.getElementById('click-output').textContent =
+        `Playing: ${rootDisplay} | α=${alphaDisplay} | β=${betaDisplay} | γ=${gammaDisplay}`;
+}
 
 // Manual test function - call from console: testRootChange(130.81)
 window.testRootChange = function (newFreq) {

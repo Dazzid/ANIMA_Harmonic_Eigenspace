@@ -265,7 +265,7 @@ body {
     font-family: 'Monaco', 'Courier New', monospace;
     font-size: 28px;
     margin: 0 0 10px 0;
-    font-weight: light;
+    font-weight: 300;
 }
 
 .info-panel .subtitle {
@@ -273,7 +273,7 @@ body {
     font-family: 'Monaco', monospace;
     font-size: 14px;
     letter-spacing: 2px;
-    font-weight: light;
+    font-weight: 300;
 }
 
 .info-panel .content-section {
@@ -291,7 +291,7 @@ body {
     color: rgba(16, 16, 16, 1);
     font-size: 16px;
     margin: 0 0 10px 0;
-    font-weight: light;
+    font-weight: 300;
 }
 
 .info-panel .section p {
@@ -312,12 +312,30 @@ body {
 .info-panel .gamma-color { color: rgb(0, 128, 255); }
 .info-panel .root-color { color: rgba(0, 0, 0, 1); }
 
+.info-panel strong {
+    color: rgba(0, 0, 0, 1);
+    font-weight: 600;
+}
+
+.info-panel .formula {
+    display: block;
+    text-align: center;
+    font-family: 'Times New Roman', serif;
+    font-size: 16px;
+    font-style: italic;
+    background:rgb(255, 250, 240);
+    padding: 8px 12px;
+    margin: 8px auto;
+    border-radius: 10px;
+    max-width: fit-content;
+}
+
 .info-panel .technical-note {
-    background: rgba(0, 174, 255, 0.5);
+    background: rgba(0, 157, 255, 0.395);
     padding: 15px;
-    border-radius: 8px;
-    margin-top: 25px;
-    font-size: 12px;
+    border-radius: 10px;
+    margin-top: 20px;
+    font-size: 14px;
 }
 
 .info-panel .close-btn {
@@ -332,7 +350,7 @@ body {
     border-radius: 50%;
     cursor: pointer;
     font-size: 18px;
-    font-weight: light;
+    font-weight: 300;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -351,7 +369,7 @@ body {
     padding: 12px 40px;
     font-size: 14px;
     font-family: 'Monaco', monospace;
-    font-weight: light;
+    font-weight: 300;
     border-radius: 8px;
     cursor: pointer;
 }
@@ -379,6 +397,10 @@ body {
     font-style: italic;
 }
 
+.info-panel strong {
+    color: rgba(0, 0, 0, 1);
+    /* Pure black for more contrast */
+}
 /* Responsive design */
 @media screen and (max-width: 768px) {
     #info-overlay>div {
@@ -420,7 +442,7 @@ body {
 
 /* Selection styling */
 #info-overlay ::selection {
-    background: rgba(8, 98, 255, 0.3);
+    background: rgb(255, 255, 255);
     color: white;
 }
 
@@ -431,9 +453,9 @@ body {
 
 /* Link styling (if you add any links) */
 #info-overlay a {
-    color: rgb(5, 130, 255);
+    color: rgb(0, 83, 167);
     text-decoration: none;
-    border-bottom: 1px solid rgba(5, 213, 255, 0.3);
+    /* border-bottom: 1px solid rgba(5, 213, 255, 0.3); */
     transition: all 0.2s ease;
 }
 

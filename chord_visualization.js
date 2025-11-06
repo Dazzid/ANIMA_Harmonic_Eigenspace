@@ -26,6 +26,14 @@ class ChordVisualization {
         this.targetFreqs = [];
         this.rootFreq = 220.0; // A3 default
 
+        // Frequency doubling flags for each voice
+        this.doublingFlags = {
+            R: false,    // Root
+            α: false,    // Alpha  
+            β: false,    // Beta
+            γ: false     // Gamma
+        };
+
         // Animation
         this.animationSpeed = 0.25;
         this.round = 20;
@@ -309,7 +317,7 @@ class ChordVisualization {
         const rootNote = this.getNoteName(this.rootFreq);
         // Position label to avoid overlap with bars
         const labelY = y < this.spectrumY + 40 ? y + 25 : y - 10;
-        p.text(`Root: ${rootNote}`, this.spectrumX + 235, labelY + 14);
+        p.text(`${rootNote}`, this.spectrumX + 275, labelY + 14);
     }
 
     //----------------------------------------------------------------------------------------
@@ -385,16 +393,26 @@ class ChordVisualization {
             p.fill(baseColor[0], baseColor[1], baseColor[2], 255);
             p.textAlign(p.LEFT);
             p.textSize(11);
-            p.text(freq.toFixed(3) + ' Hz', barX + barWidth + 5, y + 4);
+            
+            // Check if this voice is doubled
+            const labels = ['R', 'α', 'β', 'γ'];
+            const voiceLabel = labels[noteIndex];
+            const isDoubled = this.doublingFlags[voiceLabel];
+            
+            // Show frequency with optional [x2] indicator
+            const freqText = isDoubled ? 
+                freq.toFixed(3) + ' Hz [x2]' : 
+                freq.toFixed(3) + ' Hz';
+            p.text(freqText, barX + barWidth + 5, y + 4);
         }
     }
  
     //----------------------------------------------------------------------------------------
     drawFrequencyLabels(p) {
         // Legend for the colors
-        const y = this.spectrumY + this.spectrumHeight + 25;
+        const y = this.spectrumY + this.spectrumHeight + 20;
         p.textAlign(p.LEFT);
-        p.textSize(11);
+        p.textSize(12);
 
         const labels = [
             { color: this.colors[0], text: 'R' },
@@ -402,13 +420,45 @@ class ChordVisualization {
             { color: this.colors[2], text: 'β' },
             { color: this.colors[3], text: 'γ' }
         ];
+        
         p.noStroke();
         for (let i = 0; i < labels.length; i++) {
             const x = (this.spectrumX + i * 70) + 25;
-            p.fill(labels[i].color[0], labels[i].color[1], labels[i].color[2]);
-            p.rect(x, y, 15, 10, 2);
-            p.fill(150);
-            p.text(labels[i].text, x + 20, y + 8);
+            
+            // Draw label text
+            p.fill(labels[i].color[0], labels[i].color[1], labels[i].color[2], 255);
+            p.text(labels[i].text, x + 24, y + 14);
+            
+            // Draw [x2] button
+            const buttonX = x;
+            const buttonY = y;
+            const buttonW = 20;
+            const buttonH = 20;
+            
+            // Check if this voice is doubled
+            const isDoubled = this.doublingFlags[labels[i].text];
+            
+            // Button background
+            if (isDoubled) {
+                // Use the corresponding axis color when active
+                p.noStroke();
+                p.fill(labels[i].color[0], labels[i].color[1], labels[i].color[2], 255);
+            } else {
+                p.fill(100, 100, 100, 100); 
+                p.stroke(labels[i].color[0], labels[i].color[1], labels[i].color[2], 255);
+            }
+            p.rect(buttonX, buttonY, buttonW, buttonH, 2);
+            
+            // Button text
+            p.noStroke();
+            p.fill(isDoubled ? 0 : 180); // Black text on orange, light gray on dark
+            p.textSize(9);
+            p.textAlign(p.CENTER);
+            p.text('x2', buttonX + buttonW/2, buttonY + 13);
+            
+            // Reset text alignment
+            p.textAlign(p.LEFT);
+            p.textSize(12);
         }
     }
 
@@ -472,17 +522,23 @@ class ChordVisualization {
 
         // Add ONLY fundamental frequencies (no fake harmonics)
         const ratios = [1, alpha, beta, gamma];
+        const labels = ['R', 'α', 'β', 'γ'];
 
         for (let noteIndex = 0; noteIndex < ratios.length; noteIndex++) {
-            const freq = baseFreq * ratios[noteIndex];
+            const baseFreqForNote = baseFreq * ratios[noteIndex];
+            
+            // Apply frequency doubling if flag is set for this voice
+            const actualFreq = this.doublingFlags[labels[noteIndex]] ? 
+                baseFreqForNote * 2 : baseFreqForNote;
 
-            // Only add if within display range
-            if (freq >= this.minFreq && freq <= this.maxFreq) {
+            // Always add to display (visual shows original frequency)
+            if (baseFreqForNote >= this.minFreq && baseFreqForNote <= this.maxFreq) {
                 this.targetFreqs.push({
-                    freq: freq,
+                    freq: baseFreqForNote, // Visual always shows original frequency
                     amp: 1.0, // All fundamentals same amplitude
                     harmonic: 0, // Only fundamental
-                    noteIndex: noteIndex
+                    noteIndex: noteIndex,
+                    actualPlaybackFreq: actualFreq // Store actual playback frequency
                 });
             }
         }
@@ -519,6 +575,33 @@ class ChordVisualization {
     }
     //----------------------------------------------------------------------------------------
     handleMouseClick(mouseX, mouseY) {
+        // Check for [x2] button clicks first
+        const legendY = this.spectrumY + this.spectrumHeight + 25;
+        const labels = ['R', 'α', 'β', 'γ'];
+        
+        for (let i = 0; i < labels.length; i++) {
+            const x = (this.spectrumX + i * 70) + 25;
+            const buttonX = x;
+            const buttonY = legendY;
+            const buttonW = 20;
+            const buttonH = 20;
+            
+            // Check if click is within this [x2] button
+            if (mouseX >= buttonX && mouseX <= buttonX + buttonW && 
+                mouseY >= buttonY && mouseY <= buttonY + buttonH) {
+                
+                // Toggle the doubling flag for this voice
+                this.doublingFlags[labels[i]] = !this.doublingFlags[labels[i]];
+                
+                // Update the audio with current chord settings
+                if (typeof window.updateChordWithDoubling === 'function') {
+                    window.updateChordWithDoubling();
+                }
+                
+                return true; // Click was handled
+            }
+        }
+        
         // Check if click is within the note area (where keyboard notes are displayed)
         const clickAreaLeft = this.positionKeys - 35;
         const clickAreaRight = this.positionKeys + this.spectrumWidth + 25;
@@ -544,7 +627,7 @@ class ChordVisualization {
                 }
             }
         }
-        return false; // Click was not on a note
+        return false; // Click was not on a note or button
     }
 }
 
@@ -588,4 +671,19 @@ window.setRootVisualization = function (freq) {
     if (chordViz) {
         chordViz.setRootFrequency(freq);
     }
+};
+
+window.getDoublingFlags = function () {
+    return chordViz ? chordViz.doublingFlags : { R: false, α: false, β: false, γ: false };
+};
+
+window.getActualPlaybackFrequencies = function () {
+    if (!chordViz || !chordViz.targetFreqs) return [];
+    
+    return chordViz.targetFreqs.map(freq => ({
+        originalFreq: freq.freq,
+        playbackFreq: freq.actualPlaybackFreq || freq.freq,
+        noteIndex: freq.noteIndex,
+        isDoubled: freq.actualPlaybackFreq > freq.freq
+    }));
 };

@@ -69,7 +69,7 @@ class InfoOverlay {
                     <p>
                         What you see is a <strong>3D visualization</strong> of tetrachord dissonance relationships. Each axis represents 
                         the interaction of <strong>6 first harmonics</strong> at different frequency ratios, computed using 
-                        the <em>Plomp-Levelt</em> roughness model from Sethares' <a href="https://sethares.engr.wisc.edu/ttss.html" target="_blank"><em>Tuning, Timbre, Spectrum, Scale</em></a>.
+                        the <em>Plomp-Levelt</em> roughness model from Sethares' <a href="https://sethares.engr.wisc.edu/ttss.html" target="_blank"><em>Tuning, Timbre, Spectrum, Scale</em>[1]</a>.
                         The visualization maps dissonance values across all possible combinations of the three frequency ratios, creating a 3D landscape of psychoacoustic roughness.
                     </p>
                     <p>
@@ -78,13 +78,13 @@ class InfoOverlay {
                         white areas show moderate roughness, and red zones represent high dissonance.
                     </p>
                     <p>
-                        Like Helmholtz's roughness curves and Plomp-Levelt's consonance curves, this dissonance map shows 
+                        Like Helmholtz's roughness curves and Plomp-Levelt's [2] consonance curves, this dissonance map shows 
                         that <strong>familiar musical intervals occur near local-minima</strong> - the "valleys" where multiple 
                         harmonic series align with minimal beating between partials.
                     </p>
                     
                     <div class="eigenspace-image">
-                        <img src="figures/EigenSpace.png" alt="Harmonic Eigenspace Visualization" />
+                        <img src="figures/EigenSpace_2.png" alt="Harmonic Eigenspace Visualization" />
                         <p class="image-caption">Dissonance landscape showing consonant valleys where harmonic series align</p>
                     </div>
                 </div>
@@ -110,8 +110,19 @@ class InfoOverlay {
                 </div>
 
                 <div class="technical-note">
-                    <strong>Technical Note:</strong>
-                    The local minima are shown in white numbered dots, which correspond to just intonation intervals.
+                    Mathematical Foundation:
+                    The dissonance values range precisely from 14 to 22 due to the specific parameters of this visualization:
+                    <br><br>
+                    • Base Parameters: 220 Hz fundamental, 6 harmonics, frequency ratios [1.0-2.0]<br>
+                    • Plomp-Levelt Formula: <div class="formula">D = Σ<sub>pairs</sub> a × [5·e<sup>−3.51·S·Δf</sup> − 5·e<sup>−5.75·S·Δf</sup>]</div><br>
+                    • Lower Bound (≈14): Perfect consonances (2:1, 3:2) with 276 harmonic pairs contributing minimal residual roughness<br>
+                    • Upper Bound (≈22): Maximum clustering within critical bands, limited by exponential decay saturation<br><br>
+                    These bounds emerge from psychoacoustic constants; a mathematical structure of the human auditory perception as modeled by <a href="https://pubs.aip.org/asa/jasa/article-abstract/38/4/548/615274/Tonal-Consonance-and-Critical-Bandwidth" target="_blank">Plomp and Levelt</a>.
+                    <br><br>
+                    <h3>Reference:</h3>
+                    1) Sethares, William A. Tuning, timbre, spectrum, scale. London: Springer London, 2005.<br>
+                    2) Plomp, Reinier, and Willem Johannes Maria Levelt. "Tonal consonance and critical bandwidth." The journal of the Acoustical Society of America 38.4 (1965): 548-560.<br>
+                    
                 </div>
             </div>
 
