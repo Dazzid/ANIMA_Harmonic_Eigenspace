@@ -79,7 +79,7 @@ class InfoOverlay {
                     </p>
                     <p>
                         Like Helmholtz's roughness curves and Plomp-Levelt's [2] consonance curves, this dissonance map shows 
-                        that <strong>familiar musical intervals occur near local-minima</strong> - the "valleys" where multiple 
+                        that <strong>familiar musical intervals occur near local-minima</strong>, where multiple 
                         harmonic series align with minimal beating between partials.
                     </p>
                     
@@ -97,15 +97,9 @@ class InfoOverlay {
                         combinations of three simultaneous ratios (α, β, γ) relative to a root tone.
                     </p>
                     <p>
-                        The current sound uses 6 harmonic partials with frequencies [1, 2, 3, 4, 5, 6] and
-                        decreasing amplitudes. When multiple copies of this sound interact at different frequency
-                        ratios, certain combinations produce minimal roughness. These appear as valleys in the
-                        3D landscape - the deeper the valley, the more consonant the chord.
-                    </p>
-                    <p>
-                        For harmonic spectra like this one, the valleys align with familiar just intonation ratios.
-                        The visualization reveals <em>why</em> these ratios sound consonant: they minimize the beating
-                        between interacting partials. Click any point to hear that chord combination.
+                        For harmonic spectra we search for most stable local-minima spots corresponding to just intonation ratios.
+                        The visualization reveals <em>why</em> these ratios sound consonant and they are colored in white nodes with numbers, as coordinates in the harmonic topological space: they minimize the beating
+                        between interacting partials. Click any point to hear that chord/sound combination.
                     </p>
                 </div>
 
