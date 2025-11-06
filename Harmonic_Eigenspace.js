@@ -1540,11 +1540,11 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         }
     });
 
-    plotDiv.on('plotly_relayout', function (eventData) {
-        if (eventData['scene.camera']) {
-            console.log('Camera updated:', eventData['scene.camera']);
-        }
-    });
+    // plotDiv.on('plotly_relayout', function (eventData) {
+    //     if (eventData['scene.camera']) {
+    //         console.log('Camera updated:', eventData['scene.camera']);
+    //     }
+    // });
 
     // Attach click event listener
     plotDiv.on('plotly_click', async function (eventData) {
