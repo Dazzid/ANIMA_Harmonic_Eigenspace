@@ -1283,8 +1283,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             aspectmode: 'cube'
         },
         legend: {
-            x: 0.98,
-            y: 1,
+            x: 0.99,
+            y: 0.94,
             xanchor: 'right',
             yanchor: 'top',
             bgcolor: 'rgba(0,0,0,0.8)',
@@ -1531,9 +1531,21 @@ function toggleVisualizationMode() {
         // Single update: visibility only (no Plotly slider)
         Plotly.update(plotDiv, { visible: visibilityArray }, {});
 
+        // Hide slider with smooth animation
+        const colorbarContainer = document.getElementById('colorbar-container');
+        if (colorbarContainer) {
+            colorbarContainer.classList.add('hidden');
+        }
+
     } else {
         // Switch to SECTIONED mode
         visualizationMode = 'sectioned';
+
+        // Show slider with smooth animation
+        const colorbarContainer = document.getElementById('colorbar-container');
+        if (colorbarContainer) {
+            colorbarContainer.classList.remove('hidden');
+        }
 
         visibilityArray[0] = false; // Full 3D trace hidden
 

@@ -66,12 +66,6 @@ body {
     border-color: rgba(255, 255, 255, 0.6);
 }
 
-#controls select:focus {
-    outline: none;
-    border-color: rgb(80, 196, 80);
-    box-shadow: 0 0 5px rgba(80, 196, 80, 0.5);
-}
-
 #click-output {
     text-align: center;
     font-size: 16px;
@@ -154,19 +148,31 @@ body {
     transform: translateY(-50%);
     z-index: 100;
     font-family: monaco, Figtree, Arial, sans-serif;
+    transition: right 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
+/* Hidden state for slider when in Full 3D mode */
+#colorbar-container.hidden {
+    right: -200px;
+}
+
+/* Switch to Full 3D View */
 #viz-mode-toggle {
+    position: fixed;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
     background: rgba(0, 111, 229, 0.8);
-    color: white;
     border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
+    color: white;
+    padding: 8px 20px;
+    font-size: 14px;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-weight: light;
+    border-radius: 8px;
     cursor: pointer;
-    font-family: monaco, sans-serif;
-    font-size: 13px;
-    margin-top: 10px;
-    transition: background 0.3s;
+    z-index: 9999;
+    transition: all 0.2s ease;
 }
 
 #viz-mode-toggle:hover {
@@ -181,7 +187,7 @@ body {
     top: 60px !important;
     right: 15px !important;
     z-index: 150 !important;
-    background: rgba(0, 0, 0, 0.8) !important;
+    background: rgba(0, 0, 0, 0.5) !important;
     border-radius: 6px !important;
     padding: 4px !important;
 }
@@ -194,6 +200,19 @@ body {
 
 .modebar-btn:hover {
     background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Plotly legend styling - rounded corners */
+.legend {
+    border-radius: 20px !important;
+}
+
+.legendtext {
+    border-radius: 4px !important;
+}
+
+.legendtoggle {
+    border-radius: 4px !important;
 }
 
 /* ============================================================================
@@ -406,13 +425,13 @@ body {
 }
 
 #info-overlay ::-moz-selection {
-    background: rgba(5, 213, 255, 0.3);
+    background: rgba(0, 0, 0, 0.0);
     color: white;
 }
 
 /* Link styling (if you add any links) */
 #info-overlay a {
-    color: rgba(5, 213, 255, 1);
+    color: rgb(5, 130, 255);
     text-decoration: none;
     border-bottom: 1px solid rgba(5, 213, 255, 0.3);
     transition: all 0.2s ease;

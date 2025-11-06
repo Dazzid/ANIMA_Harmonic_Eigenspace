@@ -57,10 +57,10 @@ class InfoOverlay {
                     <h3>The 4D Space</h3>
                     <p>The four dimensions are:</p>
                     <ul>
-                        <li><strong class="alpha-color">α</strong> (alpha) - x axis interval ratio</li>
-                        <li><strong class="beta-color">β</strong> (beta) - y axis interval ratio</li>
-                        <li><strong class="gamma-color">γ</strong> (gamma) - z axis interval ratio</li>
                         <li><strong class="root-color">Root</strong> - (origin) The fundamental frequency</li>
+                        <li><strong class="alpha-color">α</strong> (alpha) - x axis, 1st frequency ratio</li>
+                        <li><strong class="beta-color">β</strong> (beta) - y axis, 2nd frequency ratio</li>
+                        <li><strong class="gamma-color">γ</strong> (gamma) - z axis, 3rd frequency ratio</li>
                     </ul>
                 </div>
 
@@ -68,8 +68,9 @@ class InfoOverlay {
                     <h3>The Eigenspace View</h3>
                     <p>
                         What you see is a <strong>3D visualization</strong> of tetrachord dissonance relationships. Each axis represents 
-                        the interaction of <strong>6 harmonics</strong> (1, 2, 3, 4, 5, 6) at different frequency ratios, computed using 
-                        the <em>Plomp-Levelt</em> roughness model from Sethares' <em>Tuning, Timbre, Spectrum, Scale</em>.
+                        the interaction of <strong>6 first harmonics</strong> at different frequency ratios, computed using 
+                        the <em>Plomp-Levelt</em> roughness model from Sethares' <a href="https://sethares.engr.wisc.edu/ttss.html" target="_blank"><em>Tuning, Timbre, Spectrum, Scale</em></a>.
+                        The visualization maps dissonance values across all possible combinations of the three frequency ratios, creating a 3D landscape of psychoacoustic roughness.
                     </p>
                     <p>
                         The color scale reveals <strong>intersection zones</strong> where harmonic interactions create varying 
@@ -78,7 +79,7 @@ class InfoOverlay {
                     </p>
                     <p>
                         Like Helmholtz's roughness curves and Plomp-Levelt's consonance curves, this dissonance map shows 
-                        that <strong>familiar musical intervals occur near minima</strong> - the "valleys" where multiple 
+                        that <strong>familiar musical intervals occur near local-minima</strong> - the "valleys" where multiple 
                         harmonic series align with minimal beating between partials.
                     </p>
                     
@@ -110,8 +111,7 @@ class InfoOverlay {
 
                 <div class="technical-note">
                     <strong>Technical Note:</strong>
-                    This visualization uses computational psychoacoustics to map an imaginary space of harmonic possibilities. 
-                    The local minima (white numbered dots) correspond to just intonation intervals and microtonal consonances out of tone equal temperaments rations.
+                    The local minima are shown in white numbered dots, which correspond to just intonation intervals.
                 </div>
             </div>
 

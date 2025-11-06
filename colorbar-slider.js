@@ -121,17 +121,17 @@ const colorbarSketch = (p) => {
         p.text('Low', x - 5, y + BAR_HEIGHT - 10);
 
         // Current range
-        if (thresholds.length > 0 && currentStep < thresholds.length) {
-            const threshold = thresholds[currentStep];
-            const lowerBound = threshold - windowSize / 2;
-            const upperBound = threshold + windowSize / 2;
+        // if (thresholds.length > 0 && currentStep < thresholds.length) {
+        //     const threshold = thresholds[currentStep];
+        //     const lowerBound = threshold - windowSize / 2;
+        //     const upperBound = threshold + windowSize / 2;
 
-            p.textAlign(p.CENTER);
-            p.textSize(11);
-            p.fill(255);
-            p.text(`${lowerBound.toFixed(3)}`, x + BAR_WIDTH / 2, y + BAR_HEIGHT + 10);
-            p.text(`${upperBound.toFixed(3)}`, x + BAR_WIDTH / 2, y + BAR_HEIGHT + 22);
-        }
+        //     p.textAlign(p.CENTER);
+        //     p.textSize(10);
+        //     p.fill(255);
+        //     p.text(`${lowerBound.toFixed(3)}`, x + BAR_WIDTH / 2, y + BAR_HEIGHT + 10);
+        //     p.text(`${upperBound.toFixed(3)}`, x + BAR_WIDTH / 2, y + BAR_HEIGHT + 21);
+        // }
     }
 
     function getGradientColor(t) {
