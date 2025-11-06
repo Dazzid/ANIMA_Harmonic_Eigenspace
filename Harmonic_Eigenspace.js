@@ -910,6 +910,16 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         }
     }
 
+    // Sort all data points by z-coordinate (gamma) once for proper depth perception in both modes
+    const sortedIndices = Array.from({ length: xData.length }, (_, i) => i)
+        .sort((a, b) => zData[a] - zData[b]);
+
+    // Create sorted arrays (keep originals intact)
+    const sortedXData = sortedIndices.map(i => xData[i]);
+    const sortedYData = sortedIndices.map(i => yData[i]);
+    const sortedZData = sortedIndices.map(i => zData[i]);
+    const sortedDData = sortedIndices.map(i => dData[i]);
+
     // Compute percentile bounds from the sampled scalar values (TypedArrays don't flatten with flat())
     const vmin = percentile(dData, 5);
     const vmax = percentile(dData, 95);
@@ -1018,11 +1028,12 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         const upperBound = threshold + windowSize / 2;
         const minSpacing = 0.0;
 
-        for (let j = 0; j < xData.length; j++) {
-            if (dData[j] >= lowerBound && dData[j] <= upperBound) {
-                const alpha = xData[j];
-                const beta = yData[j];
-                const gamma = zData[j];
+        // Data is already sorted by z-coordinate, so filtering preserves depth order
+        for (let j = 0; j < sortedXData.length; j++) {
+            if (sortedDData[j] >= lowerBound && sortedDData[j] <= upperBound) {
+                const alpha = sortedXData[j];
+                const beta = sortedYData[j];
+                const gamma = sortedZData[j];
 
                 if ((alpha - 1.0) < minSpacing ||
                     (beta - alpha) < minSpacing ||
@@ -1033,7 +1044,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 layerX.push(alpha);
                 layerY.push(beta);
                 layerZ.push(gamma);
-                layerD.push(dData[j]);
+                layerD.push(sortedDData[j]);
             }
         }
 

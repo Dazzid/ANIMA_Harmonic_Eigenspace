@@ -8,7 +8,6 @@ const ENABLE_DISTANCE_LINES = false; // Set to false to disable line rendering f
 let globalDissonanceData = null;
 let currentBaseFreq = 220.0;
 let cachedHarmonicNodes = null; // Cache node positions (in ratio space)
-let cachedSortedLayers = null; // Cache sorted layer data to avoid re-sorting on slider changes
 let visualizationMode = 'sectioned'; // 'sectioned' or 'full3d'
 
 const zoneSize = 3.0;
@@ -911,6 +910,16 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         }
     }
 
+    // Sort all data points by z-coordinate (gamma) once for proper depth perception in both modes
+    const sortedIndices = Array.from({ length: xData.length }, (_, i) => i)
+        .sort((a, b) => zData[a] - zData[b]);
+    
+    // Create sorted arrays (keep originals intact)
+    const sortedXData = sortedIndices.map(i => xData[i]);
+    const sortedYData = sortedIndices.map(i => yData[i]);
+    const sortedZData = sortedIndices.map(i => zData[i]);
+    const sortedDData = sortedIndices.map(i => dData[i]);
+
     // Compute percentile bounds from the sampled scalar values (TypedArrays don't flatten with flat())
     const vmin = percentile(dData, 5);
     const vmax = percentile(dData, 95);
@@ -1011,73 +1020,35 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     const tracesPerLayer = ENABLE_DISTANCE_LINES ? 2 : 1;
 
     // ========== CREATE SECTIONED LAYER TRACES ==========
-    
-    // Cache sorted layer data to improve slider performance
-    if (cachedSortedLayers === null) {
-        console.log('Computing and caching sorted layer data...');
-        cachedSortedLayers = [];
-        
-        for (let i = 0; i < numLayers; i++) {
-            const threshold = thresholds[i];
-            const layerX = [], layerY = [], layerZ = [], layerD = [];
-
-            const lowerBound = threshold - windowSize / 2;
-            const upperBound = threshold + windowSize / 2;
-            const minSpacing = 0.0;
-
-            for (let j = 0; j < xData.length; j++) {
-                if (dData[j] >= lowerBound && dData[j] <= upperBound) {
-                    const alpha = xData[j];
-                    const beta = yData[j];
-                    const gamma = zData[j];
-
-                    if ((alpha - 1.0) < minSpacing ||
-                        (beta - alpha) < minSpacing ||
-                        (gamma - beta) < minSpacing) {
-                        continue;
-                    }
-
-                    layerX.push(alpha);
-                    layerY.push(beta);
-                    layerZ.push(gamma);
-                    layerD.push(dData[j]);
-                }
-            }
-
-            if (layerX.length === 0) {
-                cachedSortedLayers[i] = null;
-                continue;
-            }
-
-            // Sort layer points by z-coordinate (gamma) for proper depth perception
-            const layerPoints = layerX.map((x, idx) => ({
-                x: x,
-                y: layerY[idx],
-                z: layerZ[idx],
-                d: layerD[idx]
-            })).sort((a, b) => a.z - b.z); // Low z-values rendered first (appear behind when viewed from top)
-
-            // Cache the sorted arrays
-            cachedSortedLayers[i] = {
-                x: layerPoints.map(p => p.x),
-                y: layerPoints.map(p => p.y),
-                z: layerPoints.map(p => p.z),
-                d: layerPoints.map(p => p.d),
-                threshold: threshold,
-                windowSize: windowSize
-            };
-        }
-    }
-
-    // Use cached sorted layer data
     for (let i = 0; i < numLayers; i++) {
-        const cachedLayer = cachedSortedLayers[i];
-        if (!cachedLayer) continue;
+        const threshold = thresholds[i];
+        const layerX = [], layerY = [], layerZ = [], layerD = [];
 
-        const sortedLayerX = cachedLayer.x;
-        const sortedLayerY = cachedLayer.y;
-        const sortedLayerZ = cachedLayer.z;
-        const sortedLayerD = cachedLayer.d;
+        const lowerBound = threshold - windowSize / 2;
+        const upperBound = threshold + windowSize / 2;
+        const minSpacing = 0.0;
+
+        // Data is already sorted by z-coordinate, so filtering preserves depth order
+        for (let j = 0; j < sortedXData.length; j++) {
+            if (sortedDData[j] >= lowerBound && sortedDData[j] <= upperBound) {
+                const alpha = sortedXData[j];
+                const beta = sortedYData[j];
+                const gamma = sortedZData[j];
+
+                if ((alpha - 1.0) < minSpacing ||
+                    (beta - alpha) < minSpacing ||
+                    (gamma - beta) < minSpacing) {
+                    continue;
+                }
+
+                layerX.push(alpha);
+                layerY.push(beta);
+                layerZ.push(gamma);
+                layerD.push(sortedDData[j]);
+            }
+        }
+
+        if (layerX.length === 0) continue;
 
         // CONDITIONAL: Create lines only if ENABLE_DISTANCE_LINES is true
         if (ENABLE_DISTANCE_LINES) {
@@ -1086,14 +1057,14 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             const maxDistance = 0.02;
             const maxConnectionsPerPoint = 6;
 
-            for (let p = 0; p < sortedLayerX.length; p++) {
+            for (let p = 0; p < layerX.length; p++) {
                 const neighbors = [];
-                for (let q = 0; q < sortedLayerX.length; q++) {
+                for (let q = 0; q < layerX.length; q++) {
                     if (p === q) continue;
                     const dist = Math.sqrt(
-                        Math.pow(sortedLayerX[p] - sortedLayerX[q], 2) +
-                        Math.pow(sortedLayerY[p] - sortedLayerY[q], 2) +
-                        Math.pow(sortedLayerZ[p] - sortedLayerZ[q], 2)
+                        Math.pow(layerX[p] - layerX[q], 2) +
+                        Math.pow(layerY[p] - layerY[q], 2) +
+                        Math.pow(layerZ[p] - layerZ[q], 2)
                     );
                     if (dist < maxDistance) {
                         neighbors.push({ q, dist });
@@ -1102,10 +1073,10 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
                 neighbors.sort((a, b) => a.dist - b.dist);
                 neighbors.slice(0, maxConnectionsPerPoint).forEach(n => {
-                    const avgDiss = (sortedLayerD[p] + sortedLayerD[n.q]) / 2;
-                    lineX.push(sortedLayerX[p], sortedLayerX[n.q], null);
-                    lineY.push(sortedLayerY[p], sortedLayerY[n.q], null);
-                    lineZ.push(sortedLayerZ[p], sortedLayerZ[n.q], null);
+                    const avgDiss = (layerD[p] + layerD[n.q]) / 2;
+                    lineX.push(layerX[p], layerX[n.q], null);
+                    lineY.push(layerY[p], layerY[n.q], null);
+                    lineZ.push(layerZ[p], layerZ[n.q], null);
                     lineColors.push(avgDiss, avgDiss, avgDiss);
                 });
             }
@@ -1136,20 +1107,20 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         traces.push({
             type: 'scatter3d',
             mode: 'markers',
-            x: sortedLayerX,
-            y: sortedLayerY,
-            z: sortedLayerZ,
+            x: layerX,
+            y: layerY,
+            z: layerZ,
             marker: {
                 symbol: 'pentagon', //circle , square , diamond , cross , x , triangle , pentagon , hexagram , star , hourglass , bowtie , asterisk , hash , y , and line
                 size: zoneSize,
-                color: sortedLayerD,
+                color: layerD,
                 colorscale: myColor,
                 cmin: vmin,
                 cmax: vmax,
                 showscale: false,  // Hide Plotly colorbar - we use P5 instead
                 opacity: 0.25
             },
-            name: `${(cachedLayer.threshold - cachedLayer.windowSize / 2).toFixed(3)} - ${(cachedLayer.threshold + cachedLayer.windowSize / 2).toFixed(3)}`,
+            name: `${(threshold - windowSize / 2).toFixed(3)} - ${(threshold + windowSize / 2).toFixed(3)}`,
             visible: i === 0, // Only first layer visible
             hovertemplate: '<span style="font-family:monaco">' +
                 '<b>Ratios</b><br>' +
