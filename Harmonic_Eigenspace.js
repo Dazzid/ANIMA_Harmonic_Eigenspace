@@ -1013,9 +1013,9 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             'γ = %{z:.4f}' +
             '</span><extra></extra>'
     });
-
+    // Gaussian curve point distribution
     let numLayers = 200;
-    let windowSize = (vmax - vmin) / 25;
+    let windowSize = (vmax - vmin) / 33;
     let thresholds = linspace(vmin, vmax, numLayers);
     const tracesPerLayer = ENABLE_DISTANCE_LINES ? 2 : 1;
 
