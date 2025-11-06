@@ -69,20 +69,14 @@ class InfoOverlay {
                     <p>
                         What you see is a <strong>3D visualization</strong> of tetrachord dissonance relationships. Each axis represents 
                         the interaction of <strong>6 first harmonics</strong> at different frequency ratios, computed using 
-                        the <em>Plomp-Levelt</em> roughness model from Sethares' <a href="https://sethares.engr.wisc.edu/ttss.html" target="_blank"><em>Tuning, Timbre, Spectrum, Scale</em> [1]</a>.
+                        the <em>Plomp-Levelt</em> [1] roughness model from Sethares' <a href="https://sethares.engr.wisc.edu/ttss.html" target="_blank"><em>Tuning, Timbre, Spectrum, Scale</em> [2]</a>.
                         The visualization maps dissonance values across all possible combinations of the three frequency ratios, creating a 3D landscape of psychoacoustic roughness.
                     </p>
                     <p>
                         The color scale reveals <strong>intersection zones</strong> where harmonic interactions create varying 
                         dissonance levels: blue regions indicate low dissonance (consonance), 
                         white areas show moderate roughness, and red zones represent high dissonance.
-                    </p>
-                    <p>
-                        Like Helmholtz's roughness curves and Plomp-Levelt's [2] consonance curves, this dissonance map shows 
-                        that <strong>familiar musical intervals occur near local-minima</strong>, where multiple 
-                        harmonic series align with minimal beating between partials.
-                    </p>
-                    
+                    </p>    
                     <div class="eigenspace-image">
                         <img src="figures/EigenSpace.png" alt="Harmonic Eigenspace Visualization" />
                         <p class="image-caption">Dissonance landscape showing consonant valleys where harmonic series align</p>
@@ -114,9 +108,8 @@ class InfoOverlay {
                     These bounds emerge from psychoacoustic constants; a mathematical structure of the human auditory perception as modeled by <a href="https://pubs.aip.org/asa/jasa/article-abstract/38/4/548/615274/Tonal-Consonance-and-Critical-Bandwidth" target="_blank">Plomp and Levelt</a>.
                     <br><br>
                     <h3>Reference:</h3>
-                    1) Sethares, William A. Tuning, timbre, spectrum, scale. London: Springer London, 2005.<br>
-                    2) Plomp, Reinier, and Willem Johannes Maria Levelt. "Tonal consonance and critical bandwidth." The journal of the Acoustical Society of America 38.4 (1965): 548-560.<br>
-                    
+                    1) Plomp, Reinier, and Willem Johannes Maria Levelt. "Tonal consonance and critical bandwidth." The journal of the Acoustical Society of America 38.4 (1965): 548-560.<br>
+                    2) Sethares, William A. Tuning, timbre, spectrum, scale. London: Springer London, 2005.<br>
                 </div>
             </div>
 
