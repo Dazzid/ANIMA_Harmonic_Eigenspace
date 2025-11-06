@@ -8,6 +8,7 @@ const ENABLE_DISTANCE_LINES = false; // Set to false to disable line rendering f
 let globalDissonanceData = null;
 let currentBaseFreq = 220.0;
 let cachedHarmonicNodes = null; // Cache node positions (in ratio space)
+let cachedSortedLayers = null; // Cache sorted layer data to avoid re-sorting on slider changes
 let visualizationMode = 'sectioned'; // 'sectioned' or 'full3d'
 
 const zoneSize = 3.0;
@@ -1010,48 +1011,73 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     const tracesPerLayer = ENABLE_DISTANCE_LINES ? 2 : 1;
 
     // ========== CREATE SECTIONED LAYER TRACES ==========
-    for (let i = 0; i < numLayers; i++) {
-        const threshold = thresholds[i];
-        const layerX = [], layerY = [], layerZ = [], layerD = [];
+    
+    // Cache sorted layer data to improve slider performance
+    if (cachedSortedLayers === null) {
+        console.log('Computing and caching sorted layer data...');
+        cachedSortedLayers = [];
+        
+        for (let i = 0; i < numLayers; i++) {
+            const threshold = thresholds[i];
+            const layerX = [], layerY = [], layerZ = [], layerD = [];
 
-        const lowerBound = threshold - windowSize / 2;
-        const upperBound = threshold + windowSize / 2;
-        const minSpacing = 0.0;
+            const lowerBound = threshold - windowSize / 2;
+            const upperBound = threshold + windowSize / 2;
+            const minSpacing = 0.0;
 
-        for (let j = 0; j < xData.length; j++) {
-            if (dData[j] >= lowerBound && dData[j] <= upperBound) {
-                const alpha = xData[j];
-                const beta = yData[j];
-                const gamma = zData[j];
+            for (let j = 0; j < xData.length; j++) {
+                if (dData[j] >= lowerBound && dData[j] <= upperBound) {
+                    const alpha = xData[j];
+                    const beta = yData[j];
+                    const gamma = zData[j];
 
-                if ((alpha - 1.0) < minSpacing ||
-                    (beta - alpha) < minSpacing ||
-                    (gamma - beta) < minSpacing) {
-                    continue;
+                    if ((alpha - 1.0) < minSpacing ||
+                        (beta - alpha) < minSpacing ||
+                        (gamma - beta) < minSpacing) {
+                        continue;
+                    }
+
+                    layerX.push(alpha);
+                    layerY.push(beta);
+                    layerZ.push(gamma);
+                    layerD.push(dData[j]);
                 }
-
-                layerX.push(alpha);
-                layerY.push(beta);
-                layerZ.push(gamma);
-                layerD.push(dData[j]);
             }
+
+            if (layerX.length === 0) {
+                cachedSortedLayers[i] = null;
+                continue;
+            }
+
+            // Sort layer points by z-coordinate (gamma) for proper depth perception
+            const layerPoints = layerX.map((x, idx) => ({
+                x: x,
+                y: layerY[idx],
+                z: layerZ[idx],
+                d: layerD[idx]
+            })).sort((a, b) => a.z - b.z); // Low z-values rendered first (appear behind when viewed from top)
+
+            // Cache the sorted arrays
+            cachedSortedLayers[i] = {
+                x: layerPoints.map(p => p.x),
+                y: layerPoints.map(p => p.y),
+                z: layerPoints.map(p => p.z),
+                d: layerPoints.map(p => p.d),
+                threshold: threshold,
+                windowSize: windowSize
+            };
         }
+    }
 
-        if (layerX.length === 0) continue;
+    // Use cached sorted layer data
+    for (let i = 0; i < numLayers; i++) {
+        const cachedLayer = cachedSortedLayers[i];
+        if (!cachedLayer) continue;
 
-        // Sort layer points by z-coordinate (gamma) for proper depth perception
-        const layerPoints = layerX.map((x, idx) => ({
-            x: x,
-            y: layerY[idx],
-            z: layerZ[idx],
-            d: layerD[idx]
-        })).sort((a, b) => a.z - b.z); // Low z-values rendered first (appear behind when viewed from top)
-
-        // Extract sorted arrays
-        const sortedLayerX = layerPoints.map(p => p.x);
-        const sortedLayerY = layerPoints.map(p => p.y);
-        const sortedLayerZ = layerPoints.map(p => p.z);
-        const sortedLayerD = layerPoints.map(p => p.d);
+        const sortedLayerX = cachedLayer.x;
+        const sortedLayerY = cachedLayer.y;
+        const sortedLayerZ = cachedLayer.z;
+        const sortedLayerD = cachedLayer.d;
 
         // CONDITIONAL: Create lines only if ENABLE_DISTANCE_LINES is true
         if (ENABLE_DISTANCE_LINES) {
@@ -1123,7 +1149,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 showscale: false,  // Hide Plotly colorbar - we use P5 instead
                 opacity: 0.25
             },
-            name: `${(threshold - windowSize / 2).toFixed(3)} - ${(threshold + windowSize / 2).toFixed(3)}`,
+            name: `${(cachedLayer.threshold - cachedLayer.windowSize / 2).toFixed(3)} - ${(cachedLayer.threshold + cachedLayer.windowSize / 2).toFixed(3)}`,
             visible: i === 0, // Only first layer visible
             hovertemplate: '<span style="font-family:monaco">' +
                 '<b>Ratios</b><br>' +

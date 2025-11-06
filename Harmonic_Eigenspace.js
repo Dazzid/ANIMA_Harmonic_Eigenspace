@@ -1039,20 +1039,6 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
         if (layerX.length === 0) continue;
 
-        // Sort layer points by z-coordinate (gamma) for proper depth perception
-        const layerPoints = layerX.map((x, idx) => ({
-            x: x,
-            y: layerY[idx],
-            z: layerZ[idx],
-            d: layerD[idx]
-        })).sort((a, b) => a.z - b.z); // Low z-values rendered first (appear behind when viewed from top)
-
-        // Extract sorted arrays
-        const sortedLayerX = layerPoints.map(p => p.x);
-        const sortedLayerY = layerPoints.map(p => p.y);
-        const sortedLayerZ = layerPoints.map(p => p.z);
-        const sortedLayerD = layerPoints.map(p => p.d);
-
         // CONDITIONAL: Create lines only if ENABLE_DISTANCE_LINES is true
         if (ENABLE_DISTANCE_LINES) {
             const lineX = [], lineY = [], lineZ = [];
@@ -1060,14 +1046,14 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             const maxDistance = 0.02;
             const maxConnectionsPerPoint = 6;
 
-            for (let p = 0; p < sortedLayerX.length; p++) {
+            for (let p = 0; p < layerX.length; p++) {
                 const neighbors = [];
-                for (let q = 0; q < sortedLayerX.length; q++) {
+                for (let q = 0; q < layerX.length; q++) {
                     if (p === q) continue;
                     const dist = Math.sqrt(
-                        Math.pow(sortedLayerX[p] - sortedLayerX[q], 2) +
-                        Math.pow(sortedLayerY[p] - sortedLayerY[q], 2) +
-                        Math.pow(sortedLayerZ[p] - sortedLayerZ[q], 2)
+                        Math.pow(layerX[p] - layerX[q], 2) +
+                        Math.pow(layerY[p] - layerY[q], 2) +
+                        Math.pow(layerZ[p] - layerZ[q], 2)
                     );
                     if (dist < maxDistance) {
                         neighbors.push({ q, dist });
@@ -1076,10 +1062,10 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
                 neighbors.sort((a, b) => a.dist - b.dist);
                 neighbors.slice(0, maxConnectionsPerPoint).forEach(n => {
-                    const avgDiss = (sortedLayerD[p] + sortedLayerD[n.q]) / 2;
-                    lineX.push(sortedLayerX[p], sortedLayerX[n.q], null);
-                    lineY.push(sortedLayerY[p], sortedLayerY[n.q], null);
-                    lineZ.push(sortedLayerZ[p], sortedLayerZ[n.q], null);
+                    const avgDiss = (layerD[p] + layerD[n.q]) / 2;
+                    lineX.push(layerX[p], layerX[n.q], null);
+                    lineY.push(layerY[p], layerY[n.q], null);
+                    lineZ.push(layerZ[p], layerZ[n.q], null);
                     lineColors.push(avgDiss, avgDiss, avgDiss);
                 });
             }
@@ -1110,13 +1096,13 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         traces.push({
             type: 'scatter3d',
             mode: 'markers',
-            x: sortedLayerX,
-            y: sortedLayerY,
-            z: sortedLayerZ,
+            x: layerX,
+            y: layerY,
+            z: layerZ,
             marker: {
                 symbol: 'pentagon', //circle , square , diamond , cross , x , triangle , pentagon , hexagram , star , hourglass , bowtie , asterisk , hash , y , and line
                 size: zoneSize,
-                color: sortedLayerD,
+                color: layerD,
                 colorscale: myColor,
                 cmin: vmin,
                 cmax: vmax,
