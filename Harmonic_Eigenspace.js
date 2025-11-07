@@ -341,17 +341,18 @@ function get12TETChordPositions() {
     const r = get12tetRatio;
     // Standard voicings (within one octave)
     chords.push(
-        ["Maj7", r(4), r(7), r(11)],
+        ["maj7", r(4), r(7), r(11)],
         ["min7", r(3), r(7), r(10)],
-        ["Dom7", r(4), r(7), r(10)],
-        ["Half-Dim7", r(3), r(6), r(10)],
-        ["Dim7", r(3), r(6), r(9)],
-        ["minMaj7", r(3), r(7), r(11)],
+        ["dom7", r(4), r(7), r(10)],
+        ["ø7", r(3), r(6), r(10)],
+        ["o7", r(3), r(6), r(9)],
+        ["minmaj7", r(3), r(7), r(11)],
         ["7sus2", r(2), r(7), r(10)],
         ["7sus4", r(5), r(7), r(10)],
-        ["Maj6", r(4), r(7), r(9)],
+        ["maj6", r(4), r(7), r(9)],
         ["min6", r(3), r(7), r(9)],
         ["power", r(5), r(7), r(12)],
+        ["sus2", r(2), r(5), r(7)],
         // ["iim7", r(2), r(5), r(12)]
     );
     return chords;
@@ -578,8 +579,6 @@ function get53TETChordPositions() {
         ["m7", r(13), r(31), r(44)],
         ["mvm7", r(13), r(31), r(43)],
         ["msm7", r(13), r(31), r(42)],
-        ["m7*", r(13), r(30), r(44)],  // downperfect fifth
-        ["m7**", r(13), r(32), r(44)]  // upperfect fifth
     );
 
     // Down-minor combinations
@@ -612,92 +611,87 @@ function get53TETChordPositions() {
 
     // Half diminished upminor combinations
     chords.push(
-        ["øSM7", r(14), r(30), r(51)],
-        ["ø^M7", r(14), r(30), r(50)],
-        ["ømaj7", r(14), r(30), r(49)],
-        ["øvM7", r(14), r(30), r(48)],
-        ["øN7", r(14), r(30), r(47)],
-        ["øn7", r(14), r(30), r(46)],
-        ["ø^m7", r(14), r(30), r(45)],
-        ["ø7", r(14), r(30), r(44)],
-        ["øvm7", r(14), r(30), r(43)],
-        ["øsm7", r(14), r(30), r(42)]
+        ["øSM7", r(14), r(26), r(51)],
+        ["ø^M7", r(14), r(26), r(50)],
+        ["ømaj7", r(14), r(26), r(49)],
+        ["øvM7", r(14), r(26), r(48)],
+        ["øN7", r(14), r(26), r(47)],
+        ["øn7", r(14), r(26), r(46)],
+        ["ø^m7", r(14), r(26), r(45)],
+        ["ø7", r(14), r(26), r(44)],
+        ["øvm7", r(14), r(26), r(43)],
+        ["øsm7", r(14), r(26), r(42)]
     );
 
     // Half-Diminished minor combinations
     chords.push(
-        ["øS7", r(13), r(30), r(51)],
-        ["ø^M7-m", r(13), r(30), r(50)],
-        ["ømaj7-m", r(13), r(30), r(49)],
-        ["øvM7-m", r(13), r(30), r(48)],
-        ["øNM7", r(13), r(30), r(47)],
-        ["øn7-m", r(13), r(30), r(46)],
-        ["øv7", r(13), r(30), r(45)],
-        ["ø7-m", r(13), r(30), r(44)],
-        ["øvm7-m", r(13), r(30), r(43)],
-        ["øsm7-m", r(13), r(30), r(42)]
+        ["øS7", r(13), r(26), r(51)],
+        ["ø^M7-m", r(13), r(26), r(50)],
+        ["ømaj7-m", r(13), r(26), r(49)],
+        ["øvM7-m", r(13), r(26), r(48)],
+        ["øNM7", r(13), r(26), r(47)],
+        ["øn7-m", r(13), r(26), r(46)],
+        ["øv7", r(13), r(26), r(45)],
+        ["ø7-m", r(13), r(26), r(44)],
+        ["øvm7-m", r(13), r(26), r(43)],
+        ["øsm7-m", r(13), r(26), r(42)]
     );
 
     // Half Diminished downminor combinations
     chords.push(
-        ["vøS7", r(12), r(30), r(51)],
-        ["vø^M7", r(12), r(30), r(50)],
-        ["vømaj7", r(12), r(30), r(49)],
-        ["vøvM7", r(12), r(30), r(48)],
-        ["vøN7", r(12), r(30), r(47)],
-        ["vøn7", r(12), r(30), r(46)],
-        ["vø^m7", r(12), r(30), r(45)],
-        ["vø7", r(12), r(30), r(44)],
-        ["vøvm7", r(12), r(30), r(43)],
-        ["vøsm7", r(12), r(30), r(42)]
+        ["vøS7", r(12), r(26), r(51)],
+        ["vø^M7", r(12), r(26), r(50)],
+        ["vømaj7", r(12), r(26), r(49)],
+        ["vøvM7", r(12), r(26), r(48)],
+        ["vøN7", r(12), r(26), r(47)],
+        ["vøn7", r(12), r(26), r(46)],
+        ["vø^m7", r(12), r(26), r(45)],
+        ["vø7", r(12), r(26), r(44)],
+        ["vøvm7", r(12), r(26), r(43)],
+        ["vøsm7", r(12), r(26), r(42)]
     );
 
     // Half Diminished subminor combinations
     chords.push(
-        ["søS7", r(11), r(30), r(51)],
-        ["sø^M7", r(11), r(30), r(50)],
-        ["sømaj7", r(11), r(30), r(49)],
-        ["søvM7", r(11), r(30), r(48)],
-        ["søN7", r(11), r(30), r(47)],
-        ["søn7", r(11), r(30), r(46)],
-        ["sø^m7", r(11), r(30), r(45)],
-        ["sø7", r(11), r(30), r(44)],
-        ["søvm7", r(11), r(30), r(43)],
-        ["søsm7", r(11), r(30), r(42)]
-    );
-
-    // Full diminished
-    chords.push(
-        ["o^7", r(13), r(30), r(45)],   // minor_diminished_updiminished
-        ["o7", r(13), r(30), r(42)],    // minor_diminished_diminished
-        ["ov7", r(13), r(30), r(43)],   // minor_diminished_downdiminished
-        ["ovv7", r(13), r(30), r(41)]   // minor_diminished_subdiminished
+        ["søS7", r(11), r(26), r(51)],
+        ["sø^M7", r(11), r(26), r(50)],
+        ["sømaj7", r(11), r(26), r(49)],
+        ["søvM7", r(11), r(26), r(48)],
+        ["søN7", r(11), r(26), r(47)],
+        ["søn7", r(11), r(26), r(46)],
+        ["sø^m7", r(11), r(26), r(45)],
+        ["sø7", r(11), r(26), r(44)],
+        ["søvm7", r(11), r(26), r(43)],
+        ["søsm7", r(11), r(26), r(42)]
     );
 
     // Augmented combinations
     chords.push(
-        ["M+S7", r(18), r(32), r(51)],
-        ["M+^M7", r(18), r(32), r(50)],
-        ["M+maj7", r(18), r(32), r(49)],
-        ["M+vM7", r(18), r(32), r(48)],
-        ["M+NM7", r(18), r(32), r(47)],
-        ["M+N7", r(18), r(32), r(46)],
-        ["M+n7", r(18), r(32), r(46)],
-        ["M+m7", r(18), r(32), r(44)],
-        ["M+vm7", r(18), r(32), r(43)],
-        ["M+sm7", r(18), r(32), r(42)]
-    );
-
-    // Special downperfect ones
-    chords.push(
-        ["vMvM*", r(17), r(30), r(48)],     // downmajor_downperfect_downmajor
-        ["Nøvm", r(16), r(30), r(43)],      // neutralmajor_diminished_downminor
-        ["nøN", r(15), r(30), r(47)]        // neutralminor_diminished_neutralmajor
+        ["M+S7", r(18), r(35), r(51)],
+        ["M+^M7", r(18), r(35), r(50)],
+        ["M+maj7", r(18), r(35), r(49)],
+        ["M+vM7", r(18), r(35), r(48)],
+        ["M+NM7", r(18), r(35), r(47)],
+        ["M+N7", r(18), r(35), r(46)],
+        ["M+n7", r(18), r(35), r(45)],
+        ["M+m7", r(18), r(35), r(44)],
+        ["M+vm7", r(18), r(35), r(43)],
+        ["M+sm7", r(18), r(35), r(42)]
     );
 
     chords.push(
-        ["7Sus4", r(22), r(31), r(44)],
-    )
+        ["7sus4", r(22), r(31), r(44)],
+        ["sus2", r(9), r(22), r(31)]
+    );
+
+    // //Dominant # 4th chords
+    // chords.push(
+    //     ["Mn7#4", r(18), r(35), r(46)],
+    //     ["M^7#4", r(18), r(35), r(45)],
+    //     ["M7#4", r(18), r(35), r(44)],
+    //     ["Mv7#4", r(18), r(35), r(43)],
+    //     ["Mvv7#4", r(18), r(35), r(42)],
+    // );
 
     return chords;
 }
@@ -1013,6 +1007,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             'γ = %{z:.4f}' +
             '</span><extra></extra>'
     });
+
     // Gaussian curve point distribution
     let numLayers = 200;
     let windowSize = (vmax - vmin) / 50;
@@ -1165,7 +1160,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             text: nodes.map((_, i) => String(i + 1)),
             textposition: 'middle center',
             textfont: { size: localMinSize - 1, color: 'rgba(41, 41, 41, 1)', font: 'monaco' },
-            name: 'Harmonic Nodes',
+            name: 'Local-minima',
             visible: true,
             hovertemplate: '<span style="font-family:monaco">' +
                 '<b>Node %{text}</b><br>' +
