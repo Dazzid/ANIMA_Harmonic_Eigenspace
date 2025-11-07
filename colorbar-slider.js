@@ -6,9 +6,9 @@
 const colorbarSketch = (p) => {
     // Dimensions (responsive to screen size)
     const BAR_WIDTH = 50;
-    const BAR_HEIGHT = window.innerHeight * 0.5;  // 50% of screen height
+    let BAR_HEIGHT = window.innerHeight * 0.5;  // 50% of screen height
     const CANVAS_WIDTH = 120;
-    const CANVAS_HEIGHT = window.innerHeight * 0.55;  // 55% of screen height
+    let CANVAS_HEIGHT = window.innerHeight * 0.55;  // 55% of screen height
     const PADDING = 35;
 
     // Slider state
@@ -227,6 +227,16 @@ const colorbarSketch = (p) => {
     // Public API to get current step
     p.getCurrentStep = function () {
         return currentStep;
+    };
+
+    // Handle window resize
+    p.windowResized = function () {
+        // Update dimensions based on new window size
+        BAR_HEIGHT = window.innerHeight * 0.5;
+        CANVAS_HEIGHT = window.innerHeight * 0.55;
+        
+        // Resize the canvas
+        p.resizeCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
     };
 };
 

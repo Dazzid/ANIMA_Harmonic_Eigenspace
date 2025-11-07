@@ -41,8 +41,8 @@ class ChordVisualization {
         this.round = 20;
 
         this.textColor = 'rgba(222, 222, 222, 1)';
-
-        this.backgroundPiano = 'rgba(50, 50, 50, 1)';
+        this.whiteKeysPiano = 'rgba(61, 61, 61, 1)';
+        this.lineColors = 'rgba(119, 119, 119, 0.5)';
 
         // Note names for reference
         this.noteFreqs = [
@@ -124,7 +124,7 @@ class ChordVisualization {
     //----------------------------------------------------------------------------------------
     drawSpectrumBackground(p) {
         // Background area with rounded corners
-        p.fill(this.backgroundPiano); // Darker black background
+        p.fill(this.whiteKeysPiano); // Darker black background
         p.stroke(60, 60, 60); // Dark gray border
         p.strokeWeight(1);
         const bgX = this.spectrumX;
@@ -182,14 +182,14 @@ class ChordVisualization {
                     p.fill(20); // Dark gray for black keys
                     p.rect(bgX + 5, Math.min(y1, y2) + rectHeight * 0.5, bgWidth * 0.5, rectHeight, 5);
                 } else {
-                    p.fill(this.backgroundPiano); // Light gray for white keys
+                    p.fill(this.whiteKeysPiano); // Light gray for white keys
                     p.rect(bgX + 5, Math.min(y1, y2) + rectHeight * 0.5, bgWidth - 10, rectHeight, 5);
                 }                
             }
         }
 
         // Draw thin gray lines for all 12-TET notes to show deviation
-        p.stroke(120, 50); // Light gray lines
+        p.stroke(this.lineColors); // Light gray lines
         p.strokeWeight(1);
         
         // All chromatic notes from C3 to C5 (extended range)
