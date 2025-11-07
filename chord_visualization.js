@@ -41,8 +41,8 @@ class ChordVisualization {
         this.round = 20;
 
         this.textColor = 'rgba(222, 222, 222, 1)';
-        this.whiteKeysPiano = 'rgba(61, 61, 61, 1)';
-        this.lineColors = 'rgba(119, 119, 119, 0.5)';
+        this.whiteKeysPiano = 'rgba(50, 50, 50, 1)';
+        this.lineColors = 'rgba(74, 74, 74, 0.5)';
 
         // Note names for reference
         this.noteFreqs = [
@@ -394,6 +394,8 @@ class ChordVisualization {
         if (amplitude > 0.3 && barWidth > 10) {
             p.fill(baseColor[0], baseColor[1], baseColor[2], 255);
             p.textAlign(p.LEFT);
+            p.strokeWeight(2);
+            p.stroke(0, 180);
             p.textSize(11);
             
             // Check if this voice is doubled
@@ -446,9 +448,10 @@ class ChordVisualization {
                 p.noStroke();
                 p.fill(labels[i].color[0], labels[i].color[1], labels[i].color[2], 255);
             } else {
-                p.fill(100, 100, 100, 100); 
+                p.fill(0, 0, 0); 
                 p.stroke(labels[i].color[0], labels[i].color[1], labels[i].color[2], 255);
             }
+            p.strokeWeight(1);
             p.rect(buttonX, buttonY, buttonW, buttonH, 2);
             
             // Button text
