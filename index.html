@@ -12,9 +12,6 @@
     <div id="container">
         <div id="header">
             <h1>Harmonic Eigenspace</h1>
-            <button id="viz-mode-toggle">
-                Switch to Full 3D View
-            </button>
         </div>
 
         <div id="progress-container" style="display:none;">
@@ -22,11 +19,16 @@
             <div id="progress-text">Computing: 0%</div>
         </div>
         <div id="audio-gui-container"></div>
-        <div id="chord-visualization-container" style="position: fixed; bottom: 10px; left: 10px; z-index: 100;"></div>
+        <div id="chord-visualization-container"></div>
         <div id="colorbar-container"></div>
         <div id="plot"></div>
         <div id="click-output">Computing visualization...</div>
     </div>
+
+    <!-- Fixed positioned buttons -->
+    <button id="viz-mode-toggle">
+        Switch to Full 3D View
+    </button>
 
     <!-- Your existing scripts -->
     <script src="binary-loader.js"></script>

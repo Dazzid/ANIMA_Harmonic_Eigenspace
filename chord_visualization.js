@@ -26,6 +26,8 @@ class ChordVisualization {
         this.targetFreqs = [];
         this.rootFreq = 220.0; // A3 default
 
+        this.bgColor = 'rgba(23, 23, 23, 1)';
+
         // Frequency doubling flags for each voice
         this.doublingFlags = {
             R: false,    // Root
@@ -92,7 +94,7 @@ class ChordVisualization {
     draw(p) {
         // Dark background
         p.noStroke();
-        p.fill(25);
+        p.fill(this.bgColor);
         p.rect(0, 0, this.W, this.H, this.round);
 
         // Draw title

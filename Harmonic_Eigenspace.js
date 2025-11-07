@@ -145,7 +145,7 @@ let audioParams = {
     release: 0.3,
     attackLevel: 1.0,    // peak amplitude after attack
     sustainLevel: 0.7,    // sustain amplitude level
-    dryWet: 0.5
+    dryWet: 0.25
 };
 
 // Create reverb impulse response

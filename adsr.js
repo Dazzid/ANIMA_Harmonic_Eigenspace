@@ -3,12 +3,14 @@
 // ============================================================================
 
 const W = 350;
-const H = 320;
+const H = 280;
 const padding = 10;
 
 // ADSR Section
 const adsrTop = 120;
-const adsrHeight = 180;
+const adsrHeight = 140;
+
+let bgColor = 'rgba(23, 23, 23, 1)';
 
 const round = 20;
 
@@ -22,8 +24,8 @@ let buttons = [];
 // ADSR envelope points
 let adsrPoints = [
     { x: padding, y: H, label: 'Start', draggable: false },  // NEW - at true bottom
-    { x: 55, y: 175, label: 'A', draggable: true },
-    { x: 270, y: 320, label: 'S', draggable: true },
+    { x: 60, y: 60, label: 'A', draggable: true },
+    { x: 200, y: 280, label: 'S', draggable: true },
     { x: W - padding, y: H, label: 'End', draggable: false }  // NEW - at true bottom
 ];
 
@@ -31,7 +33,7 @@ let draggingPoint = null;
 
 let dryWetKnob = {
     x: W - 80,
-    y: 65,
+    y: 55,
     radius: 25,
     dragging: false
 };
@@ -66,7 +68,7 @@ function setup() {
 
 // ------------------------------------------------------------
 function draw() {
-    fill(25);
+    fill(bgColor);
     rect(0, 0, W, H, round);
 
     drawWaveTypeButtons();
@@ -217,20 +219,23 @@ function drawKnob() {
     textSize(12);
     text('Dry/Wet', knobX, knobY - knobR - 10);
 
-    fill(15);
+    fill(10);
     stroke(60);
     strokeWeight(3);
     circle(knobX, knobY, knobR * 2);
 
     // FILLED ARC showing value
-    const startAngle = -PI * 0.75 - HALF_PI;
-    const endAngle = map(audioParams.dryWet, 0, 1, -PI * 0.75, PI * 0.75) - HALF_PI;
-    fill(0, 155, 255);
+    const percentage = 0.99;
+    const minAngle = -PI * percentage;
+    const maxAngle = PI * percentage;
+    const startAngle = minAngle - HALF_PI;
+    const endAngle = map(audioParams.dryWet, 0, 1, minAngle, maxAngle) - HALF_PI;
+    fill(0, 150, 255);
     noStroke();
     arc(knobX, knobY, knobR * 2, knobR * 2, startAngle, endAngle, PIE);
 
     // Indicator line (restore this!)
-    const angle = map(audioParams.dryWet, 0, 1, -PI * 0.75, PI * 0.75) - HALF_PI;
+    const angle = map(audioParams.dryWet, 0, 1, minAngle, maxAngle) - HALF_PI;
     stroke(255);
     strokeWeight(2);
     const indicatorX = knobX + cos(angle) * (knobR - 3);
