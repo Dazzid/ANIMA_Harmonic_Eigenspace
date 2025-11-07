@@ -1015,7 +1015,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     });
     // Gaussian curve point distribution
     let numLayers = 200;
-    let windowSize = (vmax - vmin) / 33;
+    let windowSize = (vmax - vmin) / 50;
     let thresholds = linspace(vmin, vmax, numLayers);
     const tracesPerLayer = ENABLE_DISTANCE_LINES ? 2 : 1;
 
@@ -1118,7 +1118,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 cmin: vmin,
                 cmax: vmax,
                 showscale: false,  // Hide Plotly colorbar - we use P5 instead
-                opacity: 0.25
+                opacity: 0.5
             },
             name: `${(threshold - windowSize / 2).toFixed(3)} - ${(threshold + windowSize / 2).toFixed(3)}`,
             visible: i === 0, // Only first layer visible
