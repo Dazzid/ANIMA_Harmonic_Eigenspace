@@ -211,18 +211,39 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
         setChordVisualization(alpha, beta, gamma, baseFreq);
     }
 
+    // Send MIDI/MPE output if controller is available and connected
+    if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
+        // Build frequency array: [root, alpha, beta, gamma]
+        const frequencies = [
+            baseFreq,
+            alpha * baseFreq,
+            beta * baseFreq,
+            gamma * baseFreq
+        ];
+
+        // Calculate dissonance for velocity mapping
+        const dissonance = calculateDissonanceAt(alpha, beta, gamma, baseFreq, 6);
+
+        // Send to MIDI
+        window.midiController.playChord(frequencies, dissonance);
+
+        // Schedule note-off after envelope duration
+        const totalDuration = (audioParams.attack + audioParams.sustain + audioParams.release) * 1000;
+        window.midiController.scheduleNoteOff(totalDuration + 100);
+    }
+
     const t = audioCtx.currentTime + 0.06; // Small delay to allow fadeout
     const harmonics = [1, 2, 3, 4, 5, 6];
     const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
 
     // Get doubling flags from chord visualization
-    const doublingFlags = typeof window.getDoublingFlags === 'function' ? 
+    const doublingFlags = typeof window.getDoublingFlags === 'function' ?
         window.getDoublingFlags() : { R: false, α: false, β: false, γ: false };
 
     // Apply frequency doubling based on flags
     const ratios = [1, alpha, beta, gamma];
     const labels = ['R', 'α', 'β', 'γ'];
-    
+
     for (let i = 0; i < ratios.length; i++) {
         const baseNoteFreq = baseFreq * ratios[i];
         const isDoubled = doublingFlags[labels[i]];
@@ -286,7 +307,7 @@ function createNote(freq, harmonics, amplitudes, startTime, isDoubled = false) {
         const length = attack + sustain + release;
         osc.start(startTime);
         osc.stop(startTime + length);
-        
+
         // Remove from tracking when it naturally ends
         osc.addEventListener('ended', () => {
             const index = currentlyPlaying.findIndex(item => item.oscillator === osc);
@@ -300,7 +321,7 @@ function createNote(freq, harmonics, amplitudes, startTime, isDoubled = false) {
 // Function to stop all currently playing audio
 function stopAllAudio() {
     const currentTime = audioCtx ? audioCtx.currentTime : 0;
-    
+
     for (let playingItem of currentlyPlaying) {
         try {
             // Quick fade out to avoid clicks
@@ -309,7 +330,7 @@ function stopAllAudio() {
                 playingItem.gainNode.gain.setValueAtTime(playingItem.gainNode.gain.value, currentTime);
                 playingItem.gainNode.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.05);
             }
-            
+
             // Stop oscillator after fade
             if (playingItem.oscillator) {
                 playingItem.oscillator.stop(currentTime + 0.05);
@@ -318,7 +339,7 @@ function stopAllAudio() {
             // Oscillator might already be stopped, ignore errors
         }
     }
-    
+
     // Clear the tracking array
     currentlyPlaying = [];
 }
@@ -907,7 +928,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     // Sort all data points by z-coordinate (gamma) once for proper depth perception in both modes
     const sortedIndices = Array.from({ length: xData.length }, (_, i) => i)
         .sort((a, b) => zData[a] - zData[b]);
-    
+
     // Create sorted arrays (keep originals intact)
     const sortedXData = sortedIndices.map(i => xData[i]);
     const sortedYData = sortedIndices.map(i => yData[i]);
@@ -971,7 +992,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     // Sort sampled data by z-coordinate (gamma) from low to high for proper depth perception from top view
     const sampledPoints = sampledX.map((x, i) => ({
         x: x,
-        y: sampledY[i], 
+        y: sampledY[i],
         z: sampledZ[i],
         d: sampledD[i]
     })).sort((a, b) => a.z - b.z); // Low z-values rendered first (appear behind when viewed from top)
@@ -1159,7 +1180,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             },
             text: nodes.map((_, i) => String(i + 1)),
             textposition: 'middle center',
-            textfont: { size: localMinSize-1, color: 'rgba(41, 41, 41, 1)', font: 'monaco' },
+            textfont: { size: localMinSize - 1, color: 'rgba(41, 41, 41, 1)', font: 'monaco' },
             name: 'Local-minima',
             visible: true,
             hovertemplate: '<span style="font-family:monaco">' +
@@ -1395,7 +1416,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             icon: Plotly.Icons.autoscale,
             attr: 'data-title',
             val: 'center',
-            click: function(gd) {
+            click: function (gd) {
                 const camera = {
                     center: { x: -0.2730976653225596, y: -0.02881156623103831, z: 0.33368750844216766 },
                     eye: { x: -0.27292369375114334, y: 0.32303500457365386, z: 0.3835990385131691 },
@@ -1433,21 +1454,21 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             function colorizeButton(btn, color, hoverColor = null) {
                 const svg = btn.querySelector('svg');
                 const paths = btn.querySelectorAll('path');
-                
+
                 if (svg && paths.length > 0) {
                     // Set the fill color directly on all path elements
                     paths.forEach(path => {
                         path.style.fill = color;
                         path.style.transition = 'all 0.2s ease';
                     });
-                    
+
                     // Add hover effects if specified
                     if (hoverColor) {
                         btn.addEventListener('mouseenter', () => {
                             paths.forEach(path => path.style.fill = hoverColor);
                             btn.style.transform = 'scale(1.05)';
                         });
-                        
+
                         btn.addEventListener('mouseleave', () => {
                             paths.forEach(path => path.style.fill = color);
                             btn.style.transform = 'scale(1)';
@@ -1455,12 +1476,12 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     }
                 }
             }
-            
+
             // Direct JavaScript reorganization of modebar
             function organizeModebar() {
                 const modebar = document.querySelector('.modebar');
                 if (!modebar) return;
-                
+
                 // Apply direct styles to modebar container
                 modebar.style.display = 'flex';
                 modebar.style.alignItems = 'center';
@@ -1468,7 +1489,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 modebar.style.padding = '6px 10px';
                 modebar.style.backgroundColor = 'rgba(0, 0, 0, 0.1)';
                 modebar.style.borderRadius = '6px';
-                
+
                 // Find all button groups
                 const groups = modebar.querySelectorAll('.modebar-group');
                 groups.forEach((group, index) => {
@@ -1476,7 +1497,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     group.style.display = 'flex';
                     group.style.alignItems = 'center';
                     group.style.gap = '3px';
-                    
+
                     // Add separator between groups (except last)
                     if (index < groups.length - 1) {
                         group.style.marginRight = '8px';
@@ -1485,10 +1506,10 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     }
                 });
             }
-            
+
             // Apply organization
             organizeModebar();
-            
+
             // Find and style all modebar buttons with unified theme and consistent sizing
             const buttons = document.querySelectorAll('.modebar-btn');
             buttons.forEach(btn => {
@@ -1502,17 +1523,17 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 btn.style.padding = '4px';
                 btn.style.borderRadius = '4px';
                 btn.style.transition = 'all 0.2s ease';
-                
+
                 // Standardize SVG size
                 const svg = btn.querySelector('svg');
                 if (svg) {
                     svg.style.width = '16px';
                     svg.style.height = '16px';
                 }
-                
+
                 // All buttons use the same color scheme for clean, unified look
                 colorizeButton(btn, '#1d96ffff', '#6ed1feff');
-                
+
                 // Add general hover background effect
                 btn.addEventListener('mouseenter', () => {
                     btn.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
@@ -1521,7 +1542,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     btn.style.backgroundColor = 'transparent';
                 });
             });
-            
+
             console.log(`Colored ${buttons.length} modebar buttons`);
         }, 200);
 
@@ -1733,9 +1754,9 @@ window.updateGlobalRoot = function (freq) {
 // Function to update chord with current doubling settings
 window.updateChordWithDoubling = function () {
     // Get the current playing frequencies from the chord visualization
-    const playbackFreqs = typeof window.getActualPlaybackFrequencies === 'function' ? 
+    const playbackFreqs = typeof window.getActualPlaybackFrequencies === 'function' ?
         window.getActualPlaybackFrequencies() : [];
-    
+
     if (playbackFreqs.length === 4) {
         // We have a complete chord playing, replay it with new doubling settings
         // Extract the ratios from the original frequencies
@@ -1743,10 +1764,10 @@ window.updateChordWithDoubling = function () {
         const alpha = playbackFreqs[1].originalFreq / rootFreq;
         const beta = playbackFreqs[2].originalFreq / rootFreq;
         const gamma = playbackFreqs[3].originalFreq / rootFreq;
-        
+
         // Play the chord with the updated doubling
         playChord(alpha, beta, gamma, currentBaseFreq);
-        
+
         // Update the display to show which frequencies are doubled
         updateFrequencyDisplay(alpha, beta, gamma, currentBaseFreq);
     }
@@ -1754,20 +1775,20 @@ window.updateChordWithDoubling = function () {
 
 // Function to update frequency display with doubling indicators
 function updateFrequencyDisplay(alpha, beta, gamma, baseFreq) {
-    const doublingFlags = typeof window.getDoublingFlags === 'function' ? 
+    const doublingFlags = typeof window.getDoublingFlags === 'function' ?
         window.getDoublingFlags() : { R: false, α: false, β: false, γ: false };
-    
+
     const freqRoot = baseFreq;
     const freqAlpha = alpha * baseFreq;
     const freqBeta = beta * baseFreq;
     const freqGamma = gamma * baseFreq;
-    
+
     // Add [x2] indicators for doubled frequencies
     const rootDisplay = doublingFlags.R ? `${freqRoot.toFixed(2)} Hz [x2]` : `${freqRoot.toFixed(2)} Hz`;
     const alphaDisplay = doublingFlags.α ? `${freqAlpha.toFixed(2)} Hz [x2]` : `${freqAlpha.toFixed(2)} Hz`;
     const betaDisplay = doublingFlags.β ? `${freqBeta.toFixed(2)} Hz [x2]` : `${freqBeta.toFixed(2)} Hz`;
     const gammaDisplay = doublingFlags.γ ? `${freqGamma.toFixed(2)} Hz [x2]` : `${freqGamma.toFixed(2)} Hz`;
-    
+
     document.getElementById('click-output').textContent =
         `Playing: ${rootDisplay} | α=${alphaDisplay} | β=${betaDisplay} | γ=${gammaDisplay}`;
 }
@@ -1844,6 +1865,34 @@ window.addEventListener('load', async () => {
         }
     }, 200);
 
+    // Initialize MIDI controller now that data is loaded and visualization is ready
+    setTimeout(async () => {
+        if (window.midiController && typeof window.midiController.initialize === 'function') {
+            const initialized = await window.midiController.initialize();
+            if (initialized) {
+                // Wait a moment for device enumeration to complete
+                await new Promise(resolve => setTimeout(resolve, 200));
+                console.log('MIDI Controller ready');
+                console.log('Available devices:', window.midiController.getOutputDevices());
+                
+                // Create MIDI button now that controller is ready
+                if (window.midiController.midiEnabled) {
+                    const midiButton = document.createElement('button');
+                    midiButton.id = 'midi-toggle';
+                    midiButton.innerHTML = `
+                        <span class="midi-icon">🎹</span>
+                        <span>MIDI/MPE</span>
+                    `;
+                    midiButton.addEventListener('click', () => {
+                        window.midiController.toggleUI();
+                    });
+                    document.body.appendChild(midiButton);
+                    console.log('MIDI/MPE integration ready');
+                }
+            }
+        }
+    }, 400);
+
     /// Add root note selector event listener (if it exists)
     const rootSelector = document.getElementById('root-select');
 
@@ -1853,12 +1902,12 @@ window.addEventListener('load', async () => {
             const rootName = e.target.options[e.target.selectedIndex].text;
 
             document.getElementById('click-output').textContent = `Root: ${rootName} (${currentBaseFreq.toFixed(2)} Hz) - Click any point to hear`;
-            
+
             // Update chord visualization root
             if (typeof setRootVisualization === 'function') {
                 setRootVisualization(currentBaseFreq);
             }
-            
+
             // Clear any playing chord when root changes
             if (typeof clearChordVisualization === 'function') {
                 clearChordVisualization();
@@ -1876,5 +1925,14 @@ window.addEventListener('load', async () => {
                 ? 'Switch to Full 3D View'
                 : 'Switch to Sectioned View';
         });
+    }
+});
+
+// Keyboard shortcut: Press 'M' to toggle MIDI panel
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'm' || e.key === 'M') {
+        if (window.midiController) {
+            window.midiController.toggleUI();
+        }
     }
 });
