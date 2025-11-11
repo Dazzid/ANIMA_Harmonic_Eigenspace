@@ -219,6 +219,26 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
     const doublingFlags = typeof window.getDoublingFlags === 'function' ?
         window.getDoublingFlags() : { R: false, α: false, β: false, γ: false };
 
+    // Build frequency array with doubling applied: [root, alpha, beta, gamma]
+    const baseFrequencies = [baseFreq, alpha * baseFreq, beta * baseFreq, gamma * baseFreq];
+    const doublingLabels = ['R', 'α', 'β', 'γ'];
+    const actualFrequencies = baseFrequencies.map((freq, i) =>
+        doublingFlags[doublingLabels[i]] ? freq * 2 : freq
+    );
+
+    // Send MIDI/MPE output if controller is available and connected
+    if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
+        // Calculate dissonance for velocity mapping
+        const dissonance = calculateDissonanceAt(alpha, beta, gamma, baseFreq, 6);
+
+        // Send to MIDI with doubled frequencies
+        window.midiController.playChord(actualFrequencies, dissonance);
+
+        // Schedule note-off after envelope duration
+        const totalDuration = (audioParams.attack + audioParams.sustain + audioParams.release) * 1000;
+        window.midiController.scheduleNoteOff(totalDuration + 100);
+    }
+
     // Apply frequency doubling based on flags
     const ratios = [1, alpha, beta, gamma];
     const labels = ['R', 'α', 'β', 'γ'];
@@ -1844,6 +1864,34 @@ window.addEventListener('load', async () => {
         }
     }, 200);
 
+    // Initialize MIDI controller now that data is loaded and visualization is ready
+    setTimeout(async () => {
+        if (window.midiController && typeof window.midiController.initialize === 'function') {
+            const initialized = await window.midiController.initialize();
+            if (initialized) {
+                // Wait a moment for device enumeration to complete
+                await new Promise(resolve => setTimeout(resolve, 200));
+                console.log('MIDI Controller ready');
+                console.log('Available devices:', window.midiController.getOutputDevices());
+
+                // Create MIDI button now that controller is ready
+                if (window.midiController.midiEnabled) {
+                    const midiButton = document.createElement('button');
+                    midiButton.id = 'midi-toggle';
+                    midiButton.innerHTML = `
+                        <span class="midi-icon">🎹</span>
+                        <span>MIDI</span>
+                    `;
+                    midiButton.addEventListener('click', () => {
+                        window.midiController.toggleUI();
+                    });
+                    document.body.appendChild(midiButton);
+                    console.log('MIDI integration ready');
+                }
+            }
+        }
+    }, 400);
+
     /// Add root note selector event listener (if it exists)
     const rootSelector = document.getElementById('root-select');
 
@@ -1876,5 +1924,14 @@ window.addEventListener('load', async () => {
                 ? 'Switch to Full 3D View'
                 : 'Switch to Sectioned View';
         });
+    }
+});
+
+// Keyboard shortcut: Press 'M' to toggle MIDI panel
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'm' || e.key === 'M') {
+        if (window.midiController) {
+            window.midiController.toggleUI();
+        }
     }
 });

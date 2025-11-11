@@ -431,8 +431,7 @@ class MIDIController {
                 <div class="midi-device-section">
                     <label>Output Device:</label>
                     <div class="device-selector-row">
-                        <select id="midi-device-select" class="midi-select">
-                        </select>
+                        <div class="midi-device-container"></div>
                         <button id="midi-refresh-devices" class="midi-refresh-btn" title="Refresh device list">🔄</button>
                     </div>
                 </div>
@@ -457,13 +456,6 @@ class MIDIController {
             this.hideUI();
         });
 
-        document.getElementById('midi-device-select').addEventListener('change', (e) => {
-            if (e.target.value) {
-                const success = this.selectOutput(e.target.value);
-                this.updateStatus(success);
-            }
-        });
-
         document.getElementById('midi-refresh-devices').addEventListener('click', () => {
             console.log('Refreshing MIDI device list...');
             this.refreshDevices();
@@ -482,32 +474,85 @@ class MIDIController {
     }
 
     renderDeviceSelector() {
-        const select = document.getElementById('midi-device-select');
-        if (!select) {
+        // Remove old dropdown if exists
+        const oldSelect = document.getElementById('midi-device-select');
+        if (oldSelect) {
+            oldSelect.remove();
+        }
+        
+        const container = document.querySelector('.midi-device-container');
+        if (!container) {
             return;
         }
 
-        // Clear all existing options
-        select.innerHTML = '';
+        // Create custom dropdown structure
+        const customSelect = document.createElement('div');
+        customSelect.id = 'midi-device-select';
+        customSelect.className = 'custom-dropdown';
+        customSelect.style.cssText = 'position: relative; width: 100%; cursor: pointer; user-select: none;';
         
-        // Add default option using the working method from your example
-        let defaultEl = document.createElement("option");
-        defaultEl.textContent = "Select MIDI device...";
-        defaultEl.value = "";
-        select.appendChild(defaultEl);
+        // Create the selected display
+        const selectedDisplay = document.createElement('div');
+        selectedDisplay.className = 'dropdown-selected';
+        selectedDisplay.textContent = 'Select MIDI device...';
+        selectedDisplay.style.cssText = 'padding: 10px; background: white; color: black; border: 2px solid black; border-radius: 4px;';
         
-        // Get the real devices and add them using the same method
+        // Create the options list
+        const optionsList = document.createElement('div');
+        optionsList.className = 'dropdown-options';
+        optionsList.style.cssText = 'position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid black; border-top: none; max-height: 200px; overflow-y: auto; display: none; z-index: 10000;';
+        
+        // Add devices as options
         if (this.midiAccess && this.midiAccess.outputs) {
             this.midiAccess.outputs.forEach((output) => {
-                let el = document.createElement("option");
-                el.textContent = output.name;
-                el.value = output.id;
-                select.appendChild(el);
-                console.log(`Added device: ${output.name} (${output.id})`);
+                const option = document.createElement('div');
+                option.className = 'dropdown-option';
+                option.textContent = output.name;
+                option.dataset.deviceId = output.id;
+                option.style.cssText = 'padding: 10px; color: black; cursor: pointer; border-bottom: 1px solid #ccc;';
+                
+                // Hover effect
+                option.addEventListener('mouseenter', () => {
+                    option.style.background = '#00ff00';
+                });
+                option.addEventListener('mouseleave', () => {
+                    option.style.background = 'white';
+                });
+                
+                // Click handler
+                option.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (this.selectOutput(output.id)) {
+                        selectedDisplay.textContent = output.name;
+                        optionsList.style.display = 'none';
+                        this.updateStatus(true);
+                        console.log('Device selected:', output.name);
+                    }
+                });
+                
+                optionsList.appendChild(option);
+                console.log(`Added device option: ${output.name} (${output.id})`);
             });
         }
         
-        console.log('Total options in select:', select.children.length);
+        // Toggle dropdown
+        selectedDisplay.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isVisible = optionsList.style.display === 'block';
+            optionsList.style.display = isVisible ? 'none' : 'block';
+            console.log('Dropdown toggled, visible:', !isVisible);
+        });
+        
+        // Close on outside click
+        document.addEventListener('click', () => {
+            optionsList.style.display = 'none';
+        });
+        
+        customSelect.appendChild(selectedDisplay);
+        customSelect.appendChild(optionsList);
+        container.appendChild(customSelect);
+        
+        console.log('Custom dropdown created with', optionsList.children.length, 'options');
     }
 
     updateStatus(connected) {

@@ -211,27 +211,6 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
         setChordVisualization(alpha, beta, gamma, baseFreq);
     }
 
-    // Send MIDI/MPE output if controller is available and connected
-    if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
-        // Build frequency array: [root, alpha, beta, gamma]
-        const frequencies = [
-            baseFreq,
-            alpha * baseFreq,
-            beta * baseFreq,
-            gamma * baseFreq
-        ];
-
-        // Calculate dissonance for velocity mapping
-        const dissonance = calculateDissonanceAt(alpha, beta, gamma, baseFreq, 6);
-
-        // Send to MIDI
-        window.midiController.playChord(frequencies, dissonance);
-
-        // Schedule note-off after envelope duration
-        const totalDuration = (audioParams.attack + audioParams.sustain + audioParams.release) * 1000;
-        window.midiController.scheduleNoteOff(totalDuration + 100);
-    }
-
     const t = audioCtx.currentTime + 0.06; // Small delay to allow fadeout
     const harmonics = [1, 2, 3, 4, 5, 6];
     const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
@@ -239,6 +218,26 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
     // Get doubling flags from chord visualization
     const doublingFlags = typeof window.getDoublingFlags === 'function' ?
         window.getDoublingFlags() : { R: false, α: false, β: false, γ: false };
+
+    // Build frequency array with doubling applied: [root, alpha, beta, gamma]
+    const baseFrequencies = [baseFreq, alpha * baseFreq, beta * baseFreq, gamma * baseFreq];
+    const doublingLabels = ['R', 'α', 'β', 'γ'];
+    const actualFrequencies = baseFrequencies.map((freq, i) => 
+        doublingFlags[doublingLabels[i]] ? freq * 2 : freq
+    );
+
+    // Send MIDI/MPE output if controller is available and connected
+    if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
+        // Calculate dissonance for velocity mapping
+        const dissonance = calculateDissonanceAt(alpha, beta, gamma, baseFreq, 6);
+
+        // Send to MIDI with doubled frequencies
+        window.midiController.playChord(actualFrequencies, dissonance);
+
+        // Schedule note-off after envelope duration
+        const totalDuration = (audioParams.attack + audioParams.sustain + audioParams.release) * 1000;
+        window.midiController.scheduleNoteOff(totalDuration + 100);
+    }
 
     // Apply frequency doubling based on flags
     const ratios = [1, alpha, beta, gamma];
@@ -1881,13 +1880,13 @@ window.addEventListener('load', async () => {
                     midiButton.id = 'midi-toggle';
                     midiButton.innerHTML = `
                         <span class="midi-icon">🎹</span>
-                        <span>MIDI/MPE</span>
+                        <span>MIDI</span>
                     `;
                     midiButton.addEventListener('click', () => {
                         window.midiController.toggleUI();
                     });
                     document.body.appendChild(midiButton);
-                    console.log('MIDI/MPE integration ready');
+                    console.log('MIDI integration ready');
                 }
             }
         }
