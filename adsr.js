@@ -20,6 +20,14 @@ let textColor = 'rgba(250, 250, 250, 1)';
 
 const textButtonSize = 10;
 
+// Audio mute button
+let audioMuteButton = {
+    x: W - 20,
+    y: 20,
+    size: 20,
+    muted: false
+};
+
 // Wave type buttons
 const waveTypes = ['sine', 'triangle', 'sawtooth', 'square'];
 let buttons = [];
@@ -78,11 +86,13 @@ function setup() {
 // ------------------------------------------------------------
 function draw() {
     fill(bgColor);
+    noStroke();
     rect(0, 0, W, H, round);
 
     drawWaveTypeButtons();
     drawADSR();
     drawKnob();
+    drawMuteButton();
     updateAudioParams();
 }
 
@@ -258,6 +268,38 @@ function drawKnob() {
 }
 
 //--------------------------------------------------------------------
+function drawMuteButton() {
+    const btn = audioMuteButton;
+    const isHover = dist(mouseX, mouseY, btn.x, btn.y) < btn.size / 2;
+
+    // Button background - circular
+    if (btn.muted) {
+        fill(0);
+        noStroke();
+    } else if (isHover) {
+        fill(60);
+        stroke(120);
+    } else {
+        fill(30);
+        stroke(80);
+    }
+    strokeWeight(1);
+    circle(btn.x, btn.y, btn.size);
+
+    // Text - simple ON/OFF indicator
+    noStroke();
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textSize(9);
+    
+    if (btn.muted) {
+        text('Off', btn.x, btn.y);
+    } else {
+        text('On', btn.x, btn.y);
+    }
+}
+
+//--------------------------------------------------------------------
 function updateAudioParams() {
     const maxTime = 2.0;
     const totalWidth = W - 2 * padding;
@@ -274,8 +316,16 @@ function updateAudioParams() {
 
 //--------------------------------------------------------------------
 function mousePressed() {
-    // Check button clicks
+    // Check mute button click
+    const muteBtnDist = dist(mouseX, mouseY, audioMuteButton.x, audioMuteButton.y);
+    if (muteBtnDist < audioMuteButton.size / 2) {
+        audioMuteButton.muted = !audioMuteButton.muted;
+        // Expose mute state globally
+        window.audioMuted = audioMuteButton.muted;
+        return;
+    }
 
+    // Check dry/wet knob
     const knobDist = dist(mouseX, mouseY, dryWetKnob.x, dryWetKnob.y);
     if (knobDist < dryWetKnob.radius) {
         dryWetKnob.dragging = true;

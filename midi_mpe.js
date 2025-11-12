@@ -21,6 +21,9 @@ class MIDIController {
         this.defaultVelocity = 100;
         this.noteOffDelay = 50; // ms delay before sending note off
 
+        // Timeout tracking for scheduled note-offs
+        this.noteOffTimeout = null;
+
         // UI state
         this.isUIVisible = false;
     }
@@ -280,22 +283,28 @@ class MIDIController {
 
     allocateChannel() {
         if (this.channelPool.length === 0) {
-            // No free channels, steal oldest
+            // No free channels - force release the oldest note
+            // console.warn('No free MIDI channels! Stealing oldest note...');
             const oldestNote = this.activeNotes.entries().next().value;
             if (oldestNote) {
                 const [noteId, noteData] = oldestNote;
+                // console.log(`Stealing channel ${noteData.channel + 1} from note ${noteId}`);
                 this.sendNoteOff(noteData.channel, noteData.midiNote);
                 this.activeNotes.delete(noteId);
+                // Return the channel directly without adding to pool
                 return noteData.channel;
             }
-            return this.noteChannels[0]; // Fallback
+            // Absolute fallback
+            // console.error('Cannot allocate channel - no active notes to steal!');
+            return this.noteChannels[0];
         }
         return this.channelPool.shift();
     }
 
     releaseChannel(channel) {
+        // Only release if not already in pool
         if (!this.channelPool.includes(channel)) {
-            this.channelPool.push(channel);
+            this.channelPool.unshift(channel); // Add to front for immediate reuse
         }
     }
 
@@ -320,6 +329,11 @@ class MIDIController {
         // Note Off message
         const status = 0x80 + channel; // Note Off
         this.selectedOutput.send([status, note, 0]);
+        console.log(`    [MIDI Out] Note OFF: channel=${channel + 1}, note=${note}, status=0x${status.toString(16)}`);
+
+        // Reset pitch bend to center (8192) after note off
+        // This prevents pitch bend from "sticking" on the channel
+        this.sendPitchBend(channel, 8192);
     }
 
     sendPitchBend(channel, pitchBendValue) {
@@ -345,50 +359,106 @@ class MIDIController {
     // ============================================================================
 
     playChord(frequencies, dissonance = 0) {
-        if (!this.selectedOutput || !this.midiEnabled) return;
-
-        // Stop any currently playing notes
-        this.stopAllNotes();
+        if (!this.selectedOutput || !this.midiEnabled) {
+            return []; // Return empty array if MIDI not available
+        }
 
         // Map dissonance to velocity (inverted: low dissonance = high velocity)
         // Assuming dissonance range is roughly 0-10
         const normalizedDiss = Math.max(0, Math.min(1, dissonance / 10));
         const velocity = Math.round(127 - normalizedDiss * 87) + 20; // Range: 40-127
 
+        // Create a unique chord ID for this click event
+        const chordId = Date.now();
+        const chordNoteIds = [];
+
         // Play each frequency as a separate MPE note
         frequencies.forEach((freq, index) => {
-            const midiData = this.freqToMIDI(freq);
             const channel = this.allocateChannel();
+            const midiData = this.freqToMIDI(freq);
 
-            // Track this note
-            const noteId = `note_${Date.now()}_${index}`;
+            // Track this note with chord ID
+            const noteId = `note_${chordId}_${index}`;
+            chordNoteIds.push(noteId);
+            
             this.activeNotes.set(noteId, {
                 channel: channel,
                 midiNote: midiData.note,
                 frequency: freq,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                chordId: chordId
             });
 
-            // Send MIDI
+            // Send MIDI note-on
             this.sendNoteOn(channel, midiData.note, velocity, midiData.pitchBend);
 
-            console.log(`MPE Note ${index}: ${freq.toFixed(2)} Hz → MIDI ${midiData.note} (${midiData.cents.toFixed(1)} cents) on channel ${channel + 1}`);
+            console.log(`[Chord ${chordId}] Note ${index}: freq=${freq.toFixed(2)}Hz, MIDI=${midiData.note}, channel=${channel + 1}, noteId=${noteId}`);
         });
+
+        console.log(`[Chord ${chordId}] Started with ${chordNoteIds.length} notes. Active notes: ${this.activeNotes.size}, Free channels: ${this.channelPool.length}`);
+
+        // Return the chord note IDs so they can be stopped independently
+        return chordNoteIds;
     }
 
     stopAllNotes() {
+        const noteCount = this.activeNotes.size;
+        if (noteCount === 0) {
+            console.log('[Stop All] No active notes to stop');
+            return;
+        }
+        
+        console.log(`[Stop All] Stopping ${noteCount} active notes`);
+        
         // Send note off for all active notes
         this.activeNotes.forEach((noteData, noteId) => {
+            console.log(`  [Stop All] Note off: ${noteId}, MIDI=${noteData.midiNote}, channel=${noteData.channel + 1}`);
             this.sendNoteOff(noteData.channel, noteData.midiNote);
             this.releaseChannel(noteData.channel);
         });
         this.activeNotes.clear();
+        
+        console.log(`[Stop All] Complete. Free channels: ${this.channelPool.length}`);
+    }
+
+    // Stop specific notes by their IDs (for independent chord release)
+    stopSpecificNotes(noteIds) {
+        if (!noteIds || noteIds.length === 0) {
+            console.warn('stopSpecificNotes called with empty or undefined noteIds');
+            return;
+        }
+
+        let stoppedCount = 0;
+        let alreadyStoppedCount = 0;
+
+        noteIds.forEach(noteId => {
+            const noteData = this.activeNotes.get(noteId);
+            if (noteData) {
+                this.sendNoteOff(noteData.channel, noteData.midiNote);
+                this.releaseChannel(noteData.channel);
+                this.activeNotes.delete(noteId);
+                stoppedCount++;
+                console.log(`[Note Off] ${noteId}: MIDI=${noteData.midiNote}, channel=${noteData.channel + 1} released`);
+            } else {
+                alreadyStoppedCount++;
+                console.warn(`[Note Off] ${noteId}: Already stopped (likely stolen by channel allocation)`);
+            }
+        });
+
+        console.log(`[Stop] Stopped ${stoppedCount} notes, ${alreadyStoppedCount} already stopped. Active notes: ${this.activeNotes.size}, Free channels: ${this.channelPool.length}`);
     }
 
     // Scheduled note off (for envelope-controlled playback)
     scheduleNoteOff(delayMs = 2000) {
-        setTimeout(() => {
+        // CRITICAL: Cancel any existing scheduled note-off to prevent conflicts
+        if (this.noteOffTimeout !== null) {
+            clearTimeout(this.noteOffTimeout);
+        }
+
+        // Schedule new note-off
+        this.noteOffTimeout = setTimeout(() => {
             this.stopAllNotes();
+            this.noteOffTimeout = null;
         }, delayMs);
     }
 

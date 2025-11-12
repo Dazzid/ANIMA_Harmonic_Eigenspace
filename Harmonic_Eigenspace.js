@@ -3,6 +3,9 @@
 // ============================================================================
 const ENABLE_DISTANCE_LINES = false; // Set to false to disable line rendering for better performance
 
+// Audio mute state (controlled by ADSR mute button)
+window.audioMuted = false;
+
 // Dissonance calculation (Plomp-Levelt)
 // Global storage for computed dissonance data
 let globalDissonanceData = null;
@@ -192,7 +195,19 @@ async function initAudio() {
 }
 
 // Play chord with given frequency ratios -------------------------------------------------------------
+// Debounce tracking
+let lastClickTime = 0;
+const MIN_CLICK_INTERVAL = 50; // milliseconds between clicks
+
 async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
+    // Debounce rapid clicks
+    const now = Date.now();
+    if (now - lastClickTime < MIN_CLICK_INTERVAL) {
+        console.log('[Debounce] Click ignored - too fast');
+        return;
+    }
+    lastClickTime = now;
+
     if (!audioInitialized) {
         await initAudio();
         // If initialization failed, don't continue
@@ -228,15 +243,19 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
 
     // Send MIDI/MPE output if controller is available and connected
     if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
+        // Stop all previous notes - Ableton handles the ADSR
+        window.midiController.stopAllNotes();
+
         // Calculate dissonance for velocity mapping
         const dissonance = calculateDissonanceAt(alpha, beta, gamma, baseFreq, 6);
 
-        // Send to MIDI with doubled frequencies
+        // Send MIDI note-on with doubled frequencies
         window.midiController.playChord(actualFrequencies, dissonance);
+    }
 
-        // Schedule note-off after envelope duration
-        const totalDuration = (audioParams.attack + audioParams.sustain + audioParams.release) * 1000;
-        window.midiController.scheduleNoteOff(totalDuration + 100);
+    // Check if audio is muted - if so, skip audio generation
+    if (window.audioMuted) {
+        return;
     }
 
     // Apply frequency doubling based on flags
@@ -248,6 +267,13 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
         const isDoubled = doublingFlags[labels[i]];
         const actualFreq = isDoubled ? baseNoteFreq * 2 : baseNoteFreq;
         createNote(actualFreq, harmonics, amplitudes, t, isDoubled);
+    }
+}
+
+// Stop currently playing MIDI chord (note-off) -------------------------------------------------------------
+function stopMIDIChord() {
+    if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
+        window.midiController.stopAllNotes();
     }
 }
 
@@ -1562,13 +1588,15 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     //     }
     // });
 
-    // Attach click event listener
+    // Attach click event listener - works perfectly with plotly!
     plotDiv.on('plotly_click', async function (eventData) {
         if (eventData.points && eventData.points.length > 0) {
             const point = eventData.points[0];
             const alpha = point.x;
             const beta = point.y;
             const gamma = point.z;
+
+            // Play the chord (sends MIDI note-on + schedules note-off)
             await playChord(alpha, beta, gamma, currentBaseFreq);
 
             // Update chord visualization with clicked frequencies
