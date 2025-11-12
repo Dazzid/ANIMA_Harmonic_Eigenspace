@@ -1375,11 +1375,12 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             bgcolor: 'rgba(0,0,0,0.8)',
             bordercolor: 'rgba(255,255,255,0.3)',
             borderwidth: 0,
-            font: { size: 13 },
-            fontFamily: 'Source Code Pro'
+            font: { size: 12, family: 'Source Code Pro', weight: 'normal' },
+            fontFamily: 'Source Code Pro',
+            fontWeight: 'normal'
         },
         paper_bgcolor: 'rgba(0, 0, 0, 1)',
-        font: { color: 'white' },
+        font: { color: 'white', family: 'Source Code Pro', weight: 'normal' },
         margin: { l: 0, r: 0, t: 0, b: 0 },
         clickmode: 'event+select',
         hovermode: 'closest'

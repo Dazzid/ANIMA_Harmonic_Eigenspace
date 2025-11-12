@@ -243,12 +243,11 @@ class ChordVisualization {
             p.fill(this.textColor);
             p.noStroke();
             p.textAlign(p.RIGHT);
-            p.textSize(10);
+            p.textSize(9);
             const note = this.noteFreqs.find(n => Math.abs(n.freq - freq) < 0.1);
             if (note) {
                 p.text(note.name, this.spectrumX - 15, y + 2);
                 p.fill(240);
-                p.textSize(9);
                 p.text(`${freq.toFixed(0)}Hz`, this.spectrumX - 15, y + 12);
             }
         }
@@ -409,8 +408,7 @@ class ChordVisualization {
         if (amplitude > 0.3 && barWidth > 10) {
             p.fill(baseColor[0], baseColor[1], baseColor[2], 255);
             p.textAlign(p.LEFT);
-            p.strokeWeight(2);
-            p.stroke(0, 180);
+            p.noStroke();
             p.textSize(11);
             
             // Check if this voice is doubled
