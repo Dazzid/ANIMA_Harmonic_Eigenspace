@@ -5,8 +5,16 @@
 
 class ChordVisualization {
     constructor() {
+
+        //get adsr canvas size
+        let adsrCanvasSize = getCanvasSize();
+
+        // Calculate position: ADSR container top (10px) + ADSR height + gap (10px)
+        const adsrContainerTop = 10;
+        this.topPosition = adsrContainerTop + adsrCanvasSize.height + 10;
+        
         this.canvas = null;
-        this.W = 350;
+        this.W = 320;
         this.H = 640;
 
         // Frequency range: C3 to C5
@@ -88,7 +96,14 @@ class ChordVisualization {
         this.p5Instance = p;
         this.canvas = p.createCanvas(this.W, this.H);
         this.canvas.parent('chord-visualization-container');
-        p.textFont('monaco');
+        
+        // Set the container position dynamically
+        const container = document.getElementById('chord-visualization-container');
+        if (container) {
+            container.style.top = this.topPosition + 'px';
+        }
+        
+        p.textFont('Source Code Pro');
     }
     //----------------------------------------------------------------------------------------
     draw(p) {

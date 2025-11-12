@@ -35,7 +35,7 @@ const colorbarSketch = (p) => {
     p.setup = function () {
         let canvas = p.createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
         canvas.parent('colorbar-container');
-        p.textFont('monaco');
+        p.textFont('Source Code Pro');
     };
 
     p.draw = function () {

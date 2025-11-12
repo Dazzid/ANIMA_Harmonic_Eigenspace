@@ -2,20 +2,23 @@
 // P5.JS AUDIO GUI - ADSR Envelope Editor (GLOBAL MODE)
 // ============================================================================
 
-const W = 350;
-const H = 280;
+const W = 320;
+const H = 250;
 const padding = 10;
 
 // ADSR Section
-const adsrTop = 120;
+const adsrTop = 100;
 const adsrHeight = 140;
 
 let bgColor = 'rgba(23, 23, 23, 1)';
 
 const round = 20;
+const paddingWetDry = 100;
 
 //Define the color
 let textColor = 'rgba(250, 250, 250, 1)';
+
+const textButtonSize = 10;
 
 // Wave type buttons
 const waveTypes = ['sine', 'triangle', 'sawtooth', 'square'];
@@ -25,31 +28,37 @@ let buttons = [];
 let adsrPoints = [
     { x: padding, y: H, label: 'Start', draggable: false },  // NEW - at true bottom
     { x: 60, y: 60, label: 'A', draggable: true },
-    { x: 200, y: 280, label: 'S', draggable: true },
+    { x: 200, y: 250, label: 'S', draggable: true },
     { x: W - padding, y: H, label: 'End', draggable: false }  // NEW - at true bottom
 ];
 
 let draggingPoint = null;
 
 let dryWetKnob = {
-    x: W - 80,
-    y: 55,
+    x: W - paddingWetDry,
+    y: 48,
     radius: 25,
     dragging: false
 };
 
 // ------------------------------------------------------------
+function getCanvasSize(){
+    return { width: W, height: H };
+}
+
+// ------------------------------------------------------------
 function setup() {
 
-    textFont('monaco');
+    textFont('Source Code Pro');
+
     let canvas = createCanvas(W, H);
     // console.log('Container found:', container);
     canvas.parent('audio-gui-container');
     
     // Create wave type buttons
-    const btnW = 80;
-    const btnH = 30;
-    const spacing = 5;
+    const btnW = 60;
+    const btnH = 25;
+    const spacing = 2;
     const startX = padding;
     const startY = padding + 15;
 
@@ -156,7 +165,7 @@ function drawADSR() {
     // Display timing values
     fill(255);
     noStroke();
-    textSize(12);
+    textSize(textButtonSize);
     textAlign(LEFT);
     const valuesY = adsrTop + adsrHeight + 25;
 
@@ -172,15 +181,15 @@ function drawADSR() {
 
     fill(textColor);
     textAlign(RIGHT);
-    textSize(11);
-    text(`${totalTime.toFixed(1)}s`, W - padding, valuesY - 15);
+    textSize(textButtonSize);
+    text(`${totalTime.toFixed(1)}s`, W - padding - 2, valuesY - 30);
 }
 
 //--------------------------------------------------------------------
 function drawWaveTypeButtons() {
     // Draw wave type buttons
     textAlign(CENTER, CENTER);
-    textSize(11);
+    textSize(textButtonSize);
     for (let btn of buttons) {
         let isActive = audioParams.waveType === btn.type;
         let isHover = mouseX > btn.x && mouseX < btn.x + btn.w &&
@@ -221,7 +230,7 @@ function drawKnob() {
 
     fill(10);
     stroke(60);
-    strokeWeight(3);
+    strokeWeight(1);
     circle(knobX, knobY, knobR * 2);
 
     // FILLED ARC showing value
@@ -244,7 +253,7 @@ function drawKnob() {
     // Value display (restore this!)
     fill(255);
     noStroke();
-    textSize(10);
+    textSize(textButtonSize);
     text(`${(audioParams.dryWet * 100).toFixed(0)}%`, knobX, knobY + knobR + 15);
 }
 

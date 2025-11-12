@@ -1020,7 +1020,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         },
         name: 'Full 3D View',
         visible: false,  // Start hidden; toggle button will show this trace
-        hovertemplate: '<span style="font-family:monaco">' +
+        hovertemplate: '<span style="font-family:Source Code Pro">' +
             '<b>Ratios</b><br>' +
             'α = %{x:.4f}<br>' +
             'β = %{y:.4f}<br>' +
@@ -1137,7 +1137,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             },
             name: `${(threshold - windowSize / 2).toFixed(3)} - ${(threshold + windowSize / 2).toFixed(3)}`,
             visible: i === 0, // Only first layer visible
-            hovertemplate: '<span style="font-family:monaco">' +
+            hovertemplate: '<span style="font-family:Source Code Pro">' +
                 '<b>Ratios</b><br>' +
                 'α = %{x:.4f}<br>' +
                 'β = %{y:.4f}<br>' +
@@ -1179,10 +1179,10 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             },
             text: nodes.map((_, i) => String(i + 1)),
             textposition: 'middle center',
-            textfont: { size: localMinSize - 1, color: 'rgba(41, 41, 41, 1)', font: 'monaco' },
+            textfont: { size: localMinSize - 1, color: 'rgba(41, 41, 41, 1)', font: 'Source Code Pro' },
             name: 'Local-minima',
             visible: true,
-            hovertemplate: '<span style="font-family:monaco">' +
+            hovertemplate: '<span style="font-family:Source Code Pro">' +
                 '<b>Node %{text}</b><br>' +
                 'α = %{x:.4f}<br>' +
                 'β = %{y:.4f}<br>' +
@@ -1226,7 +1226,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             textfont: { size: 12, color: 'rgba(255, 255, 255, 1)' },
             name: '12-TET Chords',
             visible: true,
-            hovertemplate: '<span style="font-family:monaco">' +
+            hovertemplate: '<span style="font-family:Source Code Pro">' +
                 '<b>%{customdata}</b><br>' +
                 'α = %{x:.4f}<br>' +
                 'β = %{y:.4f}<br>' +
@@ -1271,7 +1271,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             textfont: { size: 12, color: 'rgba(255, 200, 0, 1)' },
             name: '31-TET Chords',
             visible: true,
-            hovertemplate: '<span style="font-family:monaco">' +
+            hovertemplate: '<span style="font-family:Source Code Pro">' +
                 '<b>%{customdata}</b><br>' +
                 'α = %{x:.4f}<br>' +
                 'β = %{y:.4f}<br>' +
@@ -1317,7 +1317,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             textfont: { size: 12, color: 'white' },
             name: '53-TET Chords',
             visible: true,  // VISIBLE AT START
-            hovertemplate: '<span style="font-family:monaco">' +
+            hovertemplate: '<span style="font-family:Source Code Pro">' +
                 '<b>%{customdata}</b><br>' +
                 'α = %{x:.4f}<br>' +
                 'β = %{y:.4f}<br>' +
@@ -1376,7 +1376,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             bordercolor: 'rgba(255,255,255,0.3)',
             borderwidth: 0,
             font: { size: 13 },
-            fontFamily: 'monaco'
+            fontFamily: 'Source Code Pro'
         },
         paper_bgcolor: 'rgba(0, 0, 0, 1)',
         font: { color: 'white' },
