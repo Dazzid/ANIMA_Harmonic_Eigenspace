@@ -58,21 +58,38 @@ const colorbarSketch = (p) => {
     };
 
     function drawGradientBar(x, y) {
+        const cornerRadius = 5;
+
+
+        // Border
+        p.fill(255);
         p.noStroke();
+        p.rect(x, y, BAR_WIDTH, BAR_HEIGHT, cornerRadius);
+
+        
+        // Save drawing context and apply clipping with rounded corners
+        p.push();
+        p.drawingContext.save();
+        
+        // Create rounded rectangle clipping path
+        
+        p.drawingContext.beginPath();
+        p.drawingContext.roundRect(x, y, BAR_WIDTH, BAR_HEIGHT, cornerRadius);
+        p.drawingContext.clip();
 
         // Draw gradient using rectangles
-        for (let i = 0; i < BAR_HEIGHT; i++) {
+        for (let i = 0; i < BAR_HEIGHT; i+=2) {
             let t = i / BAR_HEIGHT;
             let col = getGradientColor(t);
-            p.fill(col[0], col[1], col[2]);
+            p.stroke(col[0], col[1], col[2]);
             p.rect(x, y + i, BAR_WIDTH, 1);
         }
 
-        // Border
-        // p.noFill();
-        // p.stroke(255);
-        // p.strokeWeight(1);
-        // p.rect(x, y, BAR_WIDTH, BAR_HEIGHT);
+        // Restore context
+        p.drawingContext.restore();
+        p.pop();
+
+        
     }
 
     function drawSliderHandle(x, y) {

@@ -54,19 +54,19 @@ class ChordVisualization {
 
         // Note names for reference
         this.noteFreqs = [
-            { freq: 130.81, name: 'C3', key: 'a' },
-            { freq: 138.59, name: 'C#3', key: 'w' },
-            { freq: 146.83, name: 'D3', key: 's' },
-            { freq: 155.56, name: 'D#3', key: 'e' },
-            { freq: 164.81, name: 'E3', key: 'd' },
-            { freq: 174.61, name: 'F3', key: 'f' },
-            { freq: 185.00, name: 'F#3', key: 't' },
-            { freq: 196.00, name: 'G3', key: 'g' },
-            { freq: 207.65, name: 'G#3', key: 'y' },
-            { freq: 220.00, name: 'A3', key: 'h' },
-            { freq: 233.08, name: 'A#3', key: 'u' },
-            { freq: 246.94, name: 'B3', key: 'j' },
-            { freq: 261.63, name: 'C4', key: 'k' },
+            { freq: 130.81, name: 'C3', key: 'q' },
+            { freq: 138.59, name: 'C#3', key: '2' },
+            { freq: 146.83, name: 'D3', key: 'w' },
+            { freq: 155.56, name: 'D#3', key: '3' },
+            { freq: 164.81, name: 'E3', key: 'e' },
+            { freq: 174.61, name: 'F3', key: 'r' },
+            { freq: 185.00, name: 'F#3', key: '5' },
+            { freq: 196.00, name: 'G3', key: 't' },
+            { freq: 207.65, name: 'G#3', key: '6' },
+            { freq: 220.00, name: 'A3', key: 'y' },
+            { freq: 233.08, name: 'A#3', key: '7' },
+            { freq: 246.94, name: 'B3', key: 'u' },
+            { freq: 261.63, name: 'C4', key: 'i' },
             { freq: 277.18, name: 'C#4' },
             { freq: 293.66, name: 'D4' },
             { freq: 311.13, name: 'D#4' },
@@ -149,22 +149,22 @@ class ChordVisualization {
         p.rect(bgX, bgY, bgWidth, bgHeight, 8);
 
         // Piano key pattern areas (white keys = light gray, black keys = dark gray)
-        // Notes with keyboard mapping: A=C, W=C#, S=D, E=D#, D=E, F=F, T=F#, G=G, Y=G#, H=A, U=A#, J=B, K=C
+        // Notes with keyboard mapping: Q=C, 2=C#, W=D, 3=D#, E=E, R=F, 5=F#, T=G, 6=G#, Y=A, 7=A#, U=B, I=C
         const pianoKeyData = [
             // Note: isBlack = true for sharps/flats (black keys on piano)
-            { freq: 130.81, name: 'C3', key: 'a', isBlack: false },   // C3 - white key
-            { freq: 138.59, name: 'C#3', key: 'w', isBlack: true },  // C#3 - black key
-            { freq: 146.83, name: 'D3', key: 's', isBlack: false },  // D3 - white key
-            { freq: 155.56, name: 'D#3', key: 'e', isBlack: true },  // D#3 - black key
-            { freq: 164.81, name: 'E3', key: 'd', isBlack: false },  // E3 - white key
-            { freq: 174.61, name: 'F3', key: 'f', isBlack: false },  // F3 - white key
-            { freq: 185.00, name: 'F#3', key: 't', isBlack: true },  // F#3 - black key
-            { freq: 196.00, name: 'G3', key: 'g', isBlack: false },  // G3 - white key
-            { freq: 207.65, name: 'G#3', key: 'y', isBlack: true },  // G#3 - black key
-            { freq: 220.00, name: 'A3', key: 'h', isBlack: false },  // A3 - white key
-            { freq: 233.08, name: 'A#3', key: 'u', isBlack: true },  // A#3 - black key
-            { freq: 246.94, name: 'B3', key: 'j', isBlack: false },  // B3 - white key
-            { freq: 261.63, name: 'C4', key: 'k', isBlack: false },  // C4 - white key
+            { freq: 130.81, name: 'C3', key: 'q', isBlack: false },   // C3 - white key
+            { freq: 138.59, name: 'C#3', key: '2', isBlack: true },  // C#3 - black key
+            { freq: 146.83, name: 'D3', key: 'w', isBlack: false },  // D3 - white key
+            { freq: 155.56, name: 'D#3', key: '3', isBlack: true },  // D#3 - black key
+            { freq: 164.81, name: 'E3', key: 'e', isBlack: false },  // E3 - white key
+            { freq: 174.61, name: 'F3', key: 'r', isBlack: false },  // F3 - white key
+            { freq: 185.00, name: 'F#3', key: '5', isBlack: true },  // F#3 - black key
+            { freq: 196.00, name: 'G3', key: 't', isBlack: false },  // G3 - white key
+            { freq: 207.65, name: 'G#3', key: '6', isBlack: true },  // G#3 - black key
+            { freq: 220.00, name: 'A3', key: 'y', isBlack: false },  // A3 - white key
+            { freq: 233.08, name: 'A#3', key: '7', isBlack: true },  // A#3 - black key
+            { freq: 246.94, name: 'B3', key: 'u', isBlack: false },  // B3 - white key
+            { freq: 261.63, name: 'C4', key: 'i', isBlack: false },  // C4 - white key
             // Continue pattern for C4 to C5
             { freq: 277.18, name: 'C#4', isBlack: true },            // C#4 - black key
             { freq: 293.66, name: 'D4', isBlack: false },            // D4 - white key

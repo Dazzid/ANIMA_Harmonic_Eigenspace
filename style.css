@@ -174,6 +174,10 @@ body {
     transition: right 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
+#colorbar-container canvas {
+    border-radius: 20px;
+}
+
 /* Hidden state for slider when in Full 3D mode */
 #colorbar-container.hidden {
     right: -200px;
@@ -188,8 +192,8 @@ body {
     background: rgba(0, 111, 229, 0.8);
     border: none;
     color: white;
-    padding: 8px 20px;
-    font-size: 14px;
+    padding: 7px 20px;
+    font-size: 11px;
     font-family: 'Source Code Pro', monospace;
     font-weight: 200;
     border-radius: 8px;
