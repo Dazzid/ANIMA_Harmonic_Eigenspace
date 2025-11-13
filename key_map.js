@@ -105,8 +105,20 @@ function calculateDynamic12Notes(chordFreqs) {
         scale12Steps.push(closestToTarget);
     }
     
-    // Remove duplicates and sort - keep only first 12 notes
-    const final12Steps = [...new Set(scale12Steps)].sort((a, b) => a - b).slice(0, 12);
+    // Remove duplicates and sort
+    const uniqueSteps = [...new Set(scale12Steps)].sort((a, b) => a - b);
+    
+    // Ensure we have exactly 12 notes by filling any gaps
+    const final12Steps = [];
+    for (let i = 0; i < 12; i++) {
+        if (i < uniqueSteps.length) {
+            final12Steps.push(uniqueSteps[i]);
+        } else {
+            // Fill missing positions with evenly distributed chromatic notes
+            const targetStep = rootStep + Math.round(((i + 1) / 12) * 53);
+            final12Steps.push(targetStep);
+        }
+    }
     
     // Convert steps to frequencies
     const scale12Notes = final12Steps.map(step => {
@@ -124,18 +136,18 @@ function calculateDynamic12Notes(chordFreqs) {
         };
     });
     
-    // ALWAYS add 13th note at index 12: root + octave (MUST be rootStep + 53)
+    // ALWAYS add 13th note: root + octave (MUST be rootStep + 53)
     // This ensures the ',' key is ALWAYS the octave up, regardless of scale calculation
     const octaveStep = rootStep + 53;
     const octaveRatio = get53tetRatio(octaveStep);
     const octaveFreq = rootFreq * octaveRatio;
-    scale12Notes[12] = {
+    scale12Notes.push({
         step: octaveStep,
         ratio: octaveRatio,
         freq: octaveFreq,
         isChordNote: true,  // It's the root, just an octave up
         chordLabel: 'Root (octave)'
-    };
+    });
 
     // console.log('Generated 13-note scale from 53-TET (12 notes + octave):');
     scale12Notes.forEach((note, i) => {
