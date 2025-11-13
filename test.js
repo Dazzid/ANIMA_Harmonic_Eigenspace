@@ -13,7 +13,7 @@ let currentBaseFreq = 220.0;
 let cachedHarmonicNodes = null; // Cache node positions (in ratio space)
 let visualizationMode = 'sectioned'; // 'sectioned' or 'full3d'
 
-const zoneSize = 3.0;
+const zoneSize = 4.0;
 const zoneFull = 2.5;
 const chordSize = 7.0;
 const localMinSize = 9.0;
@@ -1206,7 +1206,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             y: layerY,
             z: layerZ,
             marker: {
-                symbol: 'square', //circle , square , diamond , cross , x , triangle , pentagon , hexagram , star , hourglass , bowtie , asterisk , hash , y , and line
+                symbol: 'pentagon', //circle , square , diamond , cross , x , triangle , pentagon , hexagram , star , hourglass , bowtie , asterisk , hash , y , and line
                 size: zoneSize,
                 color: layerD,
                 colorscale: myColor,
