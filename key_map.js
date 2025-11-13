@@ -200,37 +200,38 @@ document.addEventListener('keydown', (event) => {
     // Ignore key repeats (this is the key for low latency!)
     if (event.repeat) return;
     
-    const key = event.key.toLowerCase();
+    const key = event.key;
     
-    console.log(`[key_map] Key pressed: '${key}'`);
+    console.log(`[key_map] Key pressed: '${key}' (shiftKey: ${event.shiftKey})`);
     
-    // Check for octave shift keys (ONLY with Shift modifier)
-    if (event.shiftKey) {
-        if (key === '<') {
-            console.log('[key_map] Octave shift DOWN');
-            event.preventDefault();
-            shiftOctave(-1);
-            return;
-        }
-        
-        if (key === '>') {
-            console.log('[key_map] Octave shift UP');
-            event.preventDefault();
-            shiftOctave(1);
-            return;
-        }
+    // Check for octave shift keys
+    // < = octave down
+    // > = octave up
+    if (key === '<') {
+        console.log('[key_map] Octave shift DOWN');
+        event.preventDefault();
+        shiftOctave(-1);
+        return;
     }
     
-    // Check if this is one of our keyboard keys (play note only if NOT shift)
-    if (KEYBOARD_KEYS.includes(key) && !event.shiftKey) {
-        console.log(`[key_map] Playing note for key: ${key}`);
+    if (key === '>') {
+        console.log('[key_map] Octave shift UP');
+        event.preventDefault();
+        shiftOctave(1);
+        return;
+    }
+    
+    // Check if this is one of our keyboard keys
+    const lowerKey = key.toLowerCase();
+    if (KEYBOARD_KEYS.includes(lowerKey)) {
+        console.log(`[key_map] Playing note for key: ${lowerKey}`);
         // Prevent default behavior
         event.preventDefault();
         
         // Play the note
-        playKeyboardNote(key);
+        playKeyboardNote(lowerKey);
     } else {
-        console.log(`[key_map] Key '${key}' not in KEYBOARD_KEYS or has modifier`);
+        console.log(`[key_map] Key '${key}' not in KEYBOARD_KEYS`);
     }
 });
 
