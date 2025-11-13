@@ -12,6 +12,9 @@ const scale_len = 13;
 // Current dynamic keyboard mapping
 let currentKeyboardMap = {};
 
+// Track active notes for note-off
+let activeKeyNotes = {}; // key -> noteId mapping
+
 // 53-TET calculation function
 function get53tetRatio(steps) {
     return Math.pow(2, steps / 53.0);
@@ -28,7 +31,7 @@ function findClosest53TETStep(ratio) {
 function calculateDynamic12Notes(chordFreqs) {
     // chordFreqs should be [root, alpha, beta, gamma]
     if (!chordFreqs || chordFreqs.length !== 4) {
-        console.warn('Invalid chord frequencies for keyboard mapping');
+        // console.warn('Invalid chord frequencies for keyboard mapping');
         return null;
     }
 
@@ -43,12 +46,12 @@ function calculateDynamic12Notes(chordFreqs) {
     // Sort and remove duplicates
     const uniqueChordSteps = [...new Set(chordSteps)].sort((a, b) => a - b);
     
-    console.log('Chord notes mapped to 53-TET steps:');
+    // console.log('Chord notes mapped to 53-TET steps:');
     const labels = ['Root', 'α', 'β', 'γ'];
     chordSteps.forEach((step, i) => {
         const actualRatio = get53tetRatio(step);
         const actualFreq = rootFreq * actualRatio;
-        console.log(`  ${labels[i]}: ${chordFreqs[i].toFixed(2)} Hz → Step ${step} (ratio: ${actualRatio.toFixed(4)}, freq: ${actualFreq.toFixed(2)} Hz)`);
+        // console.log(`  ${labels[i]}: ${chordFreqs[i].toFixed(2)} Hz → Step ${step} (ratio: ${actualRatio.toFixed(4)}, freq: ${actualFreq.toFixed(2)} Hz)`);
     });
 
     // Step 2: Build a 12-note chromatic scale based on the chord's intervals
@@ -61,7 +64,7 @@ function calculateDynamic12Notes(chordFreqs) {
     // Based on their 53-TET steps relative to root
     const chordIntervals = uniqueChordSteps.map(step => step - rootStep);
     
-    console.log(`Chord intervals in 53-TET steps: ${chordIntervals.join(', ')}`);
+    // console.log(`Chord intervals in 53-TET steps: ${chordIntervals.join(', ')}`);
     
     // Standard 12-TET chromatic in 53-TET steps (for reference):
     // 0, 4-5, 9, 13-14, 18, 22, 27, 31, 35-36, 40, 44-45, 49
@@ -133,11 +136,11 @@ function calculateDynamic12Notes(chordFreqs) {
         chordLabel: 'Root (octave)'
     });
 
-    console.log('Generated 13-note scale from 53-TET (12 notes + octave):');
+    // console.log('Generated 13-note scale from 53-TET (12 notes + octave):');
     scale12Notes.forEach((note, i) => {
         const keyLabel = KEYBOARD_KEYS[i];
         const chordLabel = note.isChordNote ? ` ★ ${note.chordLabel}` : '';
-        console.log(`  [${keyLabel}] ${i}: Step ${note.step}, ${note.freq.toFixed(2)} Hz (ratio: ${note.ratio.toFixed(4)})${chordLabel}`);
+        // console.log(`  [${keyLabel}] ${i}: Step ${note.step}, ${note.freq.toFixed(2)} Hz (ratio: ${note.ratio.toFixed(4)})${chordLabel}`);
     });
 
     return scale12Notes;
@@ -157,9 +160,9 @@ function updateKeyboardMapping(chordFreqs) {
         }
     });
 
-    console.log('Keyboard mapping updated:');
+    // console.log('Keyboard mapping updated:');
     Object.entries(currentKeyboardMap).forEach(([key, freq]) => {
-        console.log(`  ${key}: ${freq.toFixed(2)} Hz`);
+        // console.log(`  ${key}: ${freq.toFixed(2)} Hz`);
     });
 }
 
@@ -170,7 +173,7 @@ let octaveShift = 0;
 function shiftOctave(direction) {
     octaveShift += direction;
     octaveShift = Math.max(-2, Math.min(2, octaveShift)); // Limit to ±2 octaves
-    console.log(`Octave shift: ${octaveShift > 0 ? '+' : ''}${octaveShift}`);
+    // console.log(`Octave shift: ${octaveShift > 0 ? '+' : ''}${octaveShift}`);
 }
 
 // Play single note from keyboard
@@ -178,20 +181,33 @@ function playKeyboardNote(key) {
     const baseFreq = currentKeyboardMap[key];
     
     if (!baseFreq) {
-        console.log(`Key '${key}' not mapped`);
+        // console.log(`Key '${key}' not mapped`);
         return;
     }
 
     // Apply octave shift
     const freq = baseFreq * Math.pow(2, octaveShift);
 
-    console.log(`Playing keyboard note: ${key} → ${freq.toFixed(2)} Hz (octave shift: ${octaveShift})`);
+    // console.log(`Playing keyboard note: ${key} → ${freq.toFixed(2)} Hz (octave shift: ${octaveShift})`);
 
-    // Call the playNote function from test.js
+    // Call the playNote function from test.js and track the note ID
     if (typeof window.playNote === 'function') {
-        window.playNote(freq);
+        const noteId = window.playNote(freq);
+        // Store the note ID for this key so we can stop it on keyup
+        activeKeyNotes[key] = noteId;
     } else {
-        console.error('playNote function not found');
+        // console.error('playNote function not found');
+    }
+}
+
+// Stop note when key is released
+function stopKeyboardNote(key) {
+    const noteId = activeKeyNotes[key];
+    
+    if (noteId && window.midiController) {
+        console.log(`[key_map] Stopping note for key: ${key}, noteId: ${noteId}`);
+        window.midiController.stopSpecificNotes([noteId]);
+        delete activeKeyNotes[key];
     }
 }
 
@@ -202,20 +218,20 @@ document.addEventListener('keydown', (event) => {
     
     const key = event.key;
     
-    console.log(`[key_map] Key pressed: '${key}' (shiftKey: ${event.shiftKey})`);
+    // console.log(`[key_map] Key pressed: '${key}' (shiftKey: ${event.shiftKey})`);
     
     // Check for octave shift keys
     // < = octave down
     // > = octave up
     if (key === '<') {
-        console.log('[key_map] Octave shift DOWN');
+        // console.log('[key_map] Octave shift DOWN');
         event.preventDefault();
         shiftOctave(-1);
         return;
     }
     
     if (key === '>') {
-        console.log('[key_map] Octave shift UP');
+        // console.log('[key_map] Octave shift UP');
         event.preventDefault();
         shiftOctave(1);
         return;
@@ -224,14 +240,26 @@ document.addEventListener('keydown', (event) => {
     // Check if this is one of our keyboard keys
     const lowerKey = key.toLowerCase();
     if (KEYBOARD_KEYS.includes(lowerKey)) {
-        console.log(`[key_map] Playing note for key: ${lowerKey}`);
+        // console.log(`[key_map] Playing note for key: ${lowerKey}`);
         // Prevent default behavior
         event.preventDefault();
         
         // Play the note
         playKeyboardNote(lowerKey);
     } else {
-        console.log(`[key_map] Key '${key}' not in KEYBOARD_KEYS`);
+        // console.log(`[key_map] Key '${key}' not in KEYBOARD_KEYS`);
+    }
+});
+
+// Keyup event listener to stop notes
+document.addEventListener('keyup', (event) => {
+    const key = event.key;
+    const lowerKey = key.toLowerCase();
+    
+    // Stop note if this was one of our keyboard keys
+    if (KEYBOARD_KEYS.includes(lowerKey)) {
+        event.preventDefault();
+        stopKeyboardNote(lowerKey);
     }
 });
 
@@ -240,5 +268,5 @@ window.updateKeyboardMapping = updateKeyboardMapping;
 window.playKeyboardNote = playKeyboardNote;
 window.KEYBOARD_KEYS = KEYBOARD_KEYS;
 
-console.log('Dynamic keyboard mapping initialized');
-console.log(`Keys: ${KEYBOARD_KEYS.join(' ')}`);
+// console.log('Dynamic keyboard mapping initialized');
+// console.log(`Keys: ${KEYBOARD_KEYS.join(' ')}`);

@@ -198,6 +198,22 @@ async function initAudio() {
 async function playNote(frequency) {
     console.log(`[playNote] Called with frequency: ${frequency}`);
 
+    // ALWAYS send MIDI first (independent of audio mute)
+    let noteId = null;
+    if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
+        // Send single note with MPE (don't stop all notes - let keyup handle it)
+        noteId = window.midiController.playSingleNote(frequency);
+
+        console.log(`[playNote] MIDI sent for ${frequency.toFixed(2)} Hz, noteId: ${noteId}`);
+    }
+
+    // Check if audio is muted - if so, skip web audio playback
+    if (window.audioMuted) {
+        console.log('[playNote] Audio is muted, skipping web audio playback');
+        return;
+    }
+
+    // Initialize audio if needed
     if (!audioInitialized) {
         console.log('[playNote] Audio not initialized, initializing...');
         await initAudio();
@@ -212,12 +228,6 @@ async function playNote(frequency) {
         return;
     }
 
-    // Check if audio is muted
-    if (window.audioMuted) {
-        console.log('[playNote] Audio is muted');
-        return;
-    }
-
     const t = audioCtx.currentTime + 0.01;
     const harmonics = [1, 2, 3, 4, 5, 6];
     const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
@@ -227,13 +237,8 @@ async function playNote(frequency) {
     // Create a single note with harmonics
     createNote(frequency, harmonics, amplitudes, t, false);
 
-    // Send MIDI note if available
-    if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
-        // Stop previous notes
-        window.midiController.stopAllNotes();
-        // Play single note as a "chord" with one frequency
-        window.midiController.playChord([frequency], 0);
-    }
+    // Return the note ID so caller can stop it later
+    return noteId;
 }
 
 // Make playNote available globally

@@ -401,6 +401,36 @@ class MIDIController {
         return chordNoteIds;
     }
 
+    // Play single note (for keyboard mapping)
+    playSingleNote(frequency) {
+        if (!this.selectedOutput || !this.midiEnabled) {
+            return null;
+        }
+
+        // Allocate a channel for this note
+        const channel = this.allocateChannel();
+        const midiData = this.freqToMIDI(frequency);
+        const velocity = 100; // Fixed velocity for keyboard notes
+        
+        // Create unique note ID
+        const noteId = `keyboard_${Date.now()}`;
+        
+        // Track this note
+        this.activeNotes.set(noteId, {
+            channel: channel,
+            midiNote: midiData.note,
+            frequency: frequency,
+            timestamp: Date.now()
+        });
+
+        // Send MIDI note-on with pitch bend
+        this.sendNoteOn(channel, midiData.note, velocity, midiData.pitchBend);
+
+        console.log(`[Single Note] freq=${frequency.toFixed(2)}Hz, MIDI=${midiData.note}, bend=${midiData.pitchBend}, channel=${channel + 1}, noteId=${noteId}`);
+
+        return noteId;
+    }
+
     stopAllNotes() {
         const noteCount = this.activeNotes.size;
         if (noteCount === 0) {
