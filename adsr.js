@@ -12,8 +12,10 @@ const adsrHeight = 140;
 
 let bgColor = 'rgba(23, 23, 23, 1)';
 
-const round = 20;
+const round = 10;
 const paddingWetDry = 100;
+
+const pointSize = 10;
 
 //Define the color
 let textColor = 'rgba(250, 250, 250, 1)';
@@ -45,8 +47,8 @@ let draggingPoint = null;
 
 let dryWetKnob = {
     x: W - paddingWetDry,
-    y: 48,
-    radius: 25,
+    y: 45,
+    radius: 22,
     dragging: false
 };
 
@@ -170,7 +172,7 @@ function drawADSR() {
         } else {
             fill(0, 111, 229);
         }
-        circle(pt.x, drawY, 14);
+        circle(pt.x, drawY, pointSize);
     }
 
     // Display timing values
@@ -351,7 +353,7 @@ function mousePressed() {
         let drawY = map(pt.y, 0, H, adsrTop, adsrTop + adsrHeight);
         let d = dist(mouseX, mouseY, pt.x, drawY);
 
-        if (d < 15) {
+        if (d < pointSize+1) {
             draggingPoint = i;
             return;
         }
@@ -364,8 +366,8 @@ function mouseDragged() {
 
         let minX = draggingPoint === 1
             ? adsrPoints[draggingPoint - 1].x + 3   // Attack: allow down to ~0.01s
-            : adsrPoints[draggingPoint - 1].x + 20; // Sustain: keep 20px spacing
-        let maxX = adsrPoints[draggingPoint + 1].x - 20;
+            : adsrPoints[draggingPoint - 1].x + pointSize; // Sustain: keep 20px spacing
+        let maxX = adsrPoints[draggingPoint + 1].x - pointSize;
         adsrPoints[draggingPoint].x = constrain(mouseX, minX, maxX);
 
         let mappedY = map(mouseY, adsrTop, adsrTop + adsrHeight, 0, H);

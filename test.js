@@ -194,6 +194,51 @@ async function initAudio() {
     }
 }
 
+// Play single note (for keyboard mapping) -------------------------------------------------------------
+async function playNote(frequency) {
+    console.log(`[playNote] Called with frequency: ${frequency}`);
+    
+    if (!audioInitialized) {
+        console.log('[playNote] Audio not initialized, initializing...');
+        await initAudio();
+        if (!audioInitialized) {
+            console.error('[playNote] Audio initialization failed');
+            return;
+        }
+    }
+
+    if (!audioCtx || !reverbNode) {
+        console.error('[playNote] audioCtx or reverbNode missing');
+        return;
+    }
+
+    // Check if audio is muted
+    if (window.audioMuted) {
+        console.log('[playNote] Audio is muted');
+        return;
+    }
+
+    const t = audioCtx.currentTime + 0.01;
+    const harmonics = [1, 2, 3, 4, 5, 6];
+    const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
+
+    console.log(`[playNote] Creating note at ${frequency.toFixed(2)} Hz, startTime: ${t.toFixed(3)}`);
+    
+    // Create a single note with harmonics
+    createNote(frequency, harmonics, amplitudes, t, false);
+
+    // Send MIDI note if available
+    if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
+        // Stop previous notes
+        window.midiController.stopAllNotes();
+        // Play single note as a "chord" with one frequency
+        window.midiController.playChord([frequency], 0);
+    }
+}
+
+// Make playNote available globally
+window.playNote = playNote;
+
 // Play chord with given frequency ratios -------------------------------------------------------------
 // Debounce tracking
 let lastClickTime = 0;
@@ -240,6 +285,11 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
     const actualFrequencies = baseFrequencies.map((freq, i) => 
         doublingFlags[doublingLabels[i]] ? freq * 2 : freq
     );
+
+    // Update dynamic keyboard mapping based on these frequencies
+    if (typeof window.updateKeyboardMapping === 'function') {
+        window.updateKeyboardMapping(actualFrequencies);
+    }
 
     // Send MIDI/MPE output if controller is available and connected
     if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
@@ -1958,7 +2008,7 @@ window.addEventListener('load', async () => {
 
 // Keyboard shortcut: Press 'M' to toggle MIDI panel
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'm' || e.key === 'M') {
+    if (e.key === 'p' || e.key === 'P') {
         if (window.midiController) {
             window.midiController.toggleUI();
         }

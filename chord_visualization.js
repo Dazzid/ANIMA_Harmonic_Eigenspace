@@ -46,7 +46,7 @@ class ChordVisualization {
 
         // Animation
         this.animationSpeed = 0.25;
-        this.round = 20;
+        this.round = 10;
 
         this.textColor = 'rgba(222, 222, 222, 1)';
         this.whiteKeysPiano = 'rgba(50, 50, 50, 1)';
