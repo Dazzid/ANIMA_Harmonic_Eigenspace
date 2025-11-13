@@ -1394,8 +1394,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             aspectmode: 'cube'
         },
         legend: {
-            x: 0.99,
-            y: 0.94,
+            x: 0.992,
+            y: 0.88,
             xanchor: 'right',
             yanchor: 'top',
             bgcolor: 'rgba(0,0,0,0.8)',

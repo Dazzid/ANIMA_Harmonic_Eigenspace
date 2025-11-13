@@ -115,7 +115,7 @@ class ChordVisualization {
         // Draw title
         p.fill(this.textColor);
         p.textAlign(p.LEFT);
-        p.textSize(14);
+        p.textSize(12);
         p.text('Frequency Spectrum', this.padding, 25);
 
         // Draw background spectrum area

@@ -35,7 +35,7 @@ class InfoOverlay {
         panel.innerHTML = `
             <div class="header-section">
                 <h1 class="main-title">4D Harmonic Eigenspace</h1>
-                <div class="subtitle">PSYCHOACOUSTIC DISSONANCE VISUALIZATION</div>
+                <div class="subtitle">Psychoacoustic Dissonance Visualization</div>
             </div>
 
             <div class="content-section">

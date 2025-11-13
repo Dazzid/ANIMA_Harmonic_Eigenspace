@@ -19,6 +19,7 @@ const paddingWetDry = 100;
 let textColor = 'rgba(250, 250, 250, 1)';
 
 const textButtonSize = 10;
+const textTitleSize = 12;
 
 // Audio mute button
 let audioMuteButton = {
@@ -58,6 +59,7 @@ function getCanvasSize(){
 function setup() {
 
     textFont('Source Code Pro');
+    smooth();
 
     let canvas = createCanvas(W, H);
     // console.log('Container found:', container);
@@ -77,7 +79,7 @@ function setup() {
             w: btnW,
             h: btnH,
             type: waveTypes[i],
-            label: waveTypes[i].substring(0, 4).toUpperCase()
+            label: waveTypes[i].substring(0, 4)
         });
     }
     console.log('Setup complete!');
@@ -101,13 +103,12 @@ function drawADSR() {
     // Title
     fill(textColor);
     noStroke();
-    textSize(13);
+    textSize(textTitleSize);
     textAlign(LEFT);
     text('Audio Settings', padding, 12);
 
     fill(textColor);
     textAlign(LEFT);
-    textSize(13);
     text('Envelope', padding, adsrTop - 10);
 
     // ADSR background
@@ -200,6 +201,7 @@ function drawWaveTypeButtons() {
     // Draw wave type buttons
     textAlign(CENTER, CENTER);
     textSize(textButtonSize);
+    strokeWeight(1);
     for (let btn of buttons) {
         let isActive = audioParams.waveType === btn.type;
         let isHover = mouseX > btn.x && mouseX < btn.x + btn.w &&
@@ -208,13 +210,13 @@ function drawWaveTypeButtons() {
         // Button background
         if (isActive) {
             fill(0, 111, 229);
-            stroke(5, 213, 255);
+            noStroke();
         } else if (isHover) {
             fill(40);
             stroke(100);
         } else {
             fill(15);
-            stroke(60);
+            stroke(80);
         }
         strokeWeight(0.5);
         rect(btn.x, btn.y, btn.w, btn.h, 5);
@@ -235,7 +237,7 @@ function drawKnob() {
 
     fill(textColor);
     textAlign(CENTER);
-    textSize(12);
+    textSize(textButtonSize);
     text('Dry/Wet', knobX, knobY - knobR - 10);
 
     fill(10);
@@ -272,6 +274,8 @@ function drawMuteButton() {
     const btn = audioMuteButton;
     const isHover = dist(mouseX, mouseY, btn.x, btn.y) < btn.size / 2;
 
+    strokeWeight(1);
+
     // Button background - circular
     if (btn.muted) {
         fill(0);
@@ -290,12 +294,12 @@ function drawMuteButton() {
     noStroke();
     fill(255);
     textAlign(CENTER, CENTER);
-    textSize(9);
+    textSize(10);
     
     if (btn.muted) {
-        text('Off', btn.x, btn.y);
+        text('-', btn.x, btn.y);
     } else {
-        text('On', btn.x, btn.y);
+        text('x', btn.x, btn.y);
     }
 }
 
