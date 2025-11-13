@@ -105,7 +105,7 @@ function calculateDynamic12Notes(chordFreqs) {
         scale12Steps.push(closestToTarget);
     }
     
-    // Remove duplicates and sort
+    // Remove duplicates and sort - keep only first 12 notes
     const final12Steps = [...new Set(scale12Steps)].sort((a, b) => a - b).slice(0, 12);
     
     // Convert steps to frequencies
@@ -124,17 +124,18 @@ function calculateDynamic12Notes(chordFreqs) {
         };
     });
     
-    // Add 13th note: root + octave (53 steps in 53-TET = one octave)
+    // ALWAYS add 13th note at index 12: root + octave (MUST be rootStep + 53)
+    // This ensures the ',' key is ALWAYS the octave up, regardless of scale calculation
     const octaveStep = rootStep + 53;
     const octaveRatio = get53tetRatio(octaveStep);
     const octaveFreq = rootFreq * octaveRatio;
-    scale12Notes.push({
+    scale12Notes[12] = {
         step: octaveStep,
         ratio: octaveRatio,
         freq: octaveFreq,
         isChordNote: true,  // It's the root, just an octave up
         chordLabel: 'Root (octave)'
-    });
+    };
 
     // console.log('Generated 13-note scale from 53-TET (12 notes + octave):');
     scale12Notes.forEach((note, i) => {
@@ -205,7 +206,6 @@ function stopKeyboardNote(key) {
     const noteId = activeKeyNotes[key];
     
     if (noteId && window.midiController) {
-        console.log(`[key_map] Stopping note for key: ${key}, noteId: ${noteId}`);
         window.midiController.stopSpecificNotes([noteId]);
         delete activeKeyNotes[key];
     }

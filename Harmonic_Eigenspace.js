@@ -196,15 +196,14 @@ async function initAudio() {
 
 // Play single note (for keyboard mapping) -------------------------------------------------------------
 async function playNote(frequency) {
-    console.log(`[playNote] Called with frequency: ${frequency}`);
+    // console.log(`[playNote] Called with frequency: ${frequency}`);
 
     // ALWAYS send MIDI first (independent of audio mute)
     let noteId = null;
     if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
         // Send single note with MPE (don't stop all notes - let keyup handle it)
         noteId = window.midiController.playSingleNote(frequency);
-
-        console.log(`[playNote] MIDI sent for ${frequency.toFixed(2)} Hz, noteId: ${noteId}`);
+        // console.log(`[playNote] MIDI sent for ${frequency.toFixed(2)} Hz, noteId: ${noteId}`);
     }
 
     // Check if audio is muted - if so, skip web audio playback
@@ -232,7 +231,7 @@ async function playNote(frequency) {
     const harmonics = [1, 2, 3, 4, 5, 6];
     const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
 
-    console.log(`[playNote] Creating note at ${frequency.toFixed(2)} Hz, startTime: ${t.toFixed(3)}`);
+    // console.log(`[playNote] Creating note at ${frequency.toFixed(2)} Hz, startTime: ${t.toFixed(3)}`);
 
     // Create a single note with harmonics
     createNote(frequency, harmonics, amplitudes, t, false);
@@ -1453,12 +1452,14 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             y: 0.88,
             xanchor: 'right',
             yanchor: 'top',
-            bgcolor: 'rgba(0,0,0,0.8)',
+            bgcolor: 'rgba(0,0,0,0.0)',
             bordercolor: 'rgba(255,255,255,0.3)',
             borderwidth: 0,
             font: { size: 12, family: 'Source Code Pro', weight: 'normal' },
             fontFamily: 'Source Code Pro',
-            fontWeight: 'normal'
+            fontWeight: 'normal',
+            itemsizing: 'constant',
+            itemwidth: 30
         },
         paper_bgcolor: 'rgba(0, 0, 0, 1)',
         font: { color: 'white', family: 'Source Code Pro', weight: 'normal' },

@@ -62,7 +62,7 @@ const colorbarSketch = (p) => {
 
 
         // Border
-        p.fill(255);
+        p.fill(0);
         p.noStroke();
         p.rect(x, y, BAR_WIDTH, BAR_HEIGHT, cornerRadius);
 

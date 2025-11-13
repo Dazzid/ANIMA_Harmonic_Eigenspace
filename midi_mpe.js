@@ -34,24 +34,24 @@ class MIDIController {
 
     async initialize() {
         if (!navigator.requestMIDIAccess) {
-            console.warn('Web MIDI API not supported in this browser');
+            // console.warn('Web MIDI API not supported in this browser');
             return false;
         }
 
         try {
             this.midiAccess = await navigator.requestMIDIAccess({ sysex: false });
-            console.log('MIDI Access granted');
+            // console.log('MIDI Access granted');
 
             // Listen for device connection changes
             this.midiAccess.onstatechange = (e) => {
-                console.log('MIDI device state change:', e.port.name, e.port.state);
+                // console.log('MIDI device state change:', e.port.name, e.port.state);
                 this.updateDeviceList();
             };
 
             this.midiEnabled = true;
             return true;
         } catch (error) {
-            console.error('Failed to get MIDI access:', error);
+            // console.error('Failed to get MIDI access:', error);
             return false;
         }
     }
@@ -62,12 +62,12 @@ class MIDIController {
 
     getOutputDevices() {
         if (!this.midiAccess) {
-            console.log('getOutputDevices: no midiAccess');
+            // console.log('getOutputDevices: no midiAccess');
             return [];
         }
 
         const outputs = [];
-        console.log('getOutputDevices: midiAccess.outputs size:', this.midiAccess.outputs.size);
+        // console.log('getOutputDevices: midiAccess.outputs size:', this.midiAccess.outputs.size);
         this.midiAccess.outputs.forEach((output) => {
             const deviceInfo = {
                 id: output.id,
@@ -75,10 +75,10 @@ class MIDIController {
                 manufacturer: output.manufacturer,
                 state: output.state
             };
-            console.log('Found MIDI output:', deviceInfo);
+            // console.log('Found MIDI output:', deviceInfo);
             outputs.push(deviceInfo);
         });
-        console.log('getOutputDevices returning:', outputs);
+        // console.log('getOutputDevices returning:', outputs);
         return outputs;
     }
 
@@ -88,7 +88,7 @@ class MIDIController {
         const output = this.midiAccess.outputs.get(deviceId);
         if (output && output.state === 'connected') {
             this.selectedOutput = output;
-            console.log('Selected MIDI output:', output.name);
+            // console.log('Selected MIDI output:', output.name);
 
             // Send MPE configuration
             this.configureMPE();
@@ -115,7 +115,7 @@ class MIDIController {
             this.renderDeviceSelector();
             
             const devices = this.getOutputDevices();
-            console.log('Device refresh complete. Found devices:', devices);
+            // console.log('Device refresh complete. Found devices:', devices);
             
             // Show user feedback
             const refreshBtn = document.getElementById('midi-refresh-devices');
@@ -129,28 +129,28 @@ class MIDIController {
                 }, 1000);
             }
         } catch (error) {
-            console.error('Failed to refresh MIDI devices:', error);
+            // console.error('Failed to refresh MIDI devices:', error);
         }
     }
 
-    // Manual method for console testing
+    // Manual method for // console testing
     forceRenderDevices() {
-        console.log('Force rendering devices...');
+        // console.log('Force rendering devices...');
         const devices = this.getOutputDevices();
-        console.log('Devices found for manual render:', devices);
+        // console.log('Devices found for manual render:', devices);
         this.renderDeviceSelector();
     }
 
-    // EMERGENCY TEST FUNCTION - Call this from console
+    // EMERGENCY TEST FUNCTION - Call this from // console
     emergencyTest() {
-        console.log('EMERGENCY TEST STARTING');
+        // console.log('EMERGENCY TEST STARTING');
         
         // Find the select element
         const select = document.getElementById('midi-device-select');
-        console.log('Select found:', !!select);
+        // console.log('Select found:', !!select);
         
         if (!select) {
-            console.log('SELECT NOT FOUND!');
+            // console.log('SELECT NOT FOUND!');
             return;
         }
         
@@ -173,23 +173,23 @@ class MIDIController {
         option3.appendChild(document.createTextNode('TEST DEVICE 2'));
         select.appendChild(option3);
         
-        console.log('Options added. Select innerHTML:', select.innerHTML);
-        console.log('Select children count:', select.children.length);
+        // console.log('Options added. Select innerHTML:', select.innerHTML);
+        // console.log('Select children count:', select.children.length);
         
         // Force refresh
         select.style.display = 'none';
         select.offsetHeight; // Trigger reflow
         select.style.display = '';
         
-        console.log('EMERGENCY TEST COMPLETE');
+        // console.log('EMERGENCY TEST COMPLETE');
     }
 
     manualDeviceScan() {
-        console.log('Manual device scan starting...');
+        // console.log('Manual device scan starting...');
         const select = document.getElementById('midi-device-select');
         
         if (!select) {
-            console.error('Select element not found!');
+            // console.error('Select element not found!');
             return;
         }
 
@@ -198,19 +198,19 @@ class MIDIController {
         
         // Get devices directly
         if (!this.midiAccess) {
-            console.error('No MIDI access!');
+            // console.error('No MIDI access!');
             select.innerHTML = '<option value="">No MIDI access</option>';
             return;
         }
 
-        console.log('MIDI access available, outputs size:', this.midiAccess.outputs.size);
+        // console.log('MIDI access available, outputs size:', this.midiAccess.outputs.size);
         
         // Manual device population
         select.innerHTML = '<option value="">Select MIDI device...</option>';
         
         let deviceCount = 0;
         this.midiAccess.outputs.forEach((output) => {
-            console.log(`Manual scan - found device: ${output.name} (${output.id})`);
+            // console.log(`Manual scan - found device: ${output.name} (${output.id})`);
             const option = document.createElement('option');
             option.value = output.id;
             option.textContent = output.name || `Device ${output.id}`;
@@ -218,7 +218,7 @@ class MIDIController {
             deviceCount++;
         });
         
-        console.log(`Manual scan complete - added ${deviceCount} devices`);
+        // console.log(`Manual scan complete - added ${deviceCount} devices`);
         
         if (deviceCount === 0) {
             select.innerHTML = '<option value="">No devices found</option>';
@@ -247,7 +247,7 @@ class MIDIController {
             this.selectedOutput.send([0xB0 + channel, 0x64, 0x7F]);
         }
 
-        console.log(`MPE configured: ±${this.pitchBendRange} semitones pitch bend range`);
+        // console.log(`MPE configured: ±${this.pitchBendRange} semitones pitch bend range`);
     }
 
     // ============================================================================
@@ -284,18 +284,18 @@ class MIDIController {
     allocateChannel() {
         if (this.channelPool.length === 0) {
             // No free channels - force release the oldest note
-            // console.warn('No free MIDI channels! Stealing oldest note...');
+            // // console.warn('No free MIDI channels! Stealing oldest note...');
             const oldestNote = this.activeNotes.entries().next().value;
             if (oldestNote) {
                 const [noteId, noteData] = oldestNote;
-                // console.log(`Stealing channel ${noteData.channel + 1} from note ${noteId}`);
+                // // console.log(`Stealing channel ${noteData.channel + 1} from note ${noteId}`);
                 this.sendNoteOff(noteData.channel, noteData.midiNote);
                 this.activeNotes.delete(noteId);
                 // Return the channel directly without adding to pool
                 return noteData.channel;
             }
             // Absolute fallback
-            // console.error('Cannot allocate channel - no active notes to steal!');
+            // // console.error('Cannot allocate channel - no active notes to steal!');
             return this.noteChannels[0];
         }
         return this.channelPool.shift();
@@ -329,7 +329,7 @@ class MIDIController {
         // Note Off message
         const status = 0x80 + channel; // Note Off
         this.selectedOutput.send([status, note, 0]);
-        console.log(`    [MIDI Out] Note OFF: channel=${channel + 1}, note=${note}, status=0x${status.toString(16)}`);
+        // console.log(`    [MIDI Out] Note OFF: channel=${channel + 1}, note=${note}, status=0x${status.toString(16)}`);
 
         // Reset pitch bend to center (8192) after note off
         // This prevents pitch bend from "sticking" on the channel
@@ -392,10 +392,10 @@ class MIDIController {
             // Send MIDI note-on
             this.sendNoteOn(channel, midiData.note, velocity, midiData.pitchBend);
 
-            console.log(`[Chord ${chordId}] Note ${index}: freq=${freq.toFixed(2)}Hz, MIDI=${midiData.note}, channel=${channel + 1}, noteId=${noteId}`);
+            // console.log(`[Chord ${chordId}] Note ${index}: freq=${freq.toFixed(2)}Hz, MIDI=${midiData.note}, channel=${channel + 1}, noteId=${noteId}`);
         });
 
-        console.log(`[Chord ${chordId}] Started with ${chordNoteIds.length} notes. Active notes: ${this.activeNotes.size}, Free channels: ${this.channelPool.length}`);
+        // console.log(`[Chord ${chordId}] Started with ${chordNoteIds.length} notes. Active notes: ${this.activeNotes.size}, Free channels: ${this.channelPool.length}`);
 
         // Return the chord note IDs so they can be stopped independently
         return chordNoteIds;
@@ -426,7 +426,7 @@ class MIDIController {
         // Send MIDI note-on with pitch bend
         this.sendNoteOn(channel, midiData.note, velocity, midiData.pitchBend);
 
-        console.log(`[Single Note] freq=${frequency.toFixed(2)}Hz, MIDI=${midiData.note}, bend=${midiData.pitchBend}, channel=${channel + 1}, noteId=${noteId}`);
+        // console.log(`[Single Note] freq=${frequency.toFixed(2)}Hz, MIDI=${midiData.note}, bend=${midiData.pitchBend}, channel=${channel + 1}, noteId=${noteId}`);
 
         return noteId;
     }
@@ -434,27 +434,27 @@ class MIDIController {
     stopAllNotes() {
         const noteCount = this.activeNotes.size;
         if (noteCount === 0) {
-            console.log('[Stop All] No active notes to stop');
+            // console.log('[Stop All] No active notes to stop');
             return;
         }
         
-        console.log(`[Stop All] Stopping ${noteCount} active notes`);
+        // console.log(`[Stop All] Stopping ${noteCount} active notes`);
         
         // Send note off for all active notes
         this.activeNotes.forEach((noteData, noteId) => {
-            console.log(`  [Stop All] Note off: ${noteId}, MIDI=${noteData.midiNote}, channel=${noteData.channel + 1}`);
+            // console.log(`  [Stop All] Note off: ${noteId}, MIDI=${noteData.midiNote}, channel=${noteData.channel + 1}`);
             this.sendNoteOff(noteData.channel, noteData.midiNote);
             this.releaseChannel(noteData.channel);
         });
         this.activeNotes.clear();
         
-        console.log(`[Stop All] Complete. Free channels: ${this.channelPool.length}`);
+        // console.log(`[Stop All] Complete. Free channels: ${this.channelPool.length}`);
     }
 
     // Stop specific notes by their IDs (for independent chord release)
     stopSpecificNotes(noteIds) {
         if (!noteIds || noteIds.length === 0) {
-            console.warn('stopSpecificNotes called with empty or undefined noteIds');
+            // console.warn('stopSpecificNotes called with empty or undefined noteIds');
             return;
         }
 
@@ -468,14 +468,14 @@ class MIDIController {
                 this.releaseChannel(noteData.channel);
                 this.activeNotes.delete(noteId);
                 stoppedCount++;
-                console.log(`[Note Off] ${noteId}: MIDI=${noteData.midiNote}, channel=${noteData.channel + 1} released`);
+                // console.log(`[Note Off] ${noteId}: MIDI=${noteData.midiNote}, channel=${noteData.channel + 1} released`);
             } else {
                 alreadyStoppedCount++;
-                console.warn(`[Note Off] ${noteId}: Already stopped (likely stolen by channel allocation)`);
+                // console.warn(`[Note Off] ${noteId}: Already stopped (likely stolen by channel allocation)`);
             }
         });
 
-        console.log(`[Stop] Stopped ${stoppedCount} notes, ${alreadyStoppedCount} already stopped. Active notes: ${this.activeNotes.size}, Free channels: ${this.channelPool.length}`);
+        // console.log(`[Stop] Stopped ${stoppedCount} notes, ${alreadyStoppedCount} already stopped. Active notes: ${this.activeNotes.size}, Free channels: ${this.channelPool.length}`);
     }
 
     // Scheduled note off (for envelope-controlled playback)
@@ -506,7 +506,7 @@ class MIDIController {
 
         this.activeNotes.clear();
         this.channelPool = [...this.noteChannels];
-        console.log('MIDI Panic: All notes off');
+        // console.log('MIDI Panic: All notes off');
     }
 
     // ============================================================================
@@ -557,11 +557,11 @@ class MIDIController {
         });
 
         document.getElementById('midi-refresh-devices').addEventListener('click', () => {
-            console.log('Refreshing MIDI device list...');
+            // console.log('Refreshing MIDI device list...');
             this.refreshDevices();
             // Also force immediate render
             setTimeout(() => {
-                console.log('Manual render after refresh button click');
+                // console.log('Manual render after refresh button click');
                 this.renderDeviceSelector();
             }, 50);
         });
@@ -626,12 +626,12 @@ class MIDIController {
                         selectedDisplay.textContent = output.name;
                         optionsList.style.display = 'none';
                         this.updateStatus(true);
-                        console.log('Device selected:', output.name);
+                        // console.log('Device selected:', output.name);
                     }
                 });
                 
                 optionsList.appendChild(option);
-                console.log(`Added device option: ${output.name} (${output.id})`);
+                // console.log(`Added device option: ${output.name} (${output.id})`);
             });
         }
         
@@ -640,7 +640,7 @@ class MIDIController {
             e.stopPropagation();
             const isVisible = optionsList.style.display === 'block';
             optionsList.style.display = isVisible ? 'none' : 'block';
-            console.log('Dropdown toggled, visible:', !isVisible);
+            // console.log('Dropdown toggled, visible:', !isVisible);
         });
         
         // Close on outside click
@@ -652,7 +652,7 @@ class MIDIController {
         customSelect.appendChild(optionsList);
         container.appendChild(customSelect);
         
-        console.log('Custom dropdown created with', optionsList.children.length, 'options');
+        // console.log('Custom dropdown created with', optionsList.children.length, 'options');
     }
 
     updateStatus(connected) {
