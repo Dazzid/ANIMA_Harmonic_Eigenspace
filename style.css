@@ -336,10 +336,21 @@ body {
     margin-bottom: 8px;
 }
 
-.info-panel .alpha-color { color: rgb(255, 119, 0); }
-.info-panel .beta-color { color: rgb(86, 173, 0); }
-.info-panel .gamma-color { color: rgb(0, 128, 255); }
-.info-panel .root-color { color: rgba(0, 0, 0, 1); }
+.info-panel .alpha-color {
+    color: rgb(255, 119, 0);
+}
+
+.info-panel .beta-color {
+    color: rgb(86, 173, 0);
+}
+
+.info-panel .gamma-color {
+    color: rgb(0, 128, 255);
+}
+
+.info-panel .root-color {
+    color: rgba(0, 0, 0, 1);
+}
 
 .info-panel strong {
     color: rgba(0, 0, 0, 1);
@@ -354,7 +365,7 @@ body {
     font-family: 'Times New Roman', serif;
     font-size: 16px;
     font-style: italic;
-    background:rgb(255, 250, 240);
+    background: rgb(255, 250, 240);
     padding: 8px 12px;
     margin: 8px auto;
     border-radius: 10px;
@@ -432,6 +443,7 @@ body {
     color: rgba(0, 0, 0, 1);
     /* Pure black for more contrast */
 }
+
 /* Responsive design */
 @media screen and (max-width: 768px) {
     #info-overlay>div {
@@ -448,7 +460,7 @@ body {
         font-size: 14px !important;
         font-weight: normal !important;
     }
-    
+
     #info-button {
         bottom: 10px !important;
         right: 10px !important;
@@ -542,6 +554,7 @@ body {
     gap: 8px;
     line-height: 1;
 }
+
 #midi-toggle:hover {
     background: rgba(0, 111, 229, 1);
 }
@@ -643,6 +656,74 @@ body {
     animation: pulse 2s ease-in-out infinite;
 }
 
+#status-text {
+    color: rgba(250, 250, 250, 1);
+    flex: 1;
+}
+
+/* External MIDI Piano toggle button (on main page) - only when NOT inside panel */
+#midi-piano-toggle:not(.midi-piano-btn) {
+    position: fixed;
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(76, 175, 80, 0.8);
+    border: none;
+    color: white;
+    padding: 7px 20px;
+    font-size: 11px;
+    font-family: 'Source Code Pro', monospace;
+    font-weight: 300;
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 9999;
+    transition: all 0.2s ease;
+}
+
+#midi-piano-toggle:not(.midi-piano-btn):hover {
+    background: rgba(76, 175, 80, 1);
+}
+
+#midi-piano-toggle:not(.midi-piano-btn).disabled {
+    background: rgba(158, 158, 158, 0.8);
+}
+
+#midi-piano-toggle:not(.midi-piano-btn).disabled:hover {
+    background: rgba(158, 158, 158, 1);
+}
+
+.midi-piano-section {
+    margin-top: 16px;
+    margin-bottom: 12px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.midi-piano-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    background: rgb(11, 174, 17);
+    color: white;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: 'Source Code Pro', monospace;
+}
+
+.midi-piano-btn:hover {
+    background: rgb(24, 185, 29);
+}
+
+.midi-piano-btn.disabled {
+    background: rgba(158, 158, 158, 0.8);
+}
+
+.midi-piano-btn.disabled:hover {
+    background: rgba(158, 158, 158, 1);
+}
+
 @keyframes pulse {
 
     0%,
@@ -653,11 +734,6 @@ body {
     50% {
         opacity: 0.6;
     }
-}
-
-#status-text {
-    color: rgba(250, 250, 250, 1);
-    flex: 1;
 }
 
 /* Device selection */
@@ -795,14 +871,14 @@ body {
 /* Panic button */
 .midi-panic-btn {
     width: 100%;
-    padding: 12px;
+    padding: 10px;
     background: rgba(255, 183, 0, 0.736);
     border: 1px solid rgba(255, 166, 0, 0.849);
     color: rgb(243, 243, 243);
     font-family: 'Source Code Pro', 'Courier New', monospace;
     font-size: 12px;
     font-weight: 600;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
     text-transform: uppercase;

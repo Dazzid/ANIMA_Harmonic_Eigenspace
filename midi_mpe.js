@@ -528,6 +528,9 @@ class MIDIController {
                     <span class="status-indicator" id="status-dot"></span>
                     <span id="status-text">Not connected</span>
                 </div>
+                <div class="midi-piano-section">
+                    <button id="midi-piano-toggle" class="midi-piano-btn">MIDI Piano: Initializing...</button>
+                </div>
                 <div class="midi-device-section">
                     <label>Output Device:</label>
                     <div class="device-selector-row">
@@ -550,6 +553,20 @@ class MIDIController {
         `;
 
         document.body.appendChild(container);
+
+        // Initialize MIDI Piano button after panel is created
+        setTimeout(() => {
+            if (window.midiPianoHandler && typeof window.setupMidiPianoUI === 'function') {
+                // Try to initialize MIDI if not already done
+                if (!window.midiPianoHandler.midiAccess) {
+                    window.midiPianoHandler.initialize().then(success => {
+                        window.setupMidiPianoUI(success);
+                    });
+                } else {
+                    window.setupMidiPianoUI(true);
+                }
+            }
+        }, 100);
 
         // Event listeners
         document.getElementById('midi-close').addEventListener('click', () => {

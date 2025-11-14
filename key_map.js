@@ -165,7 +165,7 @@ function updateKeyboardMapping(chordFreqs) {
     
     if (!scale12) return;
 
-    // Map keys to frequencies
+    // Map keys to frequencies (for computer keyboard)
     currentKeyboardMap = {};
     KEYBOARD_KEYS.forEach((key, index) => {
         if (index < scale12.length) {
@@ -177,6 +177,12 @@ function updateKeyboardMapping(chordFreqs) {
     Object.entries(currentKeyboardMap).forEach(([key, freq]) => {
         // console.log(`  ${key}: ${freq.toFixed(2)} Hz`);
     });
+
+    // Also update MIDI piano handler with the new scale
+    if (window.midiPianoHandler && scale12) {
+        const rootFreq = chordFreqs[0];
+        window.midiPianoHandler.updateScale(scale12, rootFreq);
+    }
 }
 
 // Octave shift multiplier (0 = normal, -1 = down octave, +1 = up octave)

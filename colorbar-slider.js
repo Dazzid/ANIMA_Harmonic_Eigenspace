@@ -7,8 +7,8 @@ const colorbarSketch = (p) => {
     // Dimensions (responsive to screen size)
     const BAR_WIDTH = 50;
     let BAR_HEIGHT = window.innerHeight * 0.5;  // 50% of screen height
-    const CANVAS_WIDTH = 120;
-    let CANVAS_HEIGHT = window.innerHeight * 0.55;  // 55% of screen height
+    const CANVAS_WIDTH = 110;
+    let CANVAS_HEIGHT = window.innerHeight * 0.54;
     const PADDING = 35;
 
     // Slider state
@@ -40,8 +40,8 @@ const colorbarSketch = (p) => {
 
     p.draw = function () {
         p.noStroke();
-        p.fill(0);
-        p.rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 20);
+        p.fill(0,);
+        p.rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 10);
 
         // Calculate bar position
         const barX = PADDING;
@@ -59,20 +59,14 @@ const colorbarSketch = (p) => {
 
     function drawGradientBar(x, y) {
         const cornerRadius = 5;
-
-
         // Border
         p.fill(0);
         p.noStroke();
         p.rect(x, y, BAR_WIDTH, BAR_HEIGHT, cornerRadius);
 
-        
         // Save drawing context and apply clipping with rounded corners
         p.push();
         p.drawingContext.save();
-        
-        // Create rounded rectangle clipping path
-        
         p.drawingContext.beginPath();
         p.drawingContext.roundRect(x, y, BAR_WIDTH, BAR_HEIGHT, cornerRadius);
         p.drawingContext.clip();

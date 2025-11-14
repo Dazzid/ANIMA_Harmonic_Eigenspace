@@ -38,7 +38,7 @@ let buttons = [];
 // ADSR envelope points
 let adsrPoints = [
     { x: padding, y: H, label: 'Start', draggable: false },  // NEW - at true bottom
-    { x: 60, y: 60, label: 'A', draggable: true },
+    { x: 40, y: 60, label: 'A', draggable: true },
     { x: 200, y: 250, label: 'S', draggable: true },
     { x: W - padding, y: H, label: 'End', draggable: false }  // NEW - at true bottom
 ];

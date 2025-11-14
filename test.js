@@ -1459,7 +1459,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             fontFamily: 'Source Code Pro',
             fontWeight: 'normal',
             itemsizing: 'constant',
-            itemwidth: 30
+            itemwidth: 25
         },
         paper_bgcolor: 'rgba(0, 0, 0, 1)',
         font: { color: 'white', family: 'Source Code Pro', weight: 'normal' },
@@ -1660,8 +1660,6 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 setChordVisualization(alpha, beta, gamma, currentBaseFreq);
             }
 
-            // Update the frequency display with doubling indicators
-            updateFrequencyDisplay(alpha, beta, gamma, currentBaseFreq);
         }
     });
 }
@@ -1851,31 +1849,8 @@ window.updateChordWithDoubling = function () {
 
         // Play the chord with the updated doubling
         playChord(alpha, beta, gamma, currentBaseFreq);
-
-        // Update the display to show which frequencies are doubled
-        updateFrequencyDisplay(alpha, beta, gamma, currentBaseFreq);
     }
 };
-
-// Function to update frequency display with doubling indicators
-function updateFrequencyDisplay(alpha, beta, gamma, baseFreq) {
-    const doublingFlags = typeof window.getDoublingFlags === 'function' ?
-        window.getDoublingFlags() : { R: false, α: false, β: false, γ: false };
-
-    const freqRoot = baseFreq;
-    const freqAlpha = alpha * baseFreq;
-    const freqBeta = beta * baseFreq;
-    const freqGamma = gamma * baseFreq;
-
-    // Add [x2] indicators for doubled frequencies
-    const rootDisplay = doublingFlags.R ? `${freqRoot.toFixed(2)} Hz [x2]` : `${freqRoot.toFixed(2)} Hz`;
-    const alphaDisplay = doublingFlags.α ? `${freqAlpha.toFixed(2)} Hz [x2]` : `${freqAlpha.toFixed(2)} Hz`;
-    const betaDisplay = doublingFlags.β ? `${freqBeta.toFixed(2)} Hz [x2]` : `${freqBeta.toFixed(2)} Hz`;
-    const gammaDisplay = doublingFlags.γ ? `${freqGamma.toFixed(2)} Hz [x2]` : `${freqGamma.toFixed(2)} Hz`;
-
-    document.getElementById('click-output').textContent =
-        `Playing: ${rootDisplay} | α=${alphaDisplay} | β=${betaDisplay} | γ=${gammaDisplay}`;
-}
 
 // Manual test function - call from console: testRootChange(130.81)
 window.testRootChange = function (newFreq) {
