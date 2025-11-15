@@ -26,6 +26,9 @@ class MIDIController {
 
         // UI state
         this.isUIVisible = false;
+
+        // Counter for unique note IDs (prevents duplicates in same millisecond)
+        this.noteIdCounter = 0;
     }
 
     // ============================================================================
@@ -107,16 +110,16 @@ class MIDIController {
         try {
             // Re-request MIDI access to refresh device list
             this.midiAccess = await navigator.requestMIDIAccess({ sysex: false });
-            
+
             // Wait for device enumeration
             await new Promise(resolve => setTimeout(resolve, 100));
-            
+
             // Force update the device selector
             this.renderDeviceSelector();
-            
+
             const devices = this.getOutputDevices();
             // console.log('Device refresh complete. Found devices:', devices);
-            
+
             // Show user feedback
             const refreshBtn = document.getElementById('midi-refresh-devices');
             if (refreshBtn) {
@@ -144,50 +147,50 @@ class MIDIController {
     // EMERGENCY TEST FUNCTION - Call this from // console
     emergencyTest() {
         // console.log('EMERGENCY TEST STARTING');
-        
+
         // Find the select element
         const select = document.getElementById('midi-device-select');
         // console.log('Select found:', !!select);
-        
+
         if (!select) {
             // console.log('SELECT NOT FOUND!');
             return;
         }
-        
+
         // Clear everything
         select.innerHTML = '';
-        
+
         // Add options the most basic way possible
         const option1 = document.createElement('option');
         option1.value = '';
         option1.appendChild(document.createTextNode('Choose device...'));
         select.appendChild(option1);
-        
+
         const option2 = document.createElement('option');
         option2.value = 'test1';
         option2.appendChild(document.createTextNode('TEST DEVICE 1'));
         select.appendChild(option2);
-        
+
         const option3 = document.createElement('option');
         option3.value = 'test2';
         option3.appendChild(document.createTextNode('TEST DEVICE 2'));
         select.appendChild(option3);
-        
+
         // console.log('Options added. Select innerHTML:', select.innerHTML);
         // console.log('Select children count:', select.children.length);
-        
+
         // Force refresh
         select.style.display = 'none';
         select.offsetHeight; // Trigger reflow
         select.style.display = '';
-        
+
         // console.log('EMERGENCY TEST COMPLETE');
     }
 
     manualDeviceScan() {
         // console.log('Manual device scan starting...');
         const select = document.getElementById('midi-device-select');
-        
+
         if (!select) {
             // console.error('Select element not found!');
             return;
@@ -195,7 +198,7 @@ class MIDIController {
 
         // Clear and add default
         select.innerHTML = '<option value="">Scanning...</option>';
-        
+
         // Get devices directly
         if (!this.midiAccess) {
             // console.error('No MIDI access!');
@@ -204,10 +207,10 @@ class MIDIController {
         }
 
         // console.log('MIDI access available, outputs size:', this.midiAccess.outputs.size);
-        
+
         // Manual device population
         select.innerHTML = '<option value="">Select MIDI device...</option>';
-        
+
         let deviceCount = 0;
         this.midiAccess.outputs.forEach((output) => {
             // console.log(`Manual scan - found device: ${output.name} (${output.id})`);
@@ -217,9 +220,9 @@ class MIDIController {
             select.appendChild(option);
             deviceCount++;
         });
-        
+
         // console.log(`Manual scan complete - added ${deviceCount} devices`);
-        
+
         if (deviceCount === 0) {
             select.innerHTML = '<option value="">No devices found</option>';
         }
@@ -284,27 +287,33 @@ class MIDIController {
     allocateChannel() {
         if (this.channelPool.length === 0) {
             // No free channels - force release the oldest note
-            // // console.warn('No free MIDI channels! Stealing oldest note...');
+            console.warn('[Channel Allocation] No free MIDI channels! Stealing oldest note...');
             const oldestNote = this.activeNotes.entries().next().value;
             if (oldestNote) {
                 const [noteId, noteData] = oldestNote;
-                // // console.log(`Stealing channel ${noteData.channel + 1} from note ${noteId}`);
+                console.log(`[Channel Allocation] Stealing channel ${noteData.channel + 1} from note ${noteId}`);
                 this.sendNoteOff(noteData.channel, noteData.midiNote);
                 this.activeNotes.delete(noteId);
                 // Return the channel directly without adding to pool
+                console.log(`[Channel Allocation] Allocated channel ${noteData.channel + 1} (stolen). Free channels: ${this.channelPool.length}`);
                 return noteData.channel;
             }
             // Absolute fallback
-            // // console.error('Cannot allocate channel - no active notes to steal!');
+            console.error('[Channel Allocation] Cannot allocate channel - no active notes to steal!');
             return this.noteChannels[0];
         }
-        return this.channelPool.shift();
+        const channel = this.channelPool.shift();
+        console.log(`[Channel Allocation] Allocated channel ${channel + 1}. Free channels: ${this.channelPool.length}`);
+        return channel;
     }
 
     releaseChannel(channel) {
         // Only release if not already in pool
         if (!this.channelPool.includes(channel)) {
             this.channelPool.unshift(channel); // Add to front for immediate reuse
+            console.log(`[Channel Release] Released channel ${channel + 1}. Free channels: ${this.channelPool.length}`);
+        } else {
+            console.warn(`[Channel Release] Channel ${channel + 1} already in pool! (duplicate release attempt)`);
         }
     }
 
@@ -380,7 +389,7 @@ class MIDIController {
             // Track this note with chord ID
             const noteId = `note_${chordId}_${index}`;
             chordNoteIds.push(noteId);
-            
+
             this.activeNotes.set(noteId, {
                 channel: channel,
                 midiNote: midiData.note,
@@ -411,10 +420,10 @@ class MIDIController {
         const channel = this.allocateChannel();
         const midiData = this.freqToMIDI(frequency);
         const velocity = 100; // Fixed velocity for keyboard notes
-        
-        // Create unique note ID
-        const noteId = `keyboard_${Date.now()}`;
-        
+
+        // Create unique note ID with counter (prevents duplicates in same millisecond)
+        const noteId = `keyboard_${Date.now()}_${this.noteIdCounter++}`;
+
         // Track this note
         this.activeNotes.set(noteId, {
             channel: channel,
@@ -426,7 +435,7 @@ class MIDIController {
         // Send MIDI note-on with pitch bend
         this.sendNoteOn(channel, midiData.note, velocity, midiData.pitchBend);
 
-        // console.log(`[Single Note] freq=${frequency.toFixed(2)}Hz, MIDI=${midiData.note}, bend=${midiData.pitchBend}, channel=${channel + 1}, noteId=${noteId}`);
+        console.log(`[Single Note] freq=${frequency.toFixed(2)}Hz, MIDI=${midiData.note}, bend=${midiData.pitchBend}, channel=${channel + 1}, noteId=${noteId}`);
 
         return noteId;
     }
@@ -437,9 +446,9 @@ class MIDIController {
             // console.log('[Stop All] No active notes to stop');
             return;
         }
-        
+
         // console.log(`[Stop All] Stopping ${noteCount} active notes`);
-        
+
         // Send note off for all active notes
         this.activeNotes.forEach((noteData, noteId) => {
             // console.log(`  [Stop All] Note off: ${noteId}, MIDI=${noteData.midiNote}, channel=${noteData.channel + 1}`);
@@ -447,17 +456,49 @@ class MIDIController {
             this.releaseChannel(noteData.channel);
         });
         this.activeNotes.clear();
-        
+
         // console.log(`[Stop All] Complete. Free channels: ${this.channelPool.length}`);
+    }
+
+    // Stop only chord notes (from node clicks), leave keyboard notes playing
+    stopChordNotes() {
+        const chordNoteIds = [];
+
+        // Find all notes that start with "note_" (chord notes)
+        this.activeNotes.forEach((noteData, noteId) => {
+            if (noteId.startsWith('note_')) {
+                chordNoteIds.push(noteId);
+            }
+        });
+
+        if (chordNoteIds.length === 0) {
+            // console.log('[Stop Chord Notes] No chord notes to stop');
+            return;
+        }
+
+        // console.log(`[Stop Chord Notes] Stopping ${chordNoteIds.length} chord notes`);
+
+        // Stop each chord note
+        chordNoteIds.forEach(noteId => {
+            const noteData = this.activeNotes.get(noteId);
+            if (noteData) {
+                this.sendNoteOff(noteData.channel, noteData.midiNote);
+                this.releaseChannel(noteData.channel);
+                this.activeNotes.delete(noteId);
+            }
+        });
+
+        // console.log(`[Stop Chord Notes] Complete. Remaining active notes: ${this.activeNotes.size}`);
     }
 
     // Stop specific notes by their IDs (for independent chord release)
     stopSpecificNotes(noteIds) {
         if (!noteIds || noteIds.length === 0) {
-            // console.warn('stopSpecificNotes called with empty or undefined noteIds');
+            console.warn('[stopSpecificNotes] called with empty or undefined noteIds');
             return;
         }
 
+        console.log(`[stopSpecificNotes] Attempting to stop ${noteIds.length} notes: ${noteIds.join(', ')}`);
         let stoppedCount = 0;
         let alreadyStoppedCount = 0;
 
@@ -468,14 +509,14 @@ class MIDIController {
                 this.releaseChannel(noteData.channel);
                 this.activeNotes.delete(noteId);
                 stoppedCount++;
-                // console.log(`[Note Off] ${noteId}: MIDI=${noteData.midiNote}, channel=${noteData.channel + 1} released`);
+                console.log(`[stopSpecificNotes] Stopped ${noteId}: MIDI=${noteData.midiNote}, channel=${noteData.channel + 1}`);
             } else {
                 alreadyStoppedCount++;
-                // console.warn(`[Note Off] ${noteId}: Already stopped (likely stolen by channel allocation)`);
+                console.warn(`[stopSpecificNotes] ${noteId}: Not found (already stopped or invalid ID)`);
             }
         });
 
-        // console.log(`[Stop] Stopped ${stoppedCount} notes, ${alreadyStoppedCount} already stopped. Active notes: ${this.activeNotes.size}, Free channels: ${this.channelPool.length}`);
+        console.log(`[stopSpecificNotes] Complete. Stopped: ${stoppedCount}, Not found: ${alreadyStoppedCount}, Active notes remaining: ${this.activeNotes.size}, Free channels: ${this.channelPool.length}`);
     }
 
     // Scheduled note off (for envelope-controlled playback)
@@ -596,7 +637,7 @@ class MIDIController {
         if (oldSelect) {
             oldSelect.remove();
         }
-        
+
         const container = document.querySelector('.midi-device-container');
         if (!container) {
             return;
@@ -607,18 +648,18 @@ class MIDIController {
         customSelect.id = 'midi-device-select';
         customSelect.className = 'custom-dropdown';
         customSelect.style.cssText = 'position: relative; width: 100%; cursor: pointer; user-select: none;';
-        
+
         // Create the selected display
         const selectedDisplay = document.createElement('div');
         selectedDisplay.className = 'dropdown-selected';
         selectedDisplay.textContent = 'Select MIDI device...';
         selectedDisplay.style.cssText = 'padding: 10px; background: white; color: black; border: 2px solid black; border-radius: 4px;';
-        
+
         // Create the options list
         const optionsList = document.createElement('div');
         optionsList.className = 'dropdown-options';
         optionsList.style.cssText = 'position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid black; border-top: none; max-height: 200px; overflow-y: auto; display: none; z-index: 10000;';
-        
+
         // Add devices as options
         if (this.midiAccess && this.midiAccess.outputs) {
             this.midiAccess.outputs.forEach((output) => {
@@ -627,7 +668,7 @@ class MIDIController {
                 option.textContent = output.name;
                 option.dataset.deviceId = output.id;
                 option.style.cssText = 'padding: 10px; color: black; cursor: pointer; border-bottom: 1px solid #ccc;';
-                
+
                 // Hover effect
                 option.addEventListener('mouseenter', () => {
                     option.style.background = '#00ff00';
@@ -635,7 +676,7 @@ class MIDIController {
                 option.addEventListener('mouseleave', () => {
                     option.style.background = 'white';
                 });
-                
+
                 // Click handler
                 option.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -646,12 +687,12 @@ class MIDIController {
                         // console.log('Device selected:', output.name);
                     }
                 });
-                
+
                 optionsList.appendChild(option);
                 // console.log(`Added device option: ${output.name} (${output.id})`);
             });
         }
-        
+
         // Toggle dropdown
         selectedDisplay.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -659,16 +700,16 @@ class MIDIController {
             optionsList.style.display = isVisible ? 'none' : 'block';
             // console.log('Dropdown toggled, visible:', !isVisible);
         });
-        
+
         // Close on outside click
         document.addEventListener('click', () => {
             optionsList.style.display = 'none';
         });
-        
+
         customSelect.appendChild(selectedDisplay);
         customSelect.appendChild(optionsList);
         container.appendChild(customSelect);
-        
+
         // console.log('Custom dropdown created with', optionsList.children.length, 'options');
     }
 

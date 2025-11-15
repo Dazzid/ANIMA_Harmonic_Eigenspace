@@ -197,7 +197,7 @@ async function initAudio() {
 // Play single note (for keyboard mapping) -------------------------------------------------------------
 async function playNote(frequency) {
     // console.log(`[playNote] Called with frequency: ${frequency}`);
-    
+
     // ALWAYS send MIDI first (independent of audio mute)
     let noteId = null;
     if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
@@ -232,10 +232,10 @@ async function playNote(frequency) {
     const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
 
     // console.log(`[playNote] Creating note at ${frequency.toFixed(2)} Hz, startTime: ${t.toFixed(3)}`);
-    
+
     // Create a single note with harmonics
     createNote(frequency, harmonics, amplitudes, t, false);
-    
+
     // Return the note ID so caller can stop it later
     return noteId;
 }
@@ -286,7 +286,7 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
     // Build frequency array with doubling applied: [root, alpha, beta, gamma]
     const baseFrequencies = [baseFreq, alpha * baseFreq, beta * baseFreq, gamma * baseFreq];
     const doublingLabels = ['R', 'α', 'β', 'γ'];
-    const actualFrequencies = baseFrequencies.map((freq, i) => 
+    const actualFrequencies = baseFrequencies.map((freq, i) =>
         doublingFlags[doublingLabels[i]] ? freq * 2 : freq
     );
 
@@ -297,9 +297,9 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
 
     // Send MIDI/MPE output if controller is available and connected
     if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
-        // Stop all previous notes - Ableton handles the ADSR
-        window.midiController.stopAllNotes();
-        
+        // Stop previous chord notes only (not keyboard notes from MIDI Piano)
+        window.midiController.stopChordNotes();
+
         // Calculate dissonance for velocity mapping
         const dissonance = calculateDissonanceAt(alpha, beta, gamma, baseFreq, 6);
 
@@ -327,7 +327,7 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
 // Stop currently playing MIDI chord (note-off) -------------------------------------------------------------
 function stopMIDIChord() {
     if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
-        window.midiController.stopAllNotes();
+        window.midiController.stopChordNotes();
     }
 }
 
@@ -1651,7 +1651,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             const alpha = point.x;
             const beta = point.y;
             const gamma = point.z;
-            
+
             // Play the chord (sends MIDI note-on + schedules note-off)
             await playChord(alpha, beta, gamma, currentBaseFreq);
 
@@ -1933,7 +1933,7 @@ window.addEventListener('load', async () => {
                 await new Promise(resolve => setTimeout(resolve, 200));
                 console.log('MIDI Controller ready');
                 console.log('Available devices:', window.midiController.getOutputDevices());
-                
+
                 // Create MIDI button now that controller is ready
                 if (window.midiController.midiEnabled) {
                     const midiButton = document.createElement('button');
