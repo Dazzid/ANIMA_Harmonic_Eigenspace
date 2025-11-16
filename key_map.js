@@ -54,71 +54,69 @@ function calculateDynamic12Notes(chordFreqs) {
         // console.log(`  ${labels[i]}: ${chordFreqs[i].toFixed(2)} Hz → Step ${step} (ratio: ${actualRatio.toFixed(4)}, freq: ${actualFreq.toFixed(2)} Hz)`);
     });
 
-    // Step 2: Build a 12-note chromatic scale based on the chord's intervals
-    // The 12 notes represent: Root, m2, M2, m3, M3, P4, tritone, P5, m6, M6, m7, M7
-    // Their exact 53-TET steps depend on the chord clicked
+    // Step 2: Build a 13-note scale with chord notes at diatonic positions
+    // Keyboard positions: z s x d c v g b h n j m ,
+    // Chord note mapping:  0       4     7       11 12
+    // This creates:        R       3     5       7  Oct
 
     const rootStep = uniqueChordSteps[0];
-
-    // Map the chord notes to approximate scale degrees (0-11)
-    // Based on their 53-TET steps relative to root
     const chordIntervals = uniqueChordSteps.map(step => step - rootStep);
 
-    // console.log(`Chord intervals in 53-TET steps: ${chordIntervals.join(', ')}`);
+    console.log(`Chord intervals in 53-TET steps: ${chordIntervals.join(', ')}`);
 
-    // Standard 12-TET chromatic in 53-TET steps (for reference):
-    // 0, 4-5, 9, 13-14, 18, 22, 27, 31, 35-36, 40, 44-45, 49
-    // But we adjust based on the actual chord intervals
+    // Fixed positions for chord notes (diatonic scale degrees)
+    const chordPositions = [0, 4, 7, 11]; // z, c, b, m
+    const scale12Steps = new Array(12);
 
-    // Determine the scale based on chord intervals
-    // If we have 3rd, 5th, 7th (like maj7: 18, 31, 49), fill in the chromatic scale
-    const scale12Steps = [];
+    // Place chord notes at their fixed positions
+    chordIntervals.forEach((interval, i) => {
+        if (i < chordPositions.length) {
+            const pos = chordPositions[i];
+            scale12Steps[pos] = rootStep + interval;
+        }
+    });
 
-    // Always start with root
-    scale12Steps.push(rootStep);
+    // Fill in the gaps with evenly distributed chromatic steps
+    for (let i = 0; i < 12; i++) {
+        if (scale12Steps[i] === undefined) {
+            // Find the surrounding defined notes
+            let prevPos = -1, nextPos = 12;
+            for (let j = i - 1; j >= 0; j--) {
+                if (scale12Steps[j] !== undefined) {
+                    prevPos = j;
+                    break;
+                }
+            }
+            for (let j = i + 1; j < 12; j++) {
+                if (scale12Steps[j] !== undefined) {
+                    nextPos = j;
+                    break;
+                }
+            }
 
-    // Distribute 11 more notes evenly across the octave (53 steps)
-    // But prioritize the actual chord note positions
-    for (let degree = 1; degree < 12; degree++) {
-        // Target step for this scale degree in a 12-equal division of 53-TET
-        const targetStep = rootStep + Math.round((degree / 12) * 53);
-
-        // Check if any chord note is close to this target
-        let closestToTarget = targetStep;
-        let minDist = Infinity;
-
-        // Check if a chord interval is near this degree
-        for (const chordInterval of chordIntervals) {
-            const chordStep = rootStep + chordInterval;
-            const dist = Math.abs(chordStep - targetStep);
-            if (dist < minDist && dist < 3) { // Within 3 steps tolerance
-                minDist = dist;
-                closestToTarget = chordStep;
+            // Interpolate between surrounding notes
+            if (prevPos >= 0 && nextPos < 12) {
+                const prevStep = scale12Steps[prevPos];
+                const nextStep = scale12Steps[nextPos];
+                const range = nextStep - prevStep;
+                const positions = nextPos - prevPos;
+                const offset = i - prevPos;
+                scale12Steps[i] = Math.round(prevStep + (range * offset / positions));
+            } else if (prevPos >= 0) {
+                // Fill from last defined note to octave
+                const prevStep = scale12Steps[prevPos];
+                const range = rootStep + 53 - prevStep;
+                const positions = 12 - prevPos;
+                const offset = i - prevPos;
+                scale12Steps[i] = Math.round(prevStep + (range * offset / positions));
+            } else {
+                // Fill from root (shouldn't happen)
+                scale12Steps[i] = rootStep + Math.round((i / 12) * 53);
             }
         }
-
-        // If no chord note nearby, use the standard chromatic position
-        if (minDist === Infinity) {
-            closestToTarget = targetStep;
-        }
-
-        scale12Steps.push(closestToTarget);
     }
 
-    // Remove duplicates and sort
-    const uniqueSteps = [...new Set(scale12Steps)].sort((a, b) => a - b);
-
-    // Ensure we have exactly 12 notes by filling any gaps
-    const final12Steps = [];
-    for (let i = 0; i < 12; i++) {
-        if (i < uniqueSteps.length) {
-            final12Steps.push(uniqueSteps[i]);
-        } else {
-            // Fill missing positions with evenly distributed chromatic notes
-            const targetStep = rootStep + Math.round(((i + 1) / 12) * 53);
-            final12Steps.push(targetStep);
-        }
-    }
+    const final12Steps = scale12Steps;
 
     // Convert steps to frequencies
     const scale12Notes = final12Steps.map(step => {

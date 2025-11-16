@@ -292,7 +292,7 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
 
     // Update dynamic keyboard mapping with doubled frequencies (responds to x2)
     if (typeof window.updateKeyboardMapping === 'function') {
-        window.updateKeyboardMapping(actualFrequencies);
+        window.updateKeyboardMapping(baseFrequencies);
     }
 
     // Update MIDI Piano scale with ORIGINAL frequencies (ignores x2 buttons)

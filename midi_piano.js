@@ -79,7 +79,23 @@ class MidiPianoHandler {
     // Setup MIDI input listeners for all connected devices
     setupInputListeners() {
         console.log('MIDI Piano: Setting up input listeners...');
+
+        // Get the selected output device NAME to avoid feedback loop
+        const outputDeviceName = window.midiController?.selectedOutput?.name;
+
+        // First, clear any existing listeners
         for (let input of this.midiAccess.inputs.values()) {
+            input.onmidimessage = null;
+        }
+
+        // Then attach new listeners (skipping output device BY NAME)
+        for (let input of this.midiAccess.inputs.values()) {
+            // CRITICAL: Skip any input that matches the output device NAME (prevents feedback loop)
+            if (outputDeviceName && input.name === outputDeviceName) {
+                console.warn(`MIDI Piano: [SKIPPED] ${input.name} (matches output device NAME - would create feedback loop)`);
+                continue;
+            }
+
             console.log(`MIDI Piano: [LISTENER ATTACHED] ${input.name} (ID: ${input.id}, Type: ${input.type}, State: ${input.state})`);
 
             // Store the device name for debugging
@@ -93,6 +109,14 @@ class MidiPianoHandler {
         console.log(`MIDI Piano: Attached listeners to ${this.midiAccess.inputs.size} input device(s)`);
     }
 
+    // Reinitialize input listeners (call when output device changes)
+    reinitializeInputs() {
+        if (this.midiAccess) {
+            console.log('MIDI Piano: Reinitializing inputs to exclude new output device');
+            this.setupInputListeners();
+        }
+    }
+
     // Handle incoming MIDI messages
     handleMidiMessage(message) {
         const [status, note, velocity] = message.data;
@@ -100,25 +124,27 @@ class MidiPianoHandler {
         const channel = status & 0x0f;
 
         // LOG EVERYTHING to diagnose the issue
-        console.log(`[MIDI Piano Input] Raw: [${status}, ${note}, ${velocity}], Command: 0x${command.toString(16)}, Channel: ${channel}, Note: ${note}, Vel: ${velocity}`);
+        console.log(`[MIDI Piano Input] Status: 0x${status.toString(16).padStart(2, '0')}, Note: ${note}, Vel: ${velocity}, Cmd: 0x${command.toString(16)}, Ch: ${channel}`);
 
         // Always allow note-offs to prevent stuck notes
         if (command === 0x80 || (command === 0x90 && velocity === 0)) {
+            console.log(`[MIDI Piano Input] → Note OFF (note ${note})`);
             this.handleNoteOff(note);
             return;
         }
 
         // Block all other messages when disabled
         if (!this.isEnabled) {
-            console.log(`[MIDI Piano Input] BLOCKED - Piano disabled`);
+            console.log(`[MIDI Piano Input] → BLOCKED (Piano disabled)`);
             return;
         }
 
         // Note On (0x90) - only process when enabled
         if (command === 0x90 && velocity > 0) {
+            console.log(`[MIDI Piano Input] → Note ON (note ${note}, vel ${velocity})`);
             this.handleNoteOn(note, velocity);
         } else {
-            console.log(`[MIDI Piano Input] IGNORED - Unknown command: 0x${command.toString(16)}`);
+            console.log(`[MIDI Piano Input] → IGNORED (Unknown command: 0x${command.toString(16)})`);
         }
     }
 

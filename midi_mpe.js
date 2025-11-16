@@ -95,6 +95,13 @@ class MIDIController {
 
             // Send MPE configuration
             this.configureMPE();
+
+            // CRITICAL: Notify MIDI Piano to reinitialize inputs (exclude this output to prevent feedback)
+            if (window.midiPianoHandler && typeof window.midiPianoHandler.reinitializeInputs === 'function') {
+                console.log('[MIDI Controller] Output device changed, reinitializing MIDI Piano inputs');
+                window.midiPianoHandler.reinitializeInputs();
+            }
+
             return true;
         }
         return false;
