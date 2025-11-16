@@ -62,7 +62,7 @@ class InfoOverlay {
                 <div class="section">
                     <h3>The Eigenspace View</h3>
                     <p>
-                        What you see is a <strong>3D visualization</strong> of tetrachord dissonance relationships. Each axis represents 
+                        What you see is a <strong>3D visualization</strong> slice of the four-dimensional space of tetrachord dissonance relationships. Each axis represents 
                         the interaction of <strong>6 first harmonics</strong> at different frequency ratios, computed using 
                         the <em>Plomp-Levelt</em> [1] roughness model from Sethares' <a href="https://sethares.engr.wisc.edu/ttss.html" target="_blank"><em>Tuning, Timbre, Spectrum, Scale</em> [2]</a>.
                         The visualization maps dissonance values across all possible combinations of the three frequency ratios, creating a 3D landscape of psychoacoustic roughness.
