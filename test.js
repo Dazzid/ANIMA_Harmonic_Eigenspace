@@ -1454,7 +1454,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         },
         legend: {
             x: 0.995,
-            y: 0.2,
+            y: 0.15,
             xanchor: 'right',
             yanchor: 'top',
             bgcolor: 'rgba(0,0,0,0.0)',
