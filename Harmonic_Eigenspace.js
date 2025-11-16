@@ -290,15 +290,20 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
         doublingFlags[doublingLabels[i]] ? freq * 2 : freq
     );
 
-    // Update dynamic keyboard mapping based on these frequencies
+    // Update dynamic keyboard mapping with doubled frequencies (responds to x2)
     if (typeof window.updateKeyboardMapping === 'function') {
         window.updateKeyboardMapping(actualFrequencies);
     }
 
+    // Update MIDI Piano scale with ORIGINAL frequencies (ignores x2 buttons)
+    if (typeof window.updateMidiPianoScale === 'function') {
+        window.updateMidiPianoScale(baseFrequencies);
+    }
+
     // Send MIDI/MPE output if controller is available and connected
     if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
-        // Stop all previous notes - Ableton handles the ADSR
-        window.midiController.stopAllNotes();
+        // Stop previous chord notes only (not keyboard notes from MIDI Piano)
+        window.midiController.stopChordNotes();
 
         // Calculate dissonance for velocity mapping
         const dissonance = calculateDissonanceAt(alpha, beta, gamma, baseFreq, 6);
@@ -327,7 +332,7 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
 // Stop currently playing MIDI chord (note-off) -------------------------------------------------------------
 function stopMIDIChord() {
     if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
-        window.midiController.stopAllNotes();
+        window.midiController.stopChordNotes();
     }
 }
 
@@ -1213,7 +1218,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 cmin: vmin,
                 cmax: vmax,
                 showscale: false,  // Hide Plotly colorbar - we use P5 instead
-                opacity: 0.5
+                opacity: 0.7
             },
             name: `${(threshold - windowSize / 2).toFixed(3)} - ${(threshold + windowSize / 2).toFixed(3)}`,
             visible: i === 0, // Only first layer visible
@@ -1448,8 +1453,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             aspectmode: 'cube'
         },
         legend: {
-            x: 0.992,
-            y: 0.88,
+            x: 0.995,
+            y: 0.2,
             xanchor: 'right',
             yanchor: 'top',
             bgcolor: 'rgba(0,0,0,0.0)',

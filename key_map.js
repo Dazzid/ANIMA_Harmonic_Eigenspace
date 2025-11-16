@@ -36,16 +36,16 @@ function calculateDynamic12Notes(chordFreqs) {
     }
 
     const rootFreq = chordFreqs[0];
-    
+
     // Step 1: Convert chord frequencies to 53-TET steps relative to root
     const chordSteps = chordFreqs.map(freq => {
         const ratio = freq / rootFreq;
         return findClosest53TETStep(ratio);
     });
-    
+
     // Sort and remove duplicates
     const uniqueChordSteps = [...new Set(chordSteps)].sort((a, b) => a - b);
-    
+
     // console.log('Chord notes mapped to 53-TET steps:');
     const labels = ['Root', 'α', 'β', 'γ'];
     chordSteps.forEach((step, i) => {
@@ -57,36 +57,36 @@ function calculateDynamic12Notes(chordFreqs) {
     // Step 2: Build a 12-note chromatic scale based on the chord's intervals
     // The 12 notes represent: Root, m2, M2, m3, M3, P4, tritone, P5, m6, M6, m7, M7
     // Their exact 53-TET steps depend on the chord clicked
-    
+
     const rootStep = uniqueChordSteps[0];
-    
+
     // Map the chord notes to approximate scale degrees (0-11)
     // Based on their 53-TET steps relative to root
     const chordIntervals = uniqueChordSteps.map(step => step - rootStep);
-    
+
     // console.log(`Chord intervals in 53-TET steps: ${chordIntervals.join(', ')}`);
-    
+
     // Standard 12-TET chromatic in 53-TET steps (for reference):
     // 0, 4-5, 9, 13-14, 18, 22, 27, 31, 35-36, 40, 44-45, 49
     // But we adjust based on the actual chord intervals
-    
+
     // Determine the scale based on chord intervals
     // If we have 3rd, 5th, 7th (like maj7: 18, 31, 49), fill in the chromatic scale
     const scale12Steps = [];
-    
+
     // Always start with root
     scale12Steps.push(rootStep);
-    
+
     // Distribute 11 more notes evenly across the octave (53 steps)
     // But prioritize the actual chord note positions
     for (let degree = 1; degree < 12; degree++) {
         // Target step for this scale degree in a 12-equal division of 53-TET
         const targetStep = rootStep + Math.round((degree / 12) * 53);
-        
+
         // Check if any chord note is close to this target
         let closestToTarget = targetStep;
         let minDist = Infinity;
-        
+
         // Check if a chord interval is near this degree
         for (const chordInterval of chordIntervals) {
             const chordStep = rootStep + chordInterval;
@@ -96,18 +96,18 @@ function calculateDynamic12Notes(chordFreqs) {
                 closestToTarget = chordStep;
             }
         }
-        
+
         // If no chord note nearby, use the standard chromatic position
         if (minDist === Infinity) {
             closestToTarget = targetStep;
         }
-        
+
         scale12Steps.push(closestToTarget);
     }
-    
+
     // Remove duplicates and sort
     const uniqueSteps = [...new Set(scale12Steps)].sort((a, b) => a - b);
-    
+
     // Ensure we have exactly 12 notes by filling any gaps
     const final12Steps = [];
     for (let i = 0; i < 12; i++) {
@@ -119,14 +119,14 @@ function calculateDynamic12Notes(chordFreqs) {
             final12Steps.push(targetStep);
         }
     }
-    
+
     // Convert steps to frequencies
     const scale12Notes = final12Steps.map(step => {
         const ratio = get53tetRatio(step);
         const freq = rootFreq * ratio;
         const isChordNote = chordSteps.includes(step);
         const chordIndex = chordSteps.indexOf(step);
-        
+
         return {
             step: step,
             ratio: ratio,
@@ -135,7 +135,7 @@ function calculateDynamic12Notes(chordFreqs) {
             chordLabel: isChordNote ? labels[chordIndex] : null
         };
     });
-    
+
     // ALWAYS add 13th note: root + octave (MUST be rootStep + 53)
     // This ensures the ',' key is ALWAYS the octave up, regardless of scale calculation
     const octaveStep = rootStep + 53;
@@ -162,7 +162,7 @@ function calculateDynamic12Notes(chordFreqs) {
 // Update keyboard mapping based on new chord
 function updateKeyboardMapping(chordFreqs) {
     const scale12 = calculateDynamic12Notes(chordFreqs);
-    
+
     if (!scale12) return;
 
     // Map keys to frequencies (for computer keyboard)
@@ -177,8 +177,15 @@ function updateKeyboardMapping(chordFreqs) {
     Object.entries(currentKeyboardMap).forEach(([key, freq]) => {
         // console.log(`  ${key}: ${freq.toFixed(2)} Hz`);
     });
+}
 
-    // Also update MIDI piano handler with the new scale
+// Update MIDI Piano scale separately (so x2 buttons don't affect it)
+function updateMidiPianoScale(chordFreqs) {
+    const scale12 = calculateDynamic12Notes(chordFreqs);
+
+    if (!scale12) return;
+
+    // Update MIDI piano handler with the new scale
     if (window.midiPianoHandler && scale12) {
         const rootFreq = chordFreqs[0];
         window.midiPianoHandler.updateScale(scale12, rootFreq);
@@ -198,7 +205,7 @@ function shiftOctave(direction) {
 // Play single note from keyboard
 function playKeyboardNote(key) {
     const baseFreq = currentKeyboardMap[key];
-    
+
     if (!baseFreq) {
         // console.log(`Key '${key}' not mapped`);
         return;
@@ -222,7 +229,7 @@ function playKeyboardNote(key) {
 // Stop note when key is released
 function stopKeyboardNote(key) {
     const noteId = activeKeyNotes[key];
-    
+
     if (noteId && window.midiController) {
         window.midiController.stopSpecificNotes([noteId]);
         delete activeKeyNotes[key];
@@ -233,11 +240,11 @@ function stopKeyboardNote(key) {
 document.addEventListener('keydown', (event) => {
     // Ignore key repeats (this is the key for low latency!)
     if (event.repeat) return;
-    
+
     const key = event.key;
-    
+
     // console.log(`[key_map] Key pressed: '${key}' (shiftKey: ${event.shiftKey})`);
-    
+
     // Check for octave shift keys
     // < = octave down
     // > = octave up
@@ -247,21 +254,21 @@ document.addEventListener('keydown', (event) => {
         shiftOctave(-1);
         return;
     }
-    
+
     if (key === '>') {
         // console.log('[key_map] Octave shift UP');
         event.preventDefault();
         shiftOctave(1);
         return;
     }
-    
+
     // Check if this is one of our keyboard keys
     const lowerKey = key.toLowerCase();
     if (KEYBOARD_KEYS.includes(lowerKey)) {
         // console.log(`[key_map] Playing note for key: ${lowerKey}`);
         // Prevent default behavior
         event.preventDefault();
-        
+
         // Play the note
         playKeyboardNote(lowerKey);
     } else {
@@ -273,7 +280,7 @@ document.addEventListener('keydown', (event) => {
 document.addEventListener('keyup', (event) => {
     const key = event.key;
     const lowerKey = key.toLowerCase();
-    
+
     // Stop note if this was one of our keyboard keys
     if (KEYBOARD_KEYS.includes(lowerKey)) {
         event.preventDefault();
@@ -283,6 +290,7 @@ document.addEventListener('keyup', (event) => {
 
 // Export functions for use in other files
 window.updateKeyboardMapping = updateKeyboardMapping;
+window.updateMidiPianoScale = updateMidiPianoScale;
 window.playKeyboardNote = playKeyboardNote;
 window.KEYBOARD_KEYS = KEYBOARD_KEYS;
 

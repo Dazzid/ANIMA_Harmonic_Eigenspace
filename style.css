@@ -186,19 +186,20 @@ body {
 /* Switch to Full 3D View */
 #viz-mode-toggle {
     position: fixed;
-    top: 55px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 10px;
+    right: 170px;
+    /* transform: translateX(-50%); */
     background: rgba(0, 111, 229, 0.8);
     border: none;
     color: white;
     padding: 7px 20px;
-    font-size: 11px;
+    font-size: 12px;
     font-family: 'Source Code Pro', monospace;
-    font-weight: 300;
-    border-radius: 8px;
+    font-weight: normal;
+    border-radius: 5px;
     cursor: pointer;
     z-index: 9999;
+    line-height: 1;
     transition: all 0.2s ease;
 }
 
@@ -505,7 +506,7 @@ body {
 
 #info-button {
     position: fixed;
-    bottom: 10px;
+    top: 10px;
     right: 10px;
     background: rgba(0, 111, 229, 0.8);
     border: none;
@@ -535,8 +536,8 @@ body {
 /* MIDI toggle button - positioned next to info button */
 #midi-toggle {
     position: fixed;
-    bottom: 10px;
-    right: 82px;
+    top: 10px;
+    right: 80px;
     /* Position to the left of info button */
     background: rgba(0, 111, 229, 0.8);
     border: none;
@@ -544,7 +545,7 @@ body {
     padding: 7px 20px;
     font-size: 12px;
     font-family: 'Source Code Pro', monospace;
-    font-weight: light;
+    font-weight: normal;
     border-radius: 5px;
     cursor: pointer;
     z-index: 9999;
@@ -576,6 +577,7 @@ body {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
     z-index: 9998;
     opacity: 0;
+    font-weight: normal;
     visibility: hidden;
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     font-family: 'Source Code Pro', monospace;

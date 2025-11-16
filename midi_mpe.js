@@ -260,14 +260,31 @@ class MIDIController {
     freqToMIDI(frequency) {
         // Convert frequency to MIDI note number + cents deviation
         // MIDI note 69 = A4 = 440 Hz
-        const noteNumber = 69 + 12 * Math.log2(frequency / 440.0);
-        const midiNote = Math.round(noteNumber);
-        const cents = (noteNumber - midiNote) * 100; // Cents deviation from nearest semitone
+        const exactNoteNumber = 69 + 12 * Math.log2(frequency / 440.0);
+
+        // Clamp to valid MIDI range
+        const clampedNote = Math.max(0, Math.min(127, Math.round(exactNoteNumber)));
+
+        // Calculate pitch bend needed to reach the exact frequency
+        // This handles both:
+        // 1. Microtonal deviations within a semitone (normal case)
+        // 2. Out-of-range notes that got clamped (extreme chords)
+        const semitoneDeviation = exactNoteNumber - clampedNote;
+        const cents = semitoneDeviation * 100; // Convert semitones to cents
+
+        // Clamp pitch bend to ±48 semitones (±4800 cents)
+        const maxCents = this.pitchBendRange * 100;
+        const clampedCents = Math.max(-maxCents, Math.min(maxCents, cents));
+
+        // Log warning if pitch bend was clamped (frequency way out of range)
+        if (Math.abs(cents) > maxCents) {
+            console.warn(`[freqToMIDI] Frequency ${frequency.toFixed(2)} Hz requires ${cents.toFixed(0)} cents bend (exceeds ±${maxCents} range), clamping to ±${maxCents}`);
+        }
 
         return {
-            note: Math.max(0, Math.min(127, midiNote)),
-            cents: cents,
-            pitchBend: this.centsToPitchBend(cents)
+            note: clampedNote,
+            cents: clampedCents,
+            pitchBend: this.centsToPitchBend(clampedCents)
         };
     }
 

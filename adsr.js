@@ -10,7 +10,12 @@ const padding = 10;
 const adsrTop = 100;
 const adsrHeight = 140;
 
-let bgColor = 'rgba(23, 23, 23, 1)';
+// Create wave type buttons
+const btnW = 59;
+const btnH = 25;
+const spacing = 2;
+
+let bgColor = 'rgba(20, 20, 20, 1)';
 
 const round = 10;
 const paddingWetDry = 100;
@@ -67,10 +72,7 @@ function setup() {
     // console.log('Container found:', container);
     canvas.parent('audio-gui-container');
     
-    // Create wave type buttons
-    const btnW = 60;
-    const btnH = 25;
-    const spacing = 2;
+    // Setup wave type buttons
     const startX = padding;
     const startY = padding + 15;
 
