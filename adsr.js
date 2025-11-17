@@ -122,13 +122,13 @@ function drawADSR() {
     rect(padding, adsrTop, W - 2 * padding, adsrHeight, round, round, 0, 0);
 
     // Grid
-    stroke(80);
-    for (let i = 1; i < 5; i++) {
-        let x = padding + i * (W - 2 * padding) / 5;
+    stroke(90);
+    for (let i = 1; i < 10; i++) {
+        let x = padding + i * (W - 2 * padding) / 10;
         line(x, adsrTop, x, adsrTop + adsrHeight);
     }
-    for (let i = 1; i < 4; i++) {
-        let y = adsrTop + i * adsrHeight / 4;
+    for (let i = 1; i < 8; i++) {
+        let y = adsrTop + i * adsrHeight / 8;
         line(padding, y, W - padding, y);
     }
 

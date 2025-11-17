@@ -30,7 +30,7 @@ body {
     margin: 0px;
     padding: 0px;
     font-size: 35px;
-    font-weight: 400;
+    font-weight: 300;
 }
 
 #header h3 {
@@ -187,7 +187,10 @@ body {
 #viz-mode-toggle {
     position: fixed;
     top: 10px;
-    right: 170px;
+    /* Position exactly 1px to the left of MIDI button: 80px (MIDI right) + 132px (MIDI width) + 1px gap */
+    right: calc(80px + 80px + 1px);
+    box-sizing: border-box;
+    /* Consistent sizing */
     /* transform: translateX(-50%); */
     background: rgba(0, 111, 229, 0.8);
     border: none;
@@ -538,6 +541,12 @@ body {
     position: fixed;
     top: 10px;
     right: 80px;
+    width: 80px;
+    /* Fixed total width including padding (92px content + 40px padding) */
+    box-sizing: border-box;
+    /* Include padding in width calculation */
+    justify-content: center;
+    /* Center the content within fixed width */
     /* Position to the left of info button */
     background: rgba(0, 111, 229, 0.8);
     border: none;
