@@ -56,23 +56,71 @@ function calculateDynamic12Notes(chordFreqs) {
 
     // Step 2: Build a 13-note scale with chord notes at diatonic positions
     // Keyboard positions: z s x d c v g b h n j m ,
-    // Chord note mapping:  0       4     7       11 12
-    // This creates:        R       3     5       7  Oct
+    // Positions:          0 1 2 3 4 5 6 7 8 9 10 11 12
 
     const rootStep = uniqueChordSteps[0];
     const chordIntervals = uniqueChordSteps.map(step => step - rootStep);
 
     console.log(`Chord intervals in 53-TET steps: ${chordIntervals.join(', ')}`);
 
-    // Fixed positions for chord notes (diatonic scale degrees)
-    const chordPositions = [0, 4, 7, 11]; // z, c, b, m
-    const scale12Steps = new Array(12);
+    // Classify intervals and assign keyboard positions dynamically
+    // 53-TET interval ranges (based on just intonation):
+    // Minor 3rds: 11-14 (sm=11, vm=12, m=13, ^m=14)
+    // Neutral 3rds: 15-16 (n=15, N=16)
+    // Major 3rds: 17-20 (vM=17, M=18, ^M=19, SM=20)
+    // Perfect 4th: ~22, Perfect 5th: ~31
+    // Minor 7ths: 42-45, Neutral 7th: ~46, Major 7ths: 47-51
 
-    // Place chord notes at their fixed positions
+    const scale12Steps = new Array(12);
+    const chordPositions = []; // Will be calculated dynamically
+
     chordIntervals.forEach((interval, i) => {
-        if (i < chordPositions.length) {
-            const pos = chordPositions[i];
+        let pos = null;
+
+        if (interval === 0) {
+            // Root
+            pos = 0; // z
+        } else if (interval >= 11 && interval <= 14) {
+            // Minor 3rd (sm=11, vm=12, m=13, ^m=14)
+            pos = 3; // d
+        } else if (interval >= 15 && interval <= 16) {
+            // Neutral 3rd (n=15, N=16)
+            pos = 3; // d (treat as minor position)
+        } else if (interval >= 17 && interval <= 20) {
+            // Major 3rd (vM=17, M=18, ^M=19, SM=20)
+            pos = 4; // c
+        } else if (interval >= 21 && interval <= 24) {
+            // Perfect 4th region
+            pos = 5; // v
+        } else if (interval >= 25 && interval <= 28) {
+            // Augmented 4th / Diminished 5th (tritone)
+            pos = 6; // g
+        } else if (interval >= 29 && interval <= 33) {
+            // Perfect 5th (≈31 steps)
+            pos = 7; // b
+        } else if (interval >= 34 && interval <= 37) {
+            // Minor 6th / Augmented 5th
+            pos = 8; // h
+        } else if (interval >= 38 && interval <= 41) {
+            // Major 6th
+            pos = 9; // n
+        } else if (interval >= 42 && interval <= 45) {
+            // Minor 7th
+            pos = 10; // j
+        } else if (interval === 46) {
+            // Neutral 7th
+            pos = 10; // j (treat as minor position)
+        } else if (interval >= 47 && interval <= 51) {
+            // Major 7th
+            pos = 11; // m
+        } else if (interval >= 52) {
+            // Octave (will be handled separately at position 12)
+            pos = 12; // ,
+        }
+
+        if (pos !== null && pos < 12) {
             scale12Steps[pos] = rootStep + interval;
+            chordPositions.push(pos);
         }
     });
 
