@@ -87,7 +87,9 @@ For MIDI/MPE output to Ableton Live or other DAWs:
 The visualization maps dissonance values across all possible combinations of three frequency ratios, creating a 3D landscape of psychoacoustic roughness based on:
 
 - **Base Parameters**: 220 Hz fundamental, 6 harmonics, frequency ratios [1.0-2.0]
-- **Plomp-Levelt Formula**: D = Σ_pairs [a × (5·e^(-3.51·S·Δf) - 5·e^(-5.75·S·Δf))]
+- **Plomp-Levelt Formula**: 
+
+$$D = \sum_{\text{pairs}} a \times \left[5 \cdot e^{-3.51 \cdot S \cdot \Delta f} - 5 \cdot e^{-5.75 \cdot S \cdot \Delta f}\right]$$
 - **Dissonance Range**: 14-22 (emergent from psychoacoustic constants)
 
 The color scale reveals **intersection zones** where harmonic interactions create varying dissonance levels:
