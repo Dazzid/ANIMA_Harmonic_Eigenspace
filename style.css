@@ -188,7 +188,7 @@ body {
     position: fixed;
     top: 10px;
     /* Position exactly 1px to the left of MIDI button: 80px (MIDI right) + 132px (MIDI width) + 1px gap */
-    right: calc(80px + 80px + 1px);
+    right: calc(80px + 80px + 121px + 1px);
     box-sizing: border-box;
     /* Consistent sizing */
     /* transform: translateX(-50%); */
@@ -210,6 +210,39 @@ body {
     background: rgba(0, 111, 229, 1);
     /* transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); */
+}
+
+/* Chord Grid Toggle Button */
+#grid-toggle {
+    position: fixed;
+    top: 10px;
+    right: 161px;
+    width: 120px;
+    /* Fixed total width including padding (92px content + 40px padding) */
+    box-sizing: border-box;
+    /* Include padding in width calculation */
+    justify-content: center;
+    /* Center the content within fixed width */
+    /* Position to the left of info button */
+    background: rgba(0, 111, 229, 0.8);
+    border: none;
+    color: white;
+    padding: 7px 20px;
+    font-size: 12px;
+    font-family: 'Source Code Pro', monospace;
+    font-weight: normal;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 9999;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1;
+}
+
+#grid-toggle:hover {
+    background: rgba(0, 111, 229, 1);
 }
 
 /* Position Plotly's modebar (node visibility toggles) to top-right */

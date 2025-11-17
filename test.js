@@ -1665,6 +1665,39 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 setChordVisualization(alpha, beta, gamma, currentBaseFreq);
             }
 
+            // Record last clicked chord so it can be stored in the grid
+            try {
+                window.lastClickedChord = {
+                    root: currentBaseFreq,
+                    alpha: alpha,
+                    beta: beta,
+                    gamma: gamma,
+                    frequencies: [
+                        currentBaseFreq,
+                        currentBaseFreq * alpha,
+                        currentBaseFreq * beta,
+                        currentBaseFreq * gamma
+                    ],
+                    // plotly point object may not include a stable node index; store if present
+                    nodeNumber: point.pointNumber !== undefined ? point.pointNumber : (point.pointIndex !== undefined ? point.pointIndex : null)
+                };
+            } catch (e) {
+                console.warn('Failed to record lastClickedChord', e);
+            }
+            // Do not auto-open the grid; leave the grid toggle button to the user.
+            // If the grid is already open, prepare it now so the user can click a cell immediately.
+            try {
+                const container = document.getElementById('grid-container');
+                if (container && container.style.display !== 'none' && typeof gridSketch !== 'undefined' && gridSketch && gridSketch.getGrid) {
+                    const grid = gridSketch.getGrid();
+                    if (grid && typeof grid.prepareToStore === 'function') {
+                        grid.prepareToStore(window.lastClickedChord);
+                    }
+                }
+            } catch (e) {
+                // Non-fatal: grid may not be initialized yet
+            }
+
         }
     });
 }
@@ -1956,6 +1989,62 @@ window.addEventListener('load', async () => {
             }
         }
     }, 400);
+
+    // Create Store Chord button (stores last clicked chord into the grid)
+    (function createStoreChordButton() {
+        const storeBtn = document.createElement('button');
+        storeBtn.id = 'store-chord-btn';
+        storeBtn.title = 'Store last selected chord into the chord grid';
+        storeBtn.textContent = 'Store Chord';
+        storeBtn.style.marginLeft = '8px';
+        storeBtn.style.padding = '6px 8px';
+        storeBtn.style.borderRadius = '6px';
+        storeBtn.style.background = 'rgba(29,150,255,0.12)';
+        storeBtn.style.color = '#cfefff';
+        storeBtn.style.border = '1px solid rgba(29,150,255,0.18)';
+        storeBtn.addEventListener('click', () => {
+            // Prefer the last clicked chord (Plotly click)
+            if (window.lastClickedChord) {
+                if (typeof window.prepareChordForStorage === 'function') {
+                    window.prepareChordForStorage(window.lastClickedChord);
+                } else {
+                    alert('Chord grid not initialized yet. Open the grid and try again.');
+                }
+                return;
+            }
+
+            // Fallback: try to use currently-playing visualization frequencies
+            const playback = (typeof window.getActualPlaybackFrequencies === 'function') ? window.getActualPlaybackFrequencies() : null;
+            if (playback && playback.length === 4) {
+                try {
+                    const root = playback[0].originalFreq || currentBaseFreq;
+                    const alpha = playback[1].originalFreq / root;
+                    const beta = playback[2].originalFreq / root;
+                    const gamma = playback[3].originalFreq / root;
+                    const chordData = {
+                        root: root,
+                        alpha: alpha,
+                        beta: beta,
+                        gamma: gamma,
+                        frequencies: [root, root * alpha, root * beta, root * gamma],
+                        nodeNumber: null
+                    };
+                    if (typeof window.prepareChordForStorage === 'function') {
+                        window.prepareChordForStorage(chordData);
+                    } else {
+                        alert('Chord grid not initialized yet. Open the grid and try again.');
+                    }
+                } catch (e) {
+                    console.warn('Failed to prepare chord for storage from playback data', e);
+                }
+                return;
+            }
+
+            alert('No chord selected. Click a chord in the visualization first.');
+        });
+
+        document.body.appendChild(storeBtn);
+    })();
 
     /// Add root note selector event listener (if it exists)
     const rootSelector = document.getElementById('root-select');
