@@ -14,11 +14,9 @@
 
 This project is part of **ANIMA** (Artificial INtelligence-based Interactive Microtonal Compositional Assistant), a Marie Skłodowska-Curie Actions (MSCA) Postdoctoral Fellowship funded by the European Union's Horizon Europe program.
 
-**⚠️ STATUS: Under Active Development**
+** STATUS: Under Active Development**
 
 This repository contains research tools for exploring microtonal harmony through computational psychoacoustics. The system visualizes the 4-dimensional consonance/dissonance landscape of tetrachords using the Plomp-Levelt model.
-
-**🌐 [Try the Live Demo](https://dazzid.github.io/ANIMA_Harmonic_Eigenspace/)**
 
 ---
 
