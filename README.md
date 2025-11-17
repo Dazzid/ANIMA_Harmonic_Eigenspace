@@ -203,9 +203,3 @@ Music Technology Group, Universitat Pompeu Fabra
 Barcelona, Spain
 
 For questions, collaborations, please contact through the institutional channels.
-
----
-
-**Last Updated**: November 2024  
-**Status**: Active Development (MSCA Fellowship 2025-2027)  
-**Grant Agreement**: 101203318
