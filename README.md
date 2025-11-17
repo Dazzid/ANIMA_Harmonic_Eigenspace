@@ -106,28 +106,6 @@ The project uses **53-tone equal temperament** (53-TET), which provides:
 
 ---
 
-## 🎹 Interactive Features
-
-### Dynamic Keyboard Mapping
-
-The system implements a **13-note chromatic scale** that adapts based on the clicked chord:
-- **Keyboard layout**: z s x d c v g b h n j m ,
-- **Chord notes** automatically positioned at appropriate scale degrees:
-  - Minor 3rds (steps 11-14) → key 'd'
-  - Major 3rds (steps 17-20) → key 'c'
-  - Perfect 5th (steps 29-33) → key 'b'
-  - Minor 7ths (steps 42-45) → key 'j'
-  - Major 7ths (steps 47-51) → key 'm'
-
-### MIDI Piano Input
-
-Connect a physical MIDI keyboard (e.g., M-Audio Oxygen 49) to play the dynamic microtonal scale:
-- **Note mapping**: Preserves root position while distributing scale chromatically
-- **MPE output**: Routes through the existing MIDI/MPE system
-- **Real-time**: Low-latency performance with proper note-off handling
-
----
-
 ## 🛠️ Technical Stack
 
 - **Pure JavaScript** + Web Audio API
