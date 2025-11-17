@@ -106,18 +106,6 @@ The project uses **53-tone equal temperament** (53-TET), which provides:
 
 ---
 
-## 🛠️ Technical Stack
-
-- **Pure JavaScript** + Web Audio API
-- **400³ dissonance grid** computation
-- **Local minima finding** with adaptive refinement
-- **Tetrahedron constraint** (α ≤ β ≤ γ)
-- **p5.js** for chord visualization
-- **Plotly.js** for WebGL 3D rendering
-- **MIDI/MPE** via Web MIDI API
-
----
-
 ## 📚 References
 
 1. **Plomp, R., & Levelt, W. J. M.** (1965). Tonal consonance and critical bandwidth. *The Journal of the Acoustical Society of America*, 38(4), 548-560.
