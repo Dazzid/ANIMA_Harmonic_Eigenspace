@@ -1,4 +1,4 @@
-# Harmonic Eigenspace Explorer
+# 4D Harmonic Eigenspace
 
 **Interactive 4D Psychoacoustic Dissonance Visualization for Microtonal Harmony**
 
@@ -51,6 +51,7 @@ What you see is a **3D visualization slice** of the four-dimensional space of te
 ## 🚀 Usage
 
 ### Quick Start
+It it only compatible with Google Chrome. 
 
 1. **Visit the live demo**: [https://dazzid.github.io/ANIMA_Harmonic_Eigenspace/](https://dazzid.github.io/ANIMA_Harmonic_Eigenspace/)
 2. **Click on any point** in the 3D visualization to hear the corresponding chord
@@ -74,7 +75,7 @@ For MIDI/MPE output to Ableton Live or other DAWs:
    - Preferences → Link/Tempo/MIDI
    - Enable *Track* and *Remote* for IAC Driver port
    - Create MIDI track with IAC Driver as input
-   - Receive MPE microtonal chords!
+   - Receive MPE microtonal chords
 
 ---
 
