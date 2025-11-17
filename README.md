@@ -141,8 +141,6 @@ If you use this work in your research, please cite:
 
 ## ⚖️ License & Usage Terms
 
-**© 2024 David Dalmazzo. All Rights Reserved.**
-
 This project is part of the **ANIMA** research project, funded by the European Union's Marie Skłodowska-Curie Actions (MSCA) Postdoctoral Fellowship under Horizon Europe (Grant Agreement No. 101203318).
 
 ### Research-Only License
