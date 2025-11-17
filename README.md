@@ -140,23 +140,6 @@ Connect a physical MIDI keyboard (e.g., M-Audio Oxygen 49) to play the dynamic m
 
 ---
 
-## 🔄 Current Development Status
-
-- ✅ Core 3D visualization with Plomp-Levelt model
-- ✅ Local minima detection and refinement
-- ✅ Real-time audio synthesis
-- ✅ Dynamic 53-TET keyboard mapping
-- ✅ MIDI/MPE output with per-note pitch bend
-- ✅ MIDI Piano input handler
-- ✅ Web deployment (GitHub Pages)
-- 🔄 Dataset construction (microtonal chord corpus)
-- 🔄 Machine learning models for harmonic progression
-- 🔄 Interactive visualization tools for composers
-- 📋 Planned: Melody generation assistant
-- 📋 Planned: Ableton Live integration
-
----
-
 ## 📚 References
 
 1. **Plomp, R., & Levelt, W. J. M.** (1965). Tonal consonance and critical bandwidth. *The Journal of the Acoustical Society of America*, 38(4), 548-560.
@@ -237,48 +220,14 @@ This project has received funding from the European Union's Horizon Europe resea
 - **Call**: HORIZON-MSCA-2024-PF-01
 - **Duration**: 2025-2027
 
-<img src="https://marie-sklodowska-curie-actions.ec.europa.eu/sites/default/files/2022-09/EN-Funded%20by%20the%20EU-POS.png" alt="Funded by the European Union" width="200">
-
 ### Research Institutions
 
 **Host Institution:**
 - **Music Technology Group (MTG)**, Universitat Pompeu Fabra, Barcelona, Spain
-- Supervisor: Prof. Sergi Jordà
 
 **Secondment Institution:**
 - **Algomus Lab**, CRIStAL (UMR 9189), Université de Lille, France
 - Collaborators: Prof. Mathieu Giraud, Dr. Ken Déguernel
-
-### Broader Research Context
-
-This work builds upon research conducted at:
-- **MUSAiC Lab** (ERC-2019-COG No. 864189), KTH Royal Institute of Technology, Stockholm
-- Principal Investigator: Prof. Bob L. T. Sturm
-
----
-
-## 🌍 Project Aims: European Principles
-
-ANIMA addresses challenges in AI-assisted music creation by aligning with European values:
-
-- **Human-centered design**: Tools that support and enhance human creativity
-- **Ethical considerations**: Respecting artistic expression and cultural diversity
-- **Open science**: Transparent tools and datasets (post-fellowship)
-- **Interdisciplinary approach**: Combining music technology, CS, and humanities
-- **Cultural preservation**: Promoting diverse musical traditions
-
-By exploring **microtonal harmony beyond 12-TET**, ANIMA opens new sonic landscapes while preserving the intrinsic value of musical knowledge and human creative agency.
-
----
-
-## 🔗 Related Links
-
-- **Live Demo**: [https://dazzid.github.io/ANIMA_Harmonic_Eigenspace/](https://dazzid.github.io/ANIMA_Harmonic_Eigenspace/)
-- **CORDIS Project Page**: [https://cordis.europa.eu/project/id/101203318](https://cordis.europa.eu/project/id/101203318)
-- [Music Technology Group (MTG)](https://www.upf.edu/web/mtg)
-- [Algomus Lab](http://www.algomus.fr/)
-- [MUSAiC Project](https://musaiclab.wordpress.com/)
-- [MSCA Postdoctoral Fellowships](https://marie-sklodowska-curie-actions.ec.europa.eu/)
 
 ---
 
@@ -289,7 +238,7 @@ Postdoctoral Researcher
 Music Technology Group, Universitat Pompeu Fabra  
 Barcelona, Spain
 
-For questions, collaborations, or commercial licensing inquiries, please contact through the institutional channels.
+For questions, collaborations, please contact through the institutional channels.
 
 ---
 
