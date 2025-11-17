@@ -150,7 +150,7 @@ Connect a physical MIDI keyboard (e.g., M-Audio Oxygen 49) to play the dynamic m
 
 ---
 
-## 📖 Citation
+<!-- ## 📖 Citation
 
 If you use this work in your research, please cite:
 ```bibtex
@@ -163,7 +163,7 @@ If you use this work in your research, please cite:
   howpublished = {\url{https://dazzid.github.io/ANIMA_Harmonic_Eigenspace/}},
   institution = {Music Technology Group, Universitat Pompeu Fabra}
 }
-```
+``` -->
 
 ### Related Publications
 
