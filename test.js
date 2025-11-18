@@ -1680,57 +1680,70 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 console.log('point.pointNumber:', point.pointNumber);
 
                 // Extract color for ALL points (nodes and TET chords)
-                if (point.data && point.data.marker && point.fullData && point.fullData.marker) {
+                if (point.fullData && point.fullData.marker) {
                     const marker = point.fullData.marker;
                     console.log('marker:', marker);
                     console.log('marker.color:', marker.color);
 
-                    if (marker.color && Array.isArray(marker.color) && point.pointIndex !== undefined) {
-                        const dissValue = marker.color[point.pointIndex];
-                        console.log('dissValue:', dissValue);
-                        const cmin = marker.cmin || 0;
-                        const cmax = marker.cmax || 15;
-                        const norm = Math.max(0, Math.min(1, (dissValue - cmin) / (cmax - cmin)));
-                        console.log('norm:', norm);
+                    // Helper to parse rgba color strings
+                    const parseRgba = (rgbaStr) => {
+                        const match = rgbaStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                        return match ? [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])] : null;
+                    };
 
-                        // Use the actual colorscale from the visualization
-                        const colorscale = marker.colorscale || [
-                            [0.0, 'rgba(0, 0, 255, 1)'],
-                            [0.25, 'rgba(0, 200, 255, 1)'],
-                            [0.5, 'rgba(255, 255, 255, 1)'],
-                            [0.75, 'rgba(255, 200, 0, 1)'],
-                            [1.0, 'rgba(255, 0, 0, 1)']
-                        ];
+                    // Case 1: Color is a string (TET chords)
+                    if (typeof marker.color === 'string') {
+                        cellColor = parseRgba(marker.color);
+                        console.log('cellColor (from string):', cellColor);
+                    }
+                    // Case 2: Color is an array (nodes with dissonance values)
+                    else if (marker.color && Array.isArray(marker.color)) {
+                        // Use point.pointNumber as index if pointIndex is undefined
+                        const colorIndex = point.pointIndex !== undefined ? point.pointIndex : point.pointNumber;
+                        
+                        if (colorIndex !== undefined && colorIndex < marker.color.length) {
+                            const dissValue = marker.color[colorIndex];
+                            console.log('dissValue:', dissValue);
+                            const cmin = marker.cmin || 0;
+                            const cmax = marker.cmax || 15;
+                            const norm = Math.max(0, Math.min(1, (dissValue - cmin) / (cmax - cmin)));
+                            console.log('norm:', norm);
 
-                        // Find the two color stops to interpolate between
-                        let lowerStop = colorscale[0];
-                        let upperStop = colorscale[colorscale.length - 1];
+                            // Use the actual colorscale from the visualization
+                            const colorscale = marker.colorscale || [
+                                [0.0, 'rgba(0, 0, 255, 1)'],
+                                [0.25, 'rgba(0, 200, 255, 1)'],
+                                [0.5, 'rgba(255, 255, 255, 1)'],
+                                [0.75, 'rgba(255, 200, 0, 1)'],
+                                [1.0, 'rgba(255, 0, 0, 1)']
+                            ];
 
-                        for (let i = 0; i < colorscale.length - 1; i++) {
-                            if (norm >= colorscale[i][0] && norm <= colorscale[i + 1][0]) {
-                                lowerStop = colorscale[i];
-                                upperStop = colorscale[i + 1];
-                                break;
+                            // Find the two color stops to interpolate between
+                            let lowerStop = colorscale[0];
+                            let upperStop = colorscale[colorscale.length - 1];
+
+                            for (let i = 0; i < colorscale.length - 1; i++) {
+                                if (norm >= colorscale[i][0] && norm <= colorscale[i + 1][0]) {
+                                    lowerStop = colorscale[i];
+                                    upperStop = colorscale[i + 1];
+                                    break;
+                                }
+                            }
+
+                            const color1 = parseRgba(lowerStop[1]);
+                            const color2 = parseRgba(upperStop[1]);
+
+                            if (color1 && color2) {
+                                // Interpolate between the two colors
+                                const t = (norm - lowerStop[0]) / (upperStop[0] - lowerStop[0]);
+                                cellColor = [
+                                    Math.round(color1[0] + (color2[0] - color1[0]) * t),
+                                    Math.round(color1[1] + (color2[1] - color1[1]) * t),
+                                    Math.round(color1[2] + (color2[2] - color1[2]) * t)
+                                ];
+                                console.log('cellColor (from array):', cellColor);
                             }
                         }
-
-                        // Parse rgba colors
-                        const parseRgba = (rgbaStr) => {
-                            const match = rgbaStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-                            return match ? [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])] : [0, 0, 0];
-                        };
-
-                        const color1 = parseRgba(lowerStop[1]);
-                        const color2 = parseRgba(upperStop[1]);
-
-                        // Interpolate between the two colors
-                        const t = (norm - lowerStop[0]) / (upperStop[0] - lowerStop[0]);
-                        cellColor = [
-                            Math.round(color1[0] + (color2[0] - color1[0]) * t),
-                            Math.round(color1[1] + (color2[1] - color1[1]) * t),
-                            Math.round(color1[2] + (color2[2] - color1[2]) * t)
-                        ];
-                        console.log('cellColor:', cellColor);
                     }
                 }
 

@@ -115,7 +115,19 @@ const createGridSketch = (p) => {
             p.rect(x, y, this.cellSize, this.cellSize, this.cornerRadius);
             // Draw chord label if filled
             if (isFilled) {
-                p.fill(this.textColor);
+                // Calculate brightness and choose text color for contrast
+                let textColor = this.textColor; // Default white
+                if (Array.isArray(fillColor) && fillColor.length >= 3) {
+                    // Calculate relative luminance (perceived brightness)
+                    const r = fillColor[0] / 255;
+                    const g = fillColor[1] / 255;
+                    const b = fillColor[2] / 255;
+                    const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+                    // Use black text for bright backgrounds, white for dark
+                    textColor = brightness > 0.5 ? [0, 0, 0] : [255, 255, 255];
+                }
+                
+                p.fill(textColor);
                 p.textAlign(p.CENTER, p.CENTER);
                 p.textSize(11);
                 p.textFont('Source Code Pro');
