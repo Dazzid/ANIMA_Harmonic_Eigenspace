@@ -188,7 +188,7 @@ async function initAudio() {
         warmupOsc.stop(audioCtx.currentTime + 0.01);
 
         audioInitialized = true;
-        document.getElementById('click-output').textContent = 'Click any point to hear the chord';
+
     } catch (e) {
         console.error('Audio initialization failed:', e);
     }
@@ -1667,6 +1667,81 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
             // Record last clicked chord so it can be stored in the grid
             try {
+                // Extract chord metadata
+                let chordName = null;
+                let cellColor = null;
+                let tetSystem = null;
+
+                // Extract color for ALL points (nodes and TET chords)
+                if (point.data && point.data.marker && point.fullData && point.fullData.marker) {
+                    const marker = point.fullData.marker;
+                    if (marker.color && Array.isArray(marker.color) && point.pointIndex !== undefined) {
+                        const dissValue = marker.color[point.pointIndex];
+                        const cmin = marker.cmin || 0;
+                        const cmax = marker.cmax || 15;
+                        const norm = Math.max(0, Math.min(1, (dissValue - cmin) / (cmax - cmin)));
+
+                        // Use the actual colorscale from the visualization
+                        const colorscale = marker.colorscale || [
+                            [0.0, 'rgba(0, 0, 255, 1)'],
+                            [0.25, 'rgba(0, 200, 255, 1)'],
+                            [0.5, 'rgba(255, 255, 255, 1)'],
+                            [0.75, 'rgba(255, 200, 0, 1)'],
+                            [1.0, 'rgba(255, 0, 0, 1)']
+                        ];
+
+                        // Find the two color stops to interpolate between
+                        let lowerStop = colorscale[0];
+                        let upperStop = colorscale[colorscale.length - 1];
+
+                        for (let i = 0; i < colorscale.length - 1; i++) {
+                            if (norm >= colorscale[i][0] && norm <= colorscale[i + 1][0]) {
+                                lowerStop = colorscale[i];
+                                upperStop = colorscale[i + 1];
+                                break;
+                            }
+                        }
+
+                        // Parse rgba colors
+                        const parseRgba = (rgbaStr) => {
+                            const match = rgbaStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                            return match ? [parseInt(match[1]), parseInt(match[2]), parseInt(match[3])] : [0, 0, 0];
+                        };
+
+                        const color1 = parseRgba(lowerStop[1]);
+                        const color2 = parseRgba(upperStop[1]);
+
+                        // Interpolate between the two colors
+                        const t = (norm - lowerStop[0]) / (upperStop[0] - lowerStop[0]);
+                        cellColor = [
+                            Math.round(color1[0] + (color2[0] - color1[0]) * t),
+                            Math.round(color1[1] + (color2[1] - color1[1]) * t),
+                            Math.round(color1[2] + (color2[2] - color1[2]) * t)
+                        ];
+                    }
+                }
+
+                // Check if this is a named TET chord
+                if (point.data && point.data.name) {
+                    const traceName = point.data.name;
+
+                    if (traceName === '12-TET Chords') {
+                        tetSystem = '12-TET';
+                    } else if (traceName === '31-TET Chords') {
+                        tetSystem = '31-TET';
+                    } else if (traceName === '53-TET Chords') {
+                        tetSystem = '53-TET';
+                    }
+
+                    // Extract chord name from customdata (format: "chord_name (D: value)")
+                    if (point.customdata && typeof point.customdata === 'string') {
+                        const match = point.customdata.match(/^(.+?)\s*\(/);
+                        if (match) {
+                            chordName = match[1].trim();
+                        }
+                    }
+                }
+
                 window.lastClickedChord = {
                     root: currentBaseFreq,
                     alpha: alpha,
@@ -1678,8 +1753,10 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                         currentBaseFreq * beta,
                         currentBaseFreq * gamma
                     ],
-                    // plotly point object may not include a stable node index; store if present
-                    nodeNumber: point.pointNumber !== undefined ? point.pointNumber : (point.pointIndex !== undefined ? point.pointIndex : null)
+                    nodeNumber: (tetSystem === null && point.pointNumber !== undefined) ? point.pointNumber : (point.pointIndex !== undefined ? point.pointIndex : null),
+                    chordName: chordName,
+                    cellColor: cellColor,
+                    tetSystem: tetSystem
                 };
             } catch (e) {
                 console.warn('Failed to record lastClickedChord', e);
@@ -1949,10 +2026,6 @@ window.addEventListener('load', async () => {
 
     // Hide progress, ready to play
     if (progressContainer) progressContainer.style.display = 'none';
-    if (clickOutput) {
-        clickOutput.style.display = 'block';
-        clickOutput.textContent = 'Click any point to hear the chord';
-    }
 
     // Show info overlay now that data is loaded and visualization is ready
     // Small delay to ensure plot is fully rendered
