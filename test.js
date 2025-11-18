@@ -188,7 +188,7 @@ async function initAudio() {
         warmupOsc.stop(audioCtx.currentTime + 0.01);
 
         audioInitialized = true;
-
+        
     } catch (e) {
         console.error('Audio initialization failed:', e);
     }
@@ -1672,14 +1672,26 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 let cellColor = null;
                 let tetSystem = null;
 
+                // DEBUG: Log point structure
+                console.log('Point data:', point);
+                console.log('point.data:', point.data);
+                console.log('point.fullData:', point.fullData);
+                console.log('point.pointIndex:', point.pointIndex);
+                console.log('point.pointNumber:', point.pointNumber);
+
                 // Extract color for ALL points (nodes and TET chords)
                 if (point.data && point.data.marker && point.fullData && point.fullData.marker) {
                     const marker = point.fullData.marker;
+                    console.log('marker:', marker);
+                    console.log('marker.color:', marker.color);
+
                     if (marker.color && Array.isArray(marker.color) && point.pointIndex !== undefined) {
                         const dissValue = marker.color[point.pointIndex];
+                        console.log('dissValue:', dissValue);
                         const cmin = marker.cmin || 0;
                         const cmax = marker.cmax || 15;
                         const norm = Math.max(0, Math.min(1, (dissValue - cmin) / (cmax - cmin)));
+                        console.log('norm:', norm);
 
                         // Use the actual colorscale from the visualization
                         const colorscale = marker.colorscale || [
@@ -1718,6 +1730,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                             Math.round(color1[1] + (color2[1] - color1[1]) * t),
                             Math.round(color1[2] + (color2[2] - color1[2]) * t)
                         ];
+                        console.log('cellColor:', cellColor);
                     }
                 }
 
@@ -1758,6 +1771,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     cellColor: cellColor,
                     tetSystem: tetSystem
                 };
+                console.log('lastClickedChord:', window.lastClickedChord);
             } catch (e) {
                 console.warn('Failed to record lastClickedChord', e);
             }

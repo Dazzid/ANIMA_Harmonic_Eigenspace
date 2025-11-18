@@ -10,7 +10,7 @@ const createGridSketch = (p) => {
     let chordGrid;
     p.setup = function () {
         // Create canvas for grid
-        canvasWidth = 400;
+        canvasWidth = 500;
         canvasHeight = 500;
         const canvas = p.createCanvas(canvasWidth, canvasHeight);
         canvas.parent('grid-container');
@@ -35,7 +35,7 @@ const createGridSketch = (p) => {
         constructor(p5Instance) {
             this.p = p5Instance;
             this.gridSize = 8; // 8x8 grid
-            this.cellSize = 40; // 40x40 pixels
+            this.cellSize = 50; // 50x50 pixels
             this.cellPadding = 2; // Space between cells
             this.cornerRadius = 5; // Rounded corners
             this.visible = true; // Visible by default when grid is shown
@@ -80,7 +80,7 @@ const createGridSketch = (p) => {
             }
             // Draw instruction text when waiting for cell selection
             if (this.waitingForCell) {
-                p.fill(255, 183, 0);
+                p.fill(255);
                 p.textAlign(p.CENTER);
                 p.textSize(10);
                 p.text('Click a cell to store chord', this.x + this.totalWidth / 2, this.y + this.totalHeight + 15);
@@ -117,7 +117,7 @@ const createGridSketch = (p) => {
             if (isFilled) {
                 p.fill(this.textColor);
                 p.textAlign(p.CENTER, p.CENTER);
-                p.textSize(10);
+                p.textSize(11);
                 p.textFont('Source Code Pro');
                 // Display chord name if available, otherwise node number or coordinates
                 let label;
