@@ -695,6 +695,12 @@ window.getDoublingFlags = function () {
     return chordViz ? chordViz.doublingFlags : { R: false, α: false, β: false, γ: false };
 };
 
+window.setDoublingFlags = function (flags) {
+    if (!chordViz) return;
+    chordViz.doublingFlags = { ...flags };
+    console.log('Doubling flags set to:', chordViz.doublingFlags);
+};
+
 window.getActualPlaybackFrequencies = function () {
     if (!chordViz || !chordViz.targetFreqs) return [];
     

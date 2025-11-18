@@ -270,6 +270,11 @@ const createGridSketch = (p) => {
         }
         storeChord(row, col, chordData) {
             console.log('storeChord called with chordData:', chordData);
+            
+            // Capture current doubling flags (x2 buttons state)
+            const doublingFlags = typeof window.getDoublingFlags === 'function' ?
+                window.getDoublingFlags() : { R: false, α: false, β: false, γ: false };
+            
             this.storage[row][col] = {
                 root: chordData.root,
                 alpha: chordData.alpha,
@@ -280,9 +285,10 @@ const createGridSketch = (p) => {
                 chordName: chordData.chordName || null,
                 cellColor: chordData.cellColor || null,
                 tetSystem: chordData.tetSystem || null,
+                doublingFlags: { ...doublingFlags },
                 timestamp: Date.now()
             };
-            console.log(`Stored chord at [${row}][${col}]:`, this.storage[row][col]);
+            console.log(`Stored chord at [${row}][${col}] with doubling:`, this.storage[row][col]);
         }
         recallChord(row, col) {
             const chord = this.storage[row][col];
@@ -296,6 +302,12 @@ const createGridSketch = (p) => {
                 }
                 if (typeof setChordVisualization === 'function') {
                     setChordVisualization(chord.alpha, chord.beta, chord.gamma, chord.root);
+                }
+                
+                // Restore doubling flags (x2 button states) if stored
+                if (chord.doublingFlags && typeof window.setDoublingFlags === 'function') {
+                    window.setDoublingFlags(chord.doublingFlags);
+                    console.log('Restored doubling flags:', chord.doublingFlags);
                 }
                 
                 // CRITICAL: ALWAYS play the chord to trigger keyboard remapping
