@@ -13,7 +13,7 @@ const createGridSketch = (p) => {
     p.setup = function () {
         // Create canvas for grid
         canvasWidth = 500;
-        canvasHeight = 500;
+        canvasHeight = 520;
         const canvas = p.createCanvas(canvasWidth, canvasHeight);
         canvas.parent('grid-container');
         // Initialize grid
@@ -90,12 +90,16 @@ const createGridSketch = (p) => {
                 }
             }
             // Draw instruction text when waiting for cell selection
+            p.fill(255);
+            p.textAlign(p.CENTER);
+            p.textSize(11);
+            p.message = "";
             if (this.waitingForCell) {
-                p.fill(255);
-                p.textAlign(p.CENTER);
-                p.textSize(11);
-                p.text('Click a cell to store chord', this.x + this.totalWidth / 2, this.y + this.totalHeight + 15);
+                p.message = 'Click a cell to store chord';
+            } else {
+                p.message = 'Clean a cell with shift + click';
             }
+            p.text(p.message, this.x + this.totalWidth / 2, this.y + this.totalHeight + 20);
             p.pop();
         }
         
