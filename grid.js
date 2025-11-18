@@ -106,7 +106,7 @@ const createGridSketch = (p) => {
             
             // Button background
             if (gridMuted) {
-                p.fill(255, 100, 100, this.muteButtonHovered ? 255 : 200);
+                p.fill(255, 100, 0, this.muteButtonHovered ? 255 : 200);
             } else {
                 p.fill(50, 50, 50, this.muteButtonHovered ? 220 : 180);
             }
