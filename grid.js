@@ -164,18 +164,25 @@ const createGridSketch = (p) => {
                 
                 p.fill(textColor);
                 p.textAlign(p.CENTER, p.CENTER);
-                p.textSize(11);
                 p.textFont('Source Code Pro');
-                // Display chord name if available, otherwise node number or coordinates
-                let label;
+                
+                // Display root note on top
+                const rootHz = chord.root || 220.0;
+                const rootNote = this.frequencyToNoteName(rootHz);
+                p.textSize(11);
+                p.text(rootNote, x + this.cellSize / 2, y + this.cellSize / 2 - 8);
+                
+                // Display chord quality below (chord name or node number)
+                let quality;
                 if (chord.chordName) {
-                    label = chord.chordName;
+                    quality = chord.chordName;
                 } else if (chord.nodeNumber !== undefined && chord.nodeNumber !== null) {
-                    label = `#${chord.nodeNumber}`;
+                    quality = `#${chord.nodeNumber}`;
                 } else {
-                    label = `${row},${col}`;
+                    quality = `${row},${col}`;
                 }
-                p.text(label, x + this.cellSize / 2, y + this.cellSize / 2);
+                p.textSize(11);
+                p.text(quality, x + this.cellSize / 2, y + this.cellSize / 2 + 8);
             }
             // Draw border on hover
             if (isHovered) {
@@ -205,6 +212,22 @@ const createGridSketch = (p) => {
                 this.hoveredCell = { row: -1, col: -1 };
             }
         }
+        
+        frequencyToNoteName(frequency) {
+            // Convert frequency to note name using equal temperament
+            // A4 = 440 Hz is the reference
+            const A4 = 440.0;
+            const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            
+            // Calculate semitones from A4
+            const semitones = 12 * Math.log2(frequency / A4);
+            const noteIndex = Math.round(semitones) + 9; // +9 because A is the 10th note (index 9)
+            const octave = Math.floor(noteIndex / 12) + 4;
+            const note = noteNames[((noteIndex % 12) + 12) % 12];
+            
+            return `${note}${octave}`;
+        }
+        
         handleClick(p) {
             // Check if mute button was clicked
             if (this.muteButtonHovered) {
