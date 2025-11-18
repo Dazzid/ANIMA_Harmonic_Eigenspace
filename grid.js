@@ -4,7 +4,9 @@
 // Standalone p5.js visualization on the right side of screen
 let gridSketch;
 let gridToggleBtn;
+let gridMuteBtn;
 let selectedChordForStorage = null;
+let gridMuted = false; // Grid mute state
 // p5.js sketch in instance mode
 const createGridSketch = (p) => {
     let chordGrid;
@@ -45,6 +47,11 @@ const createGridSketch = (p) => {
             // Position within canvas (centered)
             this.x = (canvasWidth - this.totalWidth) / 2;
             this.y = 50; // Below title
+            // Mute button dimensions and position (top-right corner of grid panel)
+            this.muteButtonSize = 24;
+            this.muteButtonX = this.x + this.totalWidth - this.muteButtonSize + 5;
+            this.muteButtonY = this.y - 35;
+            this.muteButtonHovered = false;
             // Storage: 8x8 array of chord objects
             this.storage = Array(this.gridSize).fill(null).map(() => Array(this.gridSize).fill(null));
             // UI state
@@ -72,6 +79,10 @@ const createGridSketch = (p) => {
             p.textSize(14);
             p.textFont('Source Code Pro');
             p.text('Chord Memory', this.x + this.totalWidth / 2, this.y - 20);
+
+            // Draw mute button at top-right corner
+            this.drawMuteButton(p);
+            
             // Draw grid cells
             for (let row = 0; row < this.gridSize; row++) {
                 for (let col = 0; col < this.gridSize; col++) {
@@ -87,6 +98,30 @@ const createGridSketch = (p) => {
             }
             p.pop();
         }
+        
+        drawMuteButton(p) {
+            // Check if mouse is over mute button
+            const mouseDist = p.dist(p.mouseX, p.mouseY, this.muteButtonX + this.muteButtonSize / 2, this.muteButtonY + this.muteButtonSize / 2);
+            this.muteButtonHovered = mouseDist < this.muteButtonSize / 2;
+            
+            // Button background
+            if (gridMuted) {
+                p.fill(255, 100, 100, this.muteButtonHovered ? 255 : 200);
+            } else {
+                p.fill(50, 50, 50, this.muteButtonHovered ? 220 : 180);
+            }
+            p.stroke(255, 255, 255, this.muteButtonHovered ? 100 : 20);
+            p.strokeWeight(1);
+            p.rect(this.muteButtonX, this.muteButtonY, this.muteButtonSize, this.muteButtonSize, 4);
+            
+            // Speaker icon
+            p.fill(255);
+            p.noStroke();
+            p.textAlign(p.CENTER, p.CENTER);
+            p.textSize(12);
+            p.text(gridMuted ? '🔇' : '🔊', this.muteButtonX + this.muteButtonSize / 2, this.muteButtonY + this.muteButtonSize / 2);
+        }
+        
         drawCell(p, row, col) {
             const x = this.x + col * (this.cellSize + this.cellPadding);
             const y = this.y + row * (this.cellSize + this.cellPadding);
@@ -171,6 +206,13 @@ const createGridSketch = (p) => {
             }
         }
         handleClick(p) {
+            // Check if mute button was clicked
+            if (this.muteButtonHovered) {
+                gridMuted = !gridMuted;
+                console.log(`Grid mute: ${gridMuted}`);
+                return true;
+            }
+            
             if (this.hoveredCell.row === -1 || this.hoveredCell.col === -1) return false;
             const row = this.hoveredCell.row;
             const col = this.hoveredCell.col;
@@ -237,10 +279,13 @@ const createGridSketch = (p) => {
                     window.updateKeyboardMapping(chord.frequencies);
                 }
                 // Play the chord using the existing playChord function (uses ratios + baseFreq)
-                if (typeof playChord === 'function') {
-                    playChord(chord.alpha, chord.beta, chord.gamma, chord.root);
-                } else if (typeof window.playChord === 'function') {
-                    window.playChord(chord.alpha, chord.beta, chord.gamma, chord.root);
+                // Skip audio playback if grid is muted
+                if (!gridMuted) {
+                    if (typeof playChord === 'function') {
+                        playChord(chord.alpha, chord.beta, chord.gamma, chord.root);
+                    } else if (typeof window.playChord === 'function') {
+                        window.playChord(chord.alpha, chord.beta, chord.gamma, chord.root);
+                    }
                 }
             } catch (e) {
                 console.warn('recallChord: failed to reproduce stored chord', e);
@@ -317,6 +362,7 @@ function setupGridToggleButton() {
         if (container.style.display === 'none') {
             // Show grid
             container.style.display = 'block';
+            
             // Initialize p5 sketch if not already done
             if (!gridSketch) {
                 gridSketch = new p5(createGridSketch, 'grid-container');
@@ -345,15 +391,23 @@ function setupGridToggleButton() {
     document.body.appendChild(gridToggleBtn);
     console.log('Grid toggle button created');
 }
+
+function setupGridMuteButton() {
+    // Mute button is now drawn directly in the canvas - no HTML element needed
+    console.log('Grid mute button (canvas-based) ready');
+}
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         setupGridContainer();
         setupGridToggleButton();
+        setupGridMuteButton();
     });
 } else {
     setupGridContainer();
     setupGridToggleButton();
+    setupGridMuteButton();
 }
 // ============================================================================
 // GLOBAL API
