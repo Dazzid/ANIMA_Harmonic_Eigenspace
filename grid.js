@@ -58,7 +58,7 @@ const createGridSketch = (p) => {
             this.hoveredCell = { row: -1, col: -1 };
             this.waitingForCell = false;
             // Colors
-            this.emptyColor = [40, 40, 40];
+            this.emptyColor = [50, 50, 50];
             this.filledColor = [0, 111, 229];
             this.hoverColor = [0, 150, 255];
             this.waitingColor = [255, 183, 0];
@@ -93,7 +93,7 @@ const createGridSketch = (p) => {
             if (this.waitingForCell) {
                 p.fill(255);
                 p.textAlign(p.CENTER);
-                p.textSize(10);
+                p.textSize(11);
                 p.text('Click a cell to store chord', this.x + this.totalWidth / 2, this.y + this.totalHeight + 15);
             }
             p.pop();
