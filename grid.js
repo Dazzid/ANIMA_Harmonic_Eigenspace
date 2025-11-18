@@ -297,19 +297,31 @@ const createGridSketch = (p) => {
                 if (typeof setChordVisualization === 'function') {
                     setChordVisualization(chord.alpha, chord.beta, chord.gamma, chord.root);
                 }
-                // Update keyboard mapping with the stored (original) frequencies
-                if (typeof window.updateKeyboardMapping === 'function') {
-                    window.updateKeyboardMapping(chord.frequencies);
+                
+                // CRITICAL: ALWAYS play the chord to trigger keyboard remapping
+                // The playChord function handles the keyboard mapping internally
+                // We control audio separately via mute flag
+                const originalMuteState = window.audioMuted || false;
+                
+                if (gridMuted) {
+                    // Temporarily mute audio system while still calling playChord
+                    // This ensures keyboard remapping happens without sound
+                    window.audioMuted = true;
+                    console.log('Grid muted - remapping keyboard without audio');
                 }
-                // Play the chord using the existing playChord function (uses ratios + baseFreq)
-                // Skip audio playback if grid is muted
-                if (!gridMuted) {
-                    if (typeof playChord === 'function') {
-                        playChord(chord.alpha, chord.beta, chord.gamma, chord.root);
-                    } else if (typeof window.playChord === 'function') {
-                        window.playChord(chord.alpha, chord.beta, chord.gamma, chord.root);
-                    }
+                
+                // Call playChord which handles keyboard remapping
+                if (typeof playChord === 'function') {
+                    playChord(chord.alpha, chord.beta, chord.gamma, chord.root);
+                } else if (typeof window.playChord === 'function') {
+                    window.playChord(chord.alpha, chord.beta, chord.gamma, chord.root);
                 }
+                
+                // Restore original audio mute state
+                if (gridMuted) {
+                    window.audioMuted = originalMuteState;
+                }
+                
             } catch (e) {
                 console.warn('recallChord: failed to reproduce stored chord', e);
             }
