@@ -265,6 +265,7 @@ const createGridSketch = (p) => {
             // Case 3: Storing a new chord (only in empty cells)
             if (this.waitingForCell && selectedChordForStorage) {
                 this.storeChord(row, col, selectedChordForStorage);
+                // Clear selection but keep lastClickedChord so x2 buttons can still update it
                 this.waitingForCell = false;
                 selectedChordForStorage = null;
                 console.log(`Chord stored at [${row}][${col}]`);
@@ -347,6 +348,12 @@ const createGridSketch = (p) => {
             this.waitingForCell = true;
             console.log('Ready to store chord. Click a grid cell.');
         }
+        updateSelectedChord(chordData) {
+            // Enable waiting mode and update the chord for storage
+            selectedChordForStorage = chordData;
+            this.waitingForCell = true;
+            console.log('Updated chord for storage with new x2 settings - ready to store');
+        }
         cancelStorage() {
             selectedChordForStorage = null;
             this.waitingForCell = false;
@@ -419,14 +426,13 @@ function setupGridToggleButton() {
                 gridSketch = new p5(createGridSketch, 'grid-container');
             }
             // If a chord was clicked previously, prepare it for storage now that the grid is visible.
-            // This allows the workflow: click node -> open grid (toggle) -> click cell to store.
+            // This allows the workflow: click node -> open grid (toggle) -> x2 adjustments -> click cell to store.
             setTimeout(() => {
                 try {
                     if (gridSketch && gridSketch.getGrid && window.lastClickedChord) {
                         const grid = gridSketch.getGrid();
                         grid.prepareToStore(window.lastClickedChord);
-                        // Clear the transient selection so it doesn't auto-apply again
-                        window.lastClickedChord = null;
+                        // DON'T clear lastClickedChord - allow x2 buttons to update it
                     }
                 } catch (e) {
                     console.warn('Failed to prepare last clicked chord for storage on grid open', e);
@@ -514,5 +520,16 @@ window.cancelChordStorage = function () {
             console.log('Chord storage canceled');
         }
     }
+};
+// Update the selected chord when x2 buttons are clicked
+window.updateGridSelectedChord = function (chordData) {
+    if (gridSketch && gridSketch.getGrid) {
+        const grid = gridSketch.getGrid();
+        if (typeof grid.updateSelectedChord === 'function') {
+            grid.updateSelectedChord(chordData);
+        }
+    }
+    // Also update lastClickedChord for consistency
+    window.lastClickedChord = chordData;
 };
 console.log('Chord Memory Grid module loaded');

@@ -1453,7 +1453,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             aspectmode: 'cube'
         },
         legend: {
-            x: 0.995,
+            x: 0.98,
             y: 0.15,
             xanchor: 'right',
             yanchor: 'top',
@@ -1991,6 +1991,38 @@ window.updateChordWithDoubling = function () {
 
         // Play the chord with the updated doubling
         playChord(alpha, beta, gamma, currentBaseFreq);
+
+        // Update both temporary chord memory and grid's selected chord
+        // This ensures the x2 configuration is captured when storing to grid
+        const doublingFlags = typeof window.getDoublingFlags === 'function' ?
+            window.getDoublingFlags() : { R: false, α: false, β: false, γ: false };
+
+        const updatedChord = {
+            root: currentBaseFreq,
+            alpha: alpha,
+            beta: beta,
+            gamma: gamma,
+            frequencies: [
+                currentBaseFreq,
+                currentBaseFreq * alpha,
+                currentBaseFreq * beta,
+                currentBaseFreq * gamma
+            ],
+            nodeNumber: window.lastClickedChord?.nodeNumber,
+            chordName: window.lastClickedChord?.chordName,
+            cellColor: window.lastClickedChord?.cellColor,
+            tetSystem: window.lastClickedChord?.tetSystem
+        };
+
+        // Always update lastClickedChord
+        window.lastClickedChord = updatedChord;
+
+        // Update grid to prepare for storage with the modified chord
+        if (typeof window.updateGridSelectedChord === 'function') {
+            window.updateGridSelectedChord(updatedChord);
+        }
+
+        console.log('Updated chord with new doubling flags:', doublingFlags);
     }
 };
 
