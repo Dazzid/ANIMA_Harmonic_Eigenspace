@@ -15,7 +15,7 @@ const btnW = 59;
 const btnH = 25;
 const spacing = 2;
 
-let bgColor = 'rgba(20, 20, 20, 1)';
+let bgColor = 'rgba(20, 20, 20, 0.9)';
 
 const round = 10;
 const paddingWetDry = 100;
@@ -91,6 +91,7 @@ function setup() {
 
 // ------------------------------------------------------------
 function draw() {
+    clear();
     fill(bgColor);
     noStroke();
     rect(0, 0, W, H, round);

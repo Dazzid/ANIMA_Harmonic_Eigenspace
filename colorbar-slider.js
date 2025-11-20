@@ -39,8 +39,9 @@ const colorbarSketch = (p) => {
     };
 
     p.draw = function () {
+        p.clear();
         p.noStroke();
-        p.fill(0,);
+        p.fill(0, 0);
         p.rect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 10);
 
         // Calculate bar position

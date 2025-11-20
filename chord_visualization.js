@@ -38,7 +38,7 @@ class ChordVisualization {
         this.keyboardMappedFreqs = [];
         this.mappedScaleColor = [255, 255, 255]; // Default white
 
-        this.bgColor = 'rgba(20, 20, 20, 1)';
+        this.bgColor = 'rgba(20, 20, 20, 0.9)';
 
         // Frequency doubling flags for each voice
         this.doublingFlags = {
@@ -111,6 +111,8 @@ class ChordVisualization {
     }
     //----------------------------------------------------------------------------------------
     draw(p) {
+        // Clear background
+        p.clear();
         // Dark background
         p.noStroke();
         p.fill(this.bgColor);
