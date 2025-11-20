@@ -310,7 +310,7 @@ class ChordVisualization {
                     p.fill(this.textColor);
                 }
                 p.noStroke();
-                p.textAlign(p.CENTER, p.BASELINE);
+                p.textAlign(p.CENTER);
                 p.textSize(11);
                 p.text(note.key.toUpperCase(), this.positionKeys - 23, y + 4);
                 
@@ -320,6 +320,7 @@ class ChordVisualization {
                     p.textSize(9);
                     p.text(note.name, this.positionKeys, y + 4);
                 }
+               
             }
         }
     }
@@ -435,9 +436,7 @@ class ChordVisualization {
     drawFrequencyLabels(p) {
         // Legend for the colors
         const y = this.spectrumY + this.spectrumHeight + 20;
-        p.textAlign(p.LEFT);
-        p.textSize(12);
-
+       
         const labels = [
             { color: this.colors[0], text: 'R' },
             { color: this.colors[1], text: 'α' },
@@ -448,8 +447,10 @@ class ChordVisualization {
         p.noStroke();
         for (let i = 0; i < labels.length; i++) {
             const x = (this.spectrumX + i * 70) + 25;
-            
+
             // Draw label text
+            p.textSize(12);
+            p.textAlign(p.LEFT);
             p.fill(labels[i].color[0], labels[i].color[1], labels[i].color[2], 255);
             p.text(labels[i].text, x + 24, y + 14);
             
@@ -481,9 +482,7 @@ class ChordVisualization {
             p.textAlign(p.CENTER);
             p.text('x2', buttonX + buttonW/2, buttonY + 13);
             
-            // Reset text alignment
-            p.textAlign(p.LEFT);
-            p.textSize(12);
+           
         }
     }
 
@@ -513,12 +512,12 @@ class ChordVisualization {
             if (freq < this.minFreq || freq > this.maxFreq) continue;
 
             const y = this.freqToY(freq);
-            const lineX = this.spectrumX + this.spectrumWidth + 5; // Right side of spectrum
-            const lineWidth = 25;
+            const lineX = this.spectrumX + this.spectrumWidth + 15; // Right side of spectrum
+            const lineWidth = 15;
 
             // Draw horizontal line marker (25x1) in white
             p.stroke(255, 255, 255, 180);
-            p.strokeWeight(1);
+            p.strokeWeight(0.5);
             p.line(lineX, y, lineX + lineWidth, y);
             
             // Draw note name label in white if available
@@ -529,6 +528,7 @@ class ChordVisualization {
                 p.textSize(10);
                 p.text(noteName, lineX + lineWidth + 3, y);
             }
+            p.textAlign(p.LEFT, p.BASELINE);
         }
     }
 
