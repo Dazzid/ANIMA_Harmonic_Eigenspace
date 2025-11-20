@@ -312,7 +312,7 @@ class ChordVisualization {
                 p.noStroke();
                 p.textAlign(p.CENTER);
                 p.textSize(10);
-                p.text(note.key.toUpperCase(), this.positionKeys - 25, y + 4);
+                p.text(note.key.toUpperCase(), this.positionKeys - 36, y + 4);
                 
                 // Show note name on hover
                 if (isHovered) {
