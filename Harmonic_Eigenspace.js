@@ -1785,6 +1785,17 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     tetSystem: tetSystem
                 };
                 console.log('lastClickedChord:', window.lastClickedChord);
+
+                // Update keyboard mapping visualization with the color immediately
+                if (cellColor && typeof window.updateKeyboardMapping === 'function') {
+                    const baseFrequencies = [
+                        currentBaseFreq,
+                        currentBaseFreq * alpha,
+                        currentBaseFreq * beta,
+                        currentBaseFreq * gamma
+                    ];
+                    window.updateKeyboardMapping(baseFrequencies, cellColor);
+                }
             } catch (e) {
                 console.warn('Failed to record lastClickedChord', e);
             }

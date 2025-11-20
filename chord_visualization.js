@@ -34,6 +34,10 @@ class ChordVisualization {
         this.targetFreqs = [];
         this.rootFreq = 220.0; // A3 default
 
+        // Keyboard mapped frequencies (chromatic scale)
+        this.keyboardMappedFreqs = [];
+        this.mappedScaleColor = [255, 255, 255]; // Default white
+
         this.bgColor = 'rgba(20, 20, 20, 1)';
 
         // Frequency doubling flags for each voice
@@ -126,6 +130,9 @@ class ChordVisualization {
 
         // Draw note markers
         this.drawNoteMarkers(p);
+
+        // Draw keyboard mapped scale markers
+        this.drawKeyboardMappedScale(p);
 
         // Draw current root indicator
         this.drawRootIndicator(p);
@@ -248,7 +255,7 @@ class ChordVisualization {
             if (note) {
                 p.text(note.name, this.spectrumX - 15, y + 2);
                 p.fill(240);
-                p.text(`${freq.toFixed(0)}Hz`, this.spectrumX - 15, y + 12);
+                p.text(`${freq.toFixed(0)}Hz`, this.spectrumX - 17, y + 12);
             }
         }
 
@@ -303,7 +310,7 @@ class ChordVisualization {
                     p.fill(this.textColor);
                 }
                 p.noStroke();
-                p.textAlign(p.CENTER);
+                p.textAlign(p.CENTER, p.BASELINE);
                 p.textSize(11);
                 p.text(note.key.toUpperCase(), this.positionKeys - 23, y + 4);
                 
@@ -327,13 +334,13 @@ class ChordVisualization {
         p.line(this.spectrumX + 25, y, this.spectrumX + 220, y);
 
         // Root label with better positioning
-        p.fill(0, 200, 255);
-        p.textAlign(p.LEFT);
-        p.textSize(10);
-        const rootNote = this.getNoteName(this.rootFreq);
+        // p.fill(0, 200, 255);
+        // p.textAlign(p.LEFT);
+        // p.textSize(10);
+        // const rootNote = this.getNoteName(this.rootFreq);
         // Position label to avoid overlap with bars
-        const labelY = y < this.spectrumY + 40 ? y + 25 : y - 10;
-        p.text(`${rootNote}`, this.spectrumX + 275, labelY + 14);
+        // const labelY = y < this.spectrumY + 40 ? y + 25 : y - 10;
+        // p.text(`${rootNote}`, this.spectrumX + 275, labelY + 14);
     }
 
     //----------------------------------------------------------------------------------------
@@ -477,6 +484,51 @@ class ChordVisualization {
             // Reset text alignment
             p.textAlign(p.LEFT);
             p.textSize(12);
+        }
+    }
+
+    //----------------------------------------------------------------------------------------
+    // Set keyboard mapped frequencies and color
+    setKeyboardMappedScale(notes, color) {
+        // notes can be either array of numbers (frequencies) or array of {freq, name, step}
+        this.keyboardMappedFreqs = notes || [];
+        if (color && Array.isArray(color) && color.length >= 3) {
+            this.mappedScaleColor = color;
+        }
+    }
+
+    //----------------------------------------------------------------------------------------
+    // Draw small horizontal lines for keyboard mapped frequencies
+    drawKeyboardMappedScale(p) {
+        if (!this.keyboardMappedFreqs || this.keyboardMappedFreqs.length === 0) {
+            return;
+        }
+
+        for (let note of this.keyboardMappedFreqs) {
+            // Handle both old format (just frequency) and new format (object with freq, name, step)
+            const freq = typeof note === 'number' ? note : note.freq;
+            const noteName = note.name || null;
+            
+            // Skip if frequency is outside visible range
+            if (freq < this.minFreq || freq > this.maxFreq) continue;
+
+            const y = this.freqToY(freq);
+            const lineX = this.spectrumX + this.spectrumWidth + 5; // Right side of spectrum
+            const lineWidth = 25;
+
+            // Draw horizontal line marker (25x1) in white
+            p.stroke(255, 255, 255, 180);
+            p.strokeWeight(1);
+            p.line(lineX, y, lineX + lineWidth, y);
+            
+            // Draw note name label in white if available
+            if (noteName) {
+                p.noStroke();
+                p.fill(255, 255, 255, 200);
+                p.textAlign(p.LEFT, p.CENTER);
+                p.textSize(10);
+                p.text(noteName, lineX + lineWidth + 3, y);
+            }
         }
     }
 
@@ -710,4 +762,10 @@ window.getActualPlaybackFrequencies = function () {
         noteIndex: freq.noteIndex,
         isDoubled: freq.actualPlaybackFreq > freq.freq
     }));
+};
+
+window.setKeyboardMappedScale = function (frequencies, color) {
+    if (chordViz) {
+        chordViz.setKeyboardMappedScale(frequencies, color);
+    }
 };

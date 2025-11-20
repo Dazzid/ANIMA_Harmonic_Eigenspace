@@ -205,11 +205,44 @@ function calculateDynamic12Notes(chordFreqs) {
     return scale12Notes;
 }
 
+// 53-TET note names (53 notes per octave)
+// Array index represents steps from A (step 0 = A)
+const TET53_NOTE_NAMES = [
+    'A', '^A', '^^A', 'vBb', 'Bb', '^Bb', '^^Bb', 'vvB', 'vB', 'B', '^B', '^^B', 'vC',
+    'C', '^C', '^^C', 'vvC#', 'vC#', 'C#', '^C#', '^^C#', 'vD', 'D', '^D', '^^D',
+    'vvD#', 'vD#', 'D#', '^^Eb', 'vvE', 'vE', 'E', '^E', '^^E', 'vF', 'F', '^F', '^^F',
+    'vvF#', 'vF#', 'F#', '^F#', '^^F#', 'vG', 'G', '^G', '^^G', 'vvG#', 'vG#', 'G#', '^G#', 'vvA', 'vA'
+];
+
+// Get 53-TET note name for a given step
+// Step 0 = A, step 13 = C, step 31 = E, etc.
+function get53TETNoteName(step) {
+    const normalizedStep = ((step % 53) + 53) % 53; // Handle negative steps
+    return TET53_NOTE_NAMES[normalizedStep];
+}
+
+// Determine which 53-TET note (relative to A=0) a frequency corresponds to
+function getRootNoteStep(freq) {
+    // A4 = 440 Hz is step 0 in our reference system
+    const A4 = 440.0;
+    const ratio = freq / A4;
+    const steps = Math.round(53 * Math.log2(ratio));
+    return steps;
+}
+
 // Update keyboard mapping based on new chord
-function updateKeyboardMapping(chordFreqs) {
+// Global storage for current scale color
+let currentScaleColor = [255, 255, 255];
+
+function updateKeyboardMapping(chordFreqs, color) {
     const scale12 = calculateDynamic12Notes(chordFreqs);
 
     if (!scale12) return;
+
+    // Update color if provided
+    if (color && Array.isArray(color) && color.length >= 3) {
+        currentScaleColor = color;
+    }
 
     // Map keys to frequencies (for computer keyboard)
     currentKeyboardMap = {};
@@ -223,6 +256,50 @@ function updateKeyboardMapping(chordFreqs) {
     Object.entries(currentKeyboardMap).forEach(([key, freq]) => {
         // console.log(`  ${key}: ${freq.toFixed(2)} Hz`);
     });
+
+    // Update chord visualization with the mapped scale
+    if (typeof window.setKeyboardMappedScale === 'function') {
+        // Generate all octaves of the scale from C3 to C5 with note names
+        const allNotes = []; // Array of {freq, name, step}
+        const rootFreq = chordFreqs[0];
+        
+        // CRITICAL: Determine what note the root actually is (relative to A=0)
+        const rootStep = getRootNoteStep(rootFreq);
+        
+        // Calculate how many octaves we need to cover C3 (130.81 Hz) to C5 (523.25 Hz)
+        const minFreq = 130.81; // C3
+        const maxFreq = 523.25; // C5
+        
+        // For each note in the 13-note scale, generate it across all octaves
+        for (let note of scale12) {
+            // note.step is relative to the root (0 = root, 31 = fifth, etc.)
+            // We need to add rootStep to get the absolute step relative to A
+            const relativeStep = note.step; // Step relative to root
+            const baseNoteFreq = note.freq;
+            
+            // Generate this note in all octaves within range
+            let octaveMultiplier = 0.125; // Start 3 octaves down
+            let octaveOffset = -3; // Track which octave we're in
+            while (baseNoteFreq * octaveMultiplier <= maxFreq) {
+                const freq = baseNoteFreq * octaveMultiplier;
+                if (freq >= minFreq && freq <= maxFreq) {
+                    // Absolute step = root's step + this note's offset from root + octave offset
+                    const absoluteStep = rootStep + relativeStep + (octaveOffset * 53);
+                    const noteName = get53TETNoteName(absoluteStep);
+                    allNotes.push({
+                        freq: freq,
+                        name: noteName,
+                        step: absoluteStep
+                    });
+                }
+                octaveMultiplier *= 2;
+                octaveOffset++;
+            }
+        }
+        
+        // Use the stored color
+        window.setKeyboardMappedScale(allNotes, currentScaleColor);
+    }
 }
 
 // Update MIDI Piano scale separately (so x2 buttons don't affect it)
