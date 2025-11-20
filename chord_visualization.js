@@ -90,7 +90,7 @@ class ChordVisualization {
 
         this.colors = [
             [255, 255, 255],    // Root (white)
-            [255, 119, 0],      // rgba(255, 119, 0, 1)
+            [255, 100, 0],      // rgba(255, 100, 0, 1)
             [118, 236, 0],      // rgba(118, 236, 0, 1)
             [0, 128, 255]       // rgba(0, 128, 255, 1)
         ];
@@ -311,8 +311,8 @@ class ChordVisualization {
                 }
                 p.noStroke();
                 p.textAlign(p.CENTER);
-                p.textSize(11);
-                p.text(note.key.toUpperCase(), this.positionKeys - 23, y + 4);
+                p.textSize(10);
+                p.text(note.key.toUpperCase(), this.positionKeys - 25, y + 4);
                 
                 // Show note name on hover
                 if (isHovered) {
