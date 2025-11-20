@@ -130,6 +130,7 @@ class InfoOverlay {
                     • Go to Preferences → Link/Tempo/MIDI<br>
                     • Under MIDI Ports, find the IAC Driver port<br>
                     • Enable <em>Track</em> and <em>Remote</em> for that port<br>
+                    • Check the <em>MPE</em> box to enable MPE support<br>
                     • Create a MIDI track and set its input to the IAC Driver port<br>
                     • Now you can receive the MPE microtonal chords from the visualization!<br>
                 </div>
