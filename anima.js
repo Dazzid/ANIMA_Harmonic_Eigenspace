@@ -3222,16 +3222,6 @@ document.addEventListener('mouseup', function(e) {
 // ============================================================================
 
 window.addEventListener('keydown', function(e) {
-    // Global scene switching shortcuts
-    if (e.key === '1') {
-        switchScene(Scenes.EIGENSPACE);
-        return;
-    }
-    if (e.key === '2') {
-        switchScene(Scenes.MODALSTUDIO);
-        return;
-    }
-    
     // Scene-specific keyboard handling
     switch (currentScene) {
         case Scenes.EIGENSPACE:
