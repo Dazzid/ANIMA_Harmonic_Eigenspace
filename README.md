@@ -163,7 +163,7 @@ The project uses **53-tone equal temperament** (53-TET), which provides:
 
 ### Primary Publication
 
-**Dalmazzo, D., Déguernel, K., & Sturm, B. L. T.** (2025). A Computer Application to Explore 53-Tone Equal Temperament Harmonies Through Modal Interchange. *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME 2025)*. [https://nime.org/proceedings/2025/nime2025_33.pdf](https://nime.org/proceedings/2025/nime2025_33.pdf)
+- **Dalmazzo, D., Déguernel, K., & Sturm, B. L. T.** (2025). A Computer Application to Explore 53-Tone Equal Temperament Harmonies Through Modal Interchange. *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME 2025)*. [https://nime.org/proceedings/2025/nime2025_33.pdf](https://nime.org/proceedings/2025/nime2025_33.pdf)
 
 - **Dalmazzo, D., Déguernel, K., & Sturm, B. L. T.** (2024). The Chordinator: Modeling Music Harmony by Implementing Transformer Networks and Token Strategies. *EvoStar 2024*. Springer Nature Switzerland. [https://hal.science/hal-04465285/file/TheChordinator_Evomusart-3.pdf]
 
