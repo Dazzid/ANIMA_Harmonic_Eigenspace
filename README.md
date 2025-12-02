@@ -54,7 +54,18 @@ What you see is a **3D visualization slice** of the four-dimensional space of te
 
 ### Overview
 
-Building upon traditional 12-TET modal frameworks and incorporating principles from 31-TET, Modal Studio extends conventional interval qualities (major/minor) to include **subminor**, **neutral**, and **supermajor** distinctions across the 53-TET harmonic landscape. This expansion enables musicians to explore unprecedented harmonic territories while maintaining meaningful connections to established modal theory.
+Building upon traditional 12-TET modal frameworks and incorporating principles from 31-TET, Modal Studio extends conventional interval qualities across increasingly refined microtonal divisions:
+
+**12-TET** (Standard Western Music):
+- **2 interval qualities**: minor (m), major (M)
+
+**31-TET** (Extended Meantone):
+- **5 interval qualities**: subminor (sm), minor (m), neutral (N), major (M), supermajor (SM)
+
+**53-TET** (Mercator/Holdrian Comma):
+- **10 interval qualities**: subminor (vvm), downminor (vm), minor (m), upminor (^m), superminor/neutral minor (^^m), submajor/neutral major (vvM), downmajor (vM), major (M), upmajor (^M), supermajor (^^M)
+
+This progressive refinement enables musicians to explore unprecedented harmonic territories with precise microtonal control, while maintaining meaningful connections to established modal theory. The 53-TET system provides an exceptional approximation of just intonation intervals, offering both theoretical rigor and practical compositional flexibility.
 
 ### Core Components
 
@@ -147,15 +158,6 @@ The color scale reveals **intersection zones** where harmonic interactions creat
 - **Blue regions**: Low dissonance (consonance)
 - **White areas**: Moderate roughness
 - **Red zones**: High dissonance
-
-### Microtonal Resolution: 53-TET
-
-The project uses **53-tone equal temperament** (53-TET), which provides:
-- More accurate approximation of just intonation intervals
-- Perfect fifth: 1200 × 31:53 = 701.88679 cents (vs. 701.955 cents in pure 3:2 ratio)
-- Extended harmonic palette with **5 interval qualities**:
-  - **Subminor** (sm), **Minor** (m), **Neutral** (n), **Major** (M), **Supermajor** (SM)
-- Applicable to 3rds, 5ths, 7ths, and 9ths
 
 ---
 
