@@ -196,32 +196,6 @@ If you use this work in your research, please cite:
 
 ---
 
-## ⚖️ License & Usage Terms
-
-This project is part of the **ANIMA** research project, funded by the European Union's Marie Skłodowska-Curie Actions (MSCA) Postdoctoral Fellowship under Horizon Europe (Grant Agreement No. 101203318).
-
-### Research-Only License
-
-This software is provided **for research and educational purposes only**. 
-
-**Restrictions:**
-- ❌ **No commercial use** without explicit written permission
-- ❌ **No redistribution** for commercial purposes
-- ❌ **No derivative commercial products**
-
-**Permissions:**
-- ✅ **Academic research** and study
-- ✅ **Educational use** in non-commercial settings
-- ✅ **Personal experimentation** and learning
-- ✅ **Citing and referencing** in academic publications
-
-**Requirements:**
-- Any use must include proper citation (see above)
-- Modifications must be clearly documented
-- This license notice must be preserved in all copies
-
-For **commercial licensing inquiries** or **collaboration opportunities**, please contact the author.
-
 ### Future Open Source Release
 
 Upon completion of the MSCA fellowship, we plan to release core components under an open-source license (GNU AGPL v3) to benefit the research community while preventing unauthorized commercial exploitation.
