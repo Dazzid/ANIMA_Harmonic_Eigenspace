@@ -20,7 +20,7 @@ This repository contains research tools for exploring microtonal harmony through
 
 ---
 
-## 🎹 What is the Harmonic Eigenspace?
+## 📊 What is the Harmonic Eigenspace?
 
 The **Harmonic Eigenspace** is an interactive 4-dimensional map of harmonic consonance and dissonance. The visualization explores how three simultaneous frequency ratios (α, β, γ) interact with a root note to create varying degrees of psychoacoustic roughness.
 
@@ -48,7 +48,7 @@ What you see is a **3D visualization slice** of the four-dimensional space of te
 
 ---
 
-## 🎼 Modal Studio: Microtonal Modal Interchange
+## 🎹 Modal Studio: Microtonal Modal Interchange
 
 **Modal Studio** is a novel interactive environment for real-time exploration and manipulation of microtonal harmonies in 53-tone equal temperament (53-TET), seamlessly integrated within the ANIMA Harmonic Eigenspace application.
 
