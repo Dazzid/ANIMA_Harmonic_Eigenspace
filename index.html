@@ -23,7 +23,7 @@
     <script src="midi_mpe.js"></script>
     <script src="midi_piano.js"></script>
 
-    <!-- Load EigenSpace component scripts (NOT test.js - code is in anima.js) -->
+    <!-- Load  component scripts (NOT test.js - code is in anima.js) -->
     <script src="binary-loader.js"></script>
     <script src="adsr.js"></script>
     <script src="colorbar-slider.js"></script>
@@ -45,8 +45,6 @@
     <script src="modal_studio_DraggingChords.js"></script>
     <script src="modal_studio_shaders.js"></script>
 
-    <!-- Load ANIMA unified app LAST (contains all main code) -->
-    <script src="anima.js"></script>
 </head>
 
 <body>
@@ -88,6 +86,9 @@
         <div id="modalstudio-audio-gui" style="display: none;"></div>
         <div id="canvas-container"></div>
     </div>
+
+    <!-- Load ANIMA unified app LAST - after DOM is ready -->
+    <script src="anima.js"></script>
 </body>
 
 </html>
