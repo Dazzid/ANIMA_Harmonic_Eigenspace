@@ -48,6 +48,58 @@ What you see is a **3D visualization slice** of the four-dimensional space of te
 
 ---
 
+## 🎼 Modal Studio: Microtonal Modal Interchange
+
+**Modal Studio** is a novel interactive environment for real-time exploration and manipulation of microtonal harmonies in 53-tone equal temperament (53-TET), seamlessly integrated within the ANIMA Harmonic Eigenspace application.
+
+### Overview
+
+Building upon traditional 12-TET modal frameworks and incorporating principles from 31-TET, Modal Studio extends conventional interval qualities (major/minor) to include **subminor**, **neutral**, and **supermajor** distinctions across the 53-TET harmonic landscape. This expansion enables musicians to explore unprecedented harmonic territories while maintaining meaningful connections to established modal theory.
+
+### Core Components
+
+#### 1. Scale Editor
+An interactive circular visualization tool for manipulating interval configurations in 53-TET:
+- **7 draggable nodes** representing scale degrees
+- **Real-time interval calculation** with quality indicators (subminor to supermajor)
+- **Root rotation** for exploring different modal inversions
+- **Visual feedback** showing interval relationships and cumulative step patterns
+
+#### 2. Modal Interchange Grid
+An 8×8 grid interface implementing parallel and relative modal substitution techniques:
+- **First row**: Primary chord progression (diatonic)
+- **Subsequent rows**: Automatic modal interchange substitutions
+- **Parallel modes**: Same root, different quality (e.g., C Major → C Dorian)
+- **Relative modes**: Different root, preserving intervallic relationships
+- **Voice leading preservation**: Smooth transitions between chord voicings
+- **Drag-and-drop functionality**: Intuitive chord placement and progression editing
+
+#### 3. Voicing Editor
+Spiral visualization interface for precise chord voicing control:
+- **Octave rings**: Multiple octaves displayed concentrically
+- **Draggable note positions**: Real-time voicing adjustment
+- **Chord component analysis**: Automatic identification of root, third, fifth, seventh, and extensions
+- **Voice leading indicators**: Visual representation of note movement across voicings
+- **Based on Chew's spiral array model** for intuitive spatial representation
+
+### Technical Integration
+
+**Bridge MaxForLive Application**: Custom middleware connecting Modal Studio's 53-TET output with standard MIDI protocols, enabling:
+- Seamless integration with Ableton Live (11/12)
+- MIDI Polyphonic Expression (MPE) support for microtonal precision
+- Real-time pitch bend and CC mapping for 53-TET note rendering
+- Compatibility with modern digital audio workstations
+
+### Compositional Applications
+
+Modal Studio facilitates:
+- **Microtonal chord progression design** with modal substitution techniques
+- **Voice leading optimization** across microtonal harmonic spaces
+- **Real-time harmonic exploration** combining eigenspace consonance maps with modal theory
+- **Integration of psychoacoustic principles** (Plomp-Levelt) with traditional modal frameworks
+
+---
+
 ## 🚀 Usage
 
 ### Quick Start
