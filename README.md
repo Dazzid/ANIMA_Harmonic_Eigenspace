@@ -159,7 +159,17 @@ The project uses **53-tone equal temperament** (53-TET), which provides:
 
 ---
 
-## 📚 References
+## 📚 References & Publications
+
+### Primary Publication
+
+**Dalmazzo, D., Déguernel, K., & Sturm, B. L. T.** (2025). A Computer Application to Explore 53-Tone Equal Temperament Harmonies Through Modal Interchange. *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME 2025)*. [https://nime.org/proceedings/2025/nime2025_33.pdf](https://nime.org/proceedings/2025/nime2025_33.pdf)
+
+- **Dalmazzo, D., Déguernel, K., & Sturm, B. L. T.** (2024). The Chordinator: Modeling Music Harmony by Implementing Transformer Networks and Token Strategies. *EvoStar 2024*. Springer Nature Switzerland. [https://hal.science/hal-04465285/file/TheChordinator_Evomusart-3.pdf]
+
+- **Dalmazzo, D., Déguernel, K., & Sturm, B. L. T.** (2024). ChromaFlow: Modeling And Generating Harmonic Progressions With a Transformer And Voicing Encoding. *MML Workshop, ECML/PKDD 2024*. [https://hal.science/hal-04710950/document]
+
+### Theoretical Background
 
 1. **Plomp, R., & Levelt, W. J. M.** (1965). Tonal consonance and critical bandwidth. *The Journal of the Acoustical Society of America*, 38(4), 548-560.
 
@@ -183,12 +193,6 @@ If you use this work in your research, please cite:
   institution = {Music Technology Group, Universitat Pompeu Fabra}
 }
 ``` -->
-
-### Related Publications
-
-- **Dalmazzo, D., Déguernel, K., & Sturm, B. L. T.** (2024). The Chordinator: Modeling Music Harmony by Implementing Transformer Networks and Token Strategies. *EvoStar 2024*. Springer Nature Switzerland.
-
-- **Dalmazzo, D., Déguernel, K., & Sturm, B. L. T.** (2024). ChromaFlow: Modeling And Generating Harmonic Progressions With a Transformer And Voicing Encoding. *MML Workshop, ECML/PKDD 2024*.
 
 ---
 
