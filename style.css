@@ -6,6 +6,15 @@ body {
     color: white;
 }
 
+/* Completely disable pointer events on EigenSpace when Modal Studio is active */
+body.scene-modalstudio #eigenspace-app {
+    pointer-events: none !important;
+}
+
+body.scene-modalstudio #eigenspace-app * {
+    pointer-events: none !important;
+}
+
 #container {
     width: 100%;
     height: 100vh;
@@ -29,7 +38,7 @@ body {
 #header h1 {
     margin: 0px;
     padding: 0px;
-    font-size: 35px;
+    font-size: 30px;
     font-weight: 300;
 }
 
@@ -90,6 +99,22 @@ body {
 #plot {
     flex: 1;
     width: 100%;
+    /* max-width: 100vw; */
+    /* overflow: hidden; */
+    z-index: 1;
+}
+
+/* Plotly legend styling - rounded corners */
+.legend {
+    border-radius: 20px !important;
+}
+
+.legendtext {
+    border-radius: 4px !important;
+}
+
+.legendtoggle {
+    border-radius: 4px !important;
 }
 
 #progress-container {
@@ -98,7 +123,7 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
-    background: rgba(0, 0, 0, 0.85);
+    background: rgba(0, 0, 0, 0.0);
     padding: 40px 60px;
     border-radius: 15px;
     z-index: 1000;
@@ -108,7 +133,7 @@ body {
     width: 50vw;
     height: 20px;
     margin: 10px auto;
-    background: rgb(23, 23, 23);
+    background: rgb(0, 0, 0);
     border-radius: 10px;
     overflow: hidden;
     position: relative;
@@ -128,7 +153,7 @@ body {
 
 #progress-text {
     font-size: 18px;
-    margin-top: 10px;
+    margin-top: 5px;
     color: white;
 }
 
@@ -140,9 +165,10 @@ body {
     color: white;
 }
 
-#audio-gui-container {
+#audio-gui-container,
+#eigenspace-audio-gui {
     position: fixed;
-    top: 10px;
+    top: 5px;
     left: 10px;
     width: 350px;
     height: 320px;
@@ -152,6 +178,8 @@ body {
     /* box-shadow: 1px 1px 5px rgba(108, 108, 108, 0.75); */
 }
 
+/* Modal Studio audio GUI uses its own positioning from modal_studio_style.css (bottom-left) */
+
 #chord-visualization-container {
     width: 350px;
     height: 640px;
@@ -159,7 +187,7 @@ body {
     position: fixed;
     top: 300px;
     left: 10px;
-    z-index: 1;
+    z-index: 100;
     border-radius: 20px;
 }
 
@@ -186,9 +214,8 @@ body {
 /* Switch to Full 3D View */
 #viz-mode-toggle {
     position: fixed;
-    top: 10px;
-    /* Position exactly 1px to the left of MIDI button: 80px (MIDI right) + 132px (MIDI width) + 1px gap */
-    right: calc(80px + 80px + 121px + 1px);
+    top: 5px;
+    right: 282px;
     box-sizing: border-box;
     /* Consistent sizing */
     /* transform: translateX(-50%); */
@@ -212,10 +239,38 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); */
 }
 
+/* Modal Studio Navigation Button - positioned 1px to the left of viz-mode-toggle */
+#nav-to-modalstudio {
+    position: fixed;
+    top: 5px;
+    right: 481px;
+    background: rgba(0, 111, 229, 0.8);
+    border: none;
+    color: white;
+    padding: 7px 20px;
+    font-size: 12px;
+    font-family: 'Source Code Pro', monospace;
+    font-weight: normal;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+#nav-to-modalstudio:hover {
+    background: rgba(0, 111, 229, 1);
+}
+
+/* Scene-specific display handled by JavaScript switchScene() */
+
 /* Chord Grid Toggle Button */
 #grid-toggle {
     position: fixed;
-    top: 10px;
+    top: 5px;
     right: 161px;
     width: 120px;
     /* Fixed total width including padding (92px content + 40px padding) */
@@ -266,18 +321,7 @@ body {
     background: rgba(255, 255, 255, 0.2) !important;
 }
 
-/* Plotly legend styling - rounded corners */
-.legend {
-    border-radius: 20px !important;
-}
 
-.legendtext {
-    border-radius: 4px !important;
-}
-
-.legendtoggle {
-    border-radius: 4px !important;
-}
 
 /* ============================================================================
    INFO OVERLAY STYLING - Enhanced Visual Effects
@@ -542,8 +586,8 @@ body {
 
 #info-button {
     position: fixed;
-    top: 10px;
-    right: 10px;
+    top: 5px;
+    right: 91px;
     background: rgba(0, 111, 229, 0.8);
     border: none;
     color: white;
@@ -572,8 +616,8 @@ body {
 /* MIDI toggle button - positioned next to info button */
 #midi-toggle {
     position: fixed;
-    top: 10px;
-    right: 80px;
+    top: 5px;
+    right: 10px;
     width: 80px;
     /* Fixed total width including padding (92px content + 40px padding) */
     box-sizing: border-box;
@@ -587,7 +631,7 @@ body {
     padding: 7px 20px;
     font-size: 12px;
     font-family: 'Source Code Pro', monospace;
-    font-weight: normal;
+    font-weight: light;
     border-radius: 5px;
     cursor: pointer;
     z-index: 9999;

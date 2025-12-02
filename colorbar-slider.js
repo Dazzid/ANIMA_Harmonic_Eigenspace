@@ -165,6 +165,12 @@ const colorbarSketch = (p) => {
     }
 
     p.mousePressed = function () {
+        // Only respond to events when enabled and in EigenSpace scene
+        if (!eventsEnabled) return;
+        if (typeof window.currentScene !== 'undefined' && window.currentScene !== Scenes.EIGENSPACE) {
+            return;
+        }
+
         const barX = PADDING;
         const barY = (CANVAS_HEIGHT - BAR_HEIGHT) / 2;
 
@@ -184,12 +190,32 @@ const colorbarSketch = (p) => {
     };
 
     p.mouseDragged = function () {
+        // Only respond to events when enabled and in EigenSpace scene
+        if (!eventsEnabled) {
+            isDragging = false;
+            return;
+        }
+        if (typeof window.currentScene !== 'undefined' && window.currentScene !== Scenes.EIGENSPACE) {
+            isDragging = false;
+            return;
+        }
+
         if (isDragging) {
             updateSliderPosition();
         }
     };
 
     p.mouseReleased = function () {
+        // Only respond to events when enabled and in EigenSpace scene
+        if (!eventsEnabled) {
+            isDragging = false;
+            return;
+        }
+        if (typeof window.currentScene !== 'undefined' && window.currentScene !== Scenes.EIGENSPACE) {
+            isDragging = false;
+            return;
+        }
+
         isDragging = false;
     };
 
@@ -239,6 +265,18 @@ const colorbarSketch = (p) => {
     // Public API to get current step
     p.getCurrentStep = function () {
         return currentStep;
+    };
+
+    // Public API to disable/enable event handling
+    let eventsEnabled = true;
+    
+    p.disableEvents = function () {
+        eventsEnabled = false;
+        isDragging = false; // Reset dragging state
+    };
+    
+    p.enableEvents = function () {
+        eventsEnabled = true;
     };
 
     // Handle window resize

@@ -1,5 +1,5 @@
 // ============================================================================
-// P5.JS AUDIO GUI - ADSR Envelope Editor (GLOBAL MODE)
+// MODAL STUDIO - P5.JS AUDIO GUI - ADSR Envelope Editor
 // ============================================================================
 
 const W = 320;
@@ -15,12 +15,12 @@ const btnW = 59;
 const btnH = 25;
 const spacing = 2;
 
-let bgColor = 'rgba(55, 55, 55, 0.9)';
-let buttonColor = 'rgba(15, 15, 15, 1)';
-let buttonHoverColor = 'rgba(40, 40, 40, 1)';
-let buttonActiveColor = 'rgba(0, 111, 229, 1)';
-let adsrBackgroundColor = 'rgba(5, 5, 5, 1)';
-let adsrGrid = 'rgba(70, 70, 70, 1)';
+let bgColor = 'rgba(237, 236, 236, 0.9)';
+let buttonColor = 'rgba(220, 220, 220, 1)';
+let buttonHoverColor = 'rgba(200, 200, 200, 1)';
+let buttonActiveColor = 'rgba(93, 190, 255, 1)';
+let adsrBackgroundColor = 'rgba(224, 224, 224, 1)';
+let adsrGrid = 'rgba(207, 207, 207, 1)';
 
 const round = 10;
 const paddingWetDry = 100;
@@ -28,12 +28,12 @@ const paddingWetDry = 100;
 const pointSize = 10;
 
 //Define the color
-let textColor = 'rgba(250, 250, 250, 1)';
+let textColor = 'rgba(20, 20, 20, 1)';
 
 const textButtonSize = 10;
 const textTitleSize = 12;
 
-let darkMode = true;
+let darkMode = false;
 
 // Audio mute button
 let audioMuteButton = {
@@ -49,10 +49,10 @@ let buttons = [];
 
 // ADSR envelope points
 let adsrPoints = [
-    { x: padding, y: H, label: 'Start', draggable: false },  // NEW - at true bottom
+    { x: padding, y: H, label: 'Start', draggable: false },
     { x: 40, y: 60, label: 'A', draggable: true },
     { x: 200, y: 250, label: 'S', draggable: true },
-    { x: W - padding, y: H, label: 'End', draggable: false }  // NEW - at true bottom
+    { x: W - padding, y: H, label: 'End', draggable: false }
 ];
 
 let draggingPoint = null;
@@ -68,7 +68,7 @@ let dryWetKnob = {
 function setDark(mode){
     darkMode = mode;
     if (darkMode) {
-        bgColor = 'rgba(33, 33, 33, 0.9)';
+        bgColor = 'rgba(20, 20, 20, 0.9)';
         textColor = 'rgba(230, 230, 230, 1)';
         buttonColor = 'rgba(15, 15, 15, 1)';
         buttonHoverColor = 'rgba(40, 40, 40, 1)';
@@ -95,37 +95,16 @@ function getCanvasSize(){
 // ------------------------------------------------------------
 // Check if audio GUI is visible
 function isAudioGuiVisible() {
-    // Check which scene we're in and verify the corresponding container is visible
-    const eigenContainer = document.getElementById('eigenspace-audio-gui');
-    const modalContainer = document.getElementById('modalstudio-audio-gui');
-    
-    // Check EigenSpace container
-    if (eigenContainer && eigenContainer.style.display !== 'none') {
-        return true;
-    }
-    
-    // Check Modal Studio container
-    if (modalContainer && modalContainer.style.display !== 'none') {
-        return true;
-    }
-    
-    return false;
+    const container = document.getElementById('audio-gui-container');
+    return container && container.style.display !== 'none';
 }
 
 // ------------------------------------------------------------
 function setup() {
-
     textFont('Source Code Pro');
-    //smooth();
 
     let canvas = createCanvas(W, H);
-    canvas.parent('eigenspace-audio-gui'); // Start in EigenSpace container
-    
-    // Expose canvas globally so it can be reparented between scenes
-    window.adsrCanvas = canvas;
-    
-    // Initialize dark mode colors for EigenSpace
-    setDark(true);
+    canvas.parent('audio-gui-container');
     
     // Setup wave type buttons
     const startX = padding;
@@ -141,7 +120,11 @@ function setup() {
             label: waveTypes[i].substring(0, 4)
         });
     }
-    console.log('Setup complete!');
+    
+    // Initialize Modal Studio with light mode
+    setDark(false);
+    
+    console.log('Modal Studio ADSR setup complete!');
     window.adsrReady = true;
 }
 
@@ -195,12 +178,11 @@ function drawADSR() {
         y: map(pt.y, 0, H, adsrTop, adsrTop + adsrHeight)
     }));
 
-    // Draw filled area under envelope with rounded corners
+    // Draw filled area under envelope
     fill(0, 155, 255, 100);
     noStroke();
 
     beginShape();
-    // Envelope line
     for (let i = drawPoints.length - 1; i >= 0; i--) {
         vertex(drawPoints[i].x, drawPoints[i].y);
     }
@@ -242,14 +224,6 @@ function drawADSR() {
     const valuesY = adsrTop + adsrHeight + 25;
 
     let totalTime = audioParams.attack + audioParams.sustain + audioParams.release;
-    // text(`Attack: ${audioParams.attack.toFixed(2)}s`, padding, valuesY);
-    // text(`Sustain: ${audioParams.sustain.toFixed(2)}s`, padding, valuesY + 18);
-    // text(`Release: ${audioParams.release.toFixed(2)}s`, padding, valuesY + 36);
-
-    // // ADD AMPLITUDE DISPLAY
-    // text(`A.Level: ${audioParams.attackLevel.toFixed(2)}`, padding + 160, valuesY);
-    // text(`S.Level: ${audioParams.sustainLevel.toFixed(2)}`, padding + 160, valuesY + 18);
-
 
     fill(textColor);
     textAlign(RIGHT);
@@ -259,7 +233,6 @@ function drawADSR() {
 
 //--------------------------------------------------------------------
 function drawWaveTypeButtons() {
-    // Draw wave type buttons
     textAlign(CENTER, CENTER);
     textSize(textButtonSize);
     strokeWeight(1);
@@ -268,7 +241,6 @@ function drawWaveTypeButtons() {
         let isHover = mouseX > btn.x && mouseX < btn.x + btn.w &&
             mouseY > btn.y && mouseY < btn.y + btn.h;
 
-        // Button background
         if (isActive) {
             fill(buttonActiveColor);
             noStroke();
@@ -282,7 +254,6 @@ function drawWaveTypeButtons() {
         strokeWeight(0.5);
         rect(btn.x, btn.y, btn.w, btn.h, 5);
 
-        // Button text
         fill(textColor);
         noStroke();
         text(btn.label, btn.x + btn.w / 2, btn.y + btn.h / 2);
@@ -291,7 +262,6 @@ function drawWaveTypeButtons() {
 
 //--------------------------------------------------------------------
 function drawKnob() {
-    // Dry/Wet knob
     const knobX = dryWetKnob.x;
     const knobY = dryWetKnob.y;
     const knobR = dryWetKnob.radius;
@@ -306,7 +276,6 @@ function drawKnob() {
     strokeWeight(1);
     circle(knobX, knobY, knobR * 2);
 
-    // FILLED ARC showing value
     const percentage = 0.99;
     const minAngle = -PI * percentage;
     const maxAngle = PI * percentage;
@@ -316,14 +285,13 @@ function drawKnob() {
     noStroke();
     arc(knobX, knobY, knobR * 2, knobR * 2, startAngle, endAngle, PIE);
 
-    // Indicator line (restore this!)
     const angle = map(audioParams.dryWet, 0, 1, minAngle, maxAngle) - HALF_PI;
     stroke(150);
     strokeWeight(1);
     const indicatorX = knobX + cos(angle) * (knobR - 3);
     const indicatorY = knobY + sin(angle) * (knobR - 3);
     line(knobX, knobY, indicatorX, indicatorY);
-    // Value display (restore this!)
+    
     fill(textColor);
     noStroke();
     textSize(textButtonSize);
@@ -337,7 +305,6 @@ function drawMuteButton() {
 
     strokeWeight(1);
 
-    // Button background - circular
     if (btn.muted) {
         fill(buttonActiveColor);
         noStroke();
@@ -351,7 +318,6 @@ function drawMuteButton() {
     strokeWeight(1);
     circle(btn.x, btn.y, btn.size);
 
-    // Text - simple ON/OFF indicator
     noStroke();
     fill(255);
     textAlign(CENTER, CENTER);
@@ -369,47 +335,25 @@ function updateAudioParams() {
     const maxTime = 2.0;
     const totalWidth = W - 2 * padding;
 
-    // Time from X positions
-    const attack = ((adsrPoints[1].x - adsrPoints[0].x) / totalWidth) * maxTime;
-    const sustain = ((adsrPoints[2].x - adsrPoints[1].x) / totalWidth) * maxTime;
-    const release = ((adsrPoints[3].x - adsrPoints[2].x) / totalWidth) * maxTime;
+    audioParams.attack = ((adsrPoints[1].x - adsrPoints[0].x) / totalWidth) * maxTime;
+    audioParams.sustain = ((adsrPoints[2].x - adsrPoints[1].x) / totalWidth) * maxTime;
+    audioParams.release = ((adsrPoints[3].x - adsrPoints[2].x) / totalWidth) * maxTime;
 
-    // Amplitude from Y positions (inverted: lower Y = higher amplitude)
-    const attackLevel = map(adsrPoints[1].y, 0, H, 1.0, 0.001);
-    const sustainLevel = map(adsrPoints[2].y, 0, H, 1.0, 0.001);
-    
-    // Update both EigenSpace (local audioParams) and Modal Studio (window.audioParams)
-    audioParams.attack = attack;
-    audioParams.sustain = sustain;
-    audioParams.release = release;
-    audioParams.attackLevel = attackLevel;
-    audioParams.sustainLevel = sustainLevel;
-    
-    // Also update window.audioParams for Modal Studio
-    if (window.audioParams) {
-        window.audioParams.attack = attack;
-        window.audioParams.sustain = sustain;
-        window.audioParams.release = release;
-        window.audioParams.attackLevel = attackLevel;
-        window.audioParams.sustainLevel = sustainLevel;
-    }
+    audioParams.attackLevel = map(adsrPoints[1].y, 0, H, 1.0, 0.001);
+    audioParams.sustainLevel = map(adsrPoints[2].y, 0, H, 1.0, 0.001);
 }
 
 //--------------------------------------------------------------------
 function mousePressed() {
-    // Ignore mouse events if audio GUI is hidden
     if (!isAudioGuiVisible()) return;
     
-    // Check mute button click
     const muteBtnDist = dist(mouseX, mouseY, audioMuteButton.x, audioMuteButton.y);
     if (muteBtnDist < audioMuteButton.size / 2) {
         audioMuteButton.muted = !audioMuteButton.muted;
-        // Expose mute state globally
         window.audioMuted = audioMuteButton.muted;
         return;
     }
 
-    // Check dry/wet knob
     const knobDist = dist(mouseX, mouseY, dryWetKnob.x, dryWetKnob.y);
     if (knobDist < dryWetKnob.radius) {
         dryWetKnob.dragging = true;
@@ -420,10 +364,6 @@ function mousePressed() {
         if (mouseX > btn.x && mouseX < btn.x + btn.w &&
             mouseY > btn.y && mouseY < btn.y + btn.h) {
             audioParams.waveType = btn.type;
-            // Also update window.audioParams for Modal Studio
-            if (window.audioParams) {
-                window.audioParams.waveType = btn.type;
-            }
             return;
         }
     }
@@ -444,14 +384,12 @@ function mousePressed() {
 
 //--------------------------------------------------------------------
 function mouseDragged() {
-    // Ignore mouse events if audio GUI is hidden
     if (!isAudioGuiVisible()) return;
     
     if (draggingPoint !== null && draggingPoint > 0 && draggingPoint < adsrPoints.length - 1) {
-
         let minX = draggingPoint === 1
-            ? adsrPoints[draggingPoint - 1].x + 3   // Attack: allow down to ~0.01s
-            : adsrPoints[draggingPoint - 1].x + pointSize; // Sustain: keep 20px spacing
+            ? adsrPoints[draggingPoint - 1].x + 3
+            : adsrPoints[draggingPoint - 1].x + pointSize;
         let maxX = adsrPoints[draggingPoint + 1].x - pointSize;
         adsrPoints[draggingPoint].x = constrain(mouseX, minX, maxX);
 
@@ -463,25 +401,18 @@ function mouseDragged() {
         const dy = mouseY - dryWetKnob.y;
         let angle = atan2(dy, dx) + HALF_PI;
 
-        // Normalize angle to -PI to PI range
         while (angle > PI) angle -= TWO_PI;
         while (angle < -PI) angle += TWO_PI;
 
         const minAngle = -PI * 0.75;
         const maxAngle = PI * 0.75;
         angle = constrain(angle, minAngle, maxAngle);
-        const dryWetValue = map(angle, minAngle, maxAngle, 0, 1);
-        audioParams.dryWet = dryWetValue;
-        // Also update window.audioParams for Modal Studio
-        if (window.audioParams) {
-            window.audioParams.dryWet = dryWetValue;
-        }
+        audioParams.dryWet = map(angle, minAngle, maxAngle, 0, 1);
     }
 }
 
 //--------------------------------------------------------------------
 function mouseReleased() {
-    // Ignore mouse events if audio GUI is hidden
     if (!isAudioGuiVisible()) return;
     
     draggingPoint = null;

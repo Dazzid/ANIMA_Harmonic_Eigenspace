@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Modal Studio</title>
+    <link rel="stylesheet" href="modal_studio_style.css">
+</head>
+<body>
+    <div id="scene-controls">
+        <button id="audioToggle" class="scene-button">
+            <span id="audioLabel">Audio Settings: Show</span>
+        </button>
+        <button id="midiToggle" class="scene-button" style="display: none;">
+            <span class="midi-icon">🎹</span>
+            <span>MIDI</span>
+        </button>
+        <button id="sceneToggle" class="scene-button">
+            <span id="sceneLabel">Modal Interchange</span>
+        </button>
+    </div>
+    <div id="audio-gui-container" style="display: none;"></div>
+    <div id="canvas-container"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <script src="modal_studio_adsr.js"></script>
+    <script src="midi_mpe.js"></script>
+    <script src="midi_piano.js"></script>
+    <script src="modal_studio_KeyMap.js"></script>
+    <script src="modal_studio_Audio.js"></script>
+    <script src="modal_studio_Note.js"></script>
+    <script src="modal_studio_Chord.js"></script>
+    <script src="modal_studio_Mode.js"></script>
+    <script src="modal_studio_ScaleEditor.js"></script>
+    <script src="modal_studio_VoicingEditor.js"></script>
+    <script src="modal_studio_Grid.js"></script>
+    <script src="modal_studio_DraggingChords.js"></script>
+    <script src="modal_studio_shaders.js"></script>
+    <script src="modal_studio_main.js"></script>
+    <script src="modal_studio_sketch.js"></script>
+</body>
+</html>
