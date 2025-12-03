@@ -204,7 +204,7 @@ Upon completion of the MSCA fellowship, we plan to release core components under
 
 ---
 
-## 🤝 Acknowledgments
+## 📘 Acknowledgments
 
 ### Funding
 
