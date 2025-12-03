@@ -65,7 +65,7 @@ Building upon traditional 12-TET modal frameworks and incorporating principles f
 **53-TET** (Mercator/Holdrian Comma):
 - **10 interval qualities**: subminor (vvm), downminor (vm), minor (m), upminor (^m), superminor/neutral minor (^^m), submajor/neutral major (vvM), downmajor (vM), major (M), upmajor (^M), supermajor (^^M)
 
-This progressive refinement enables musicians to explore unprecedented harmonic territories with precise microtonal control, while maintaining meaningful connections to established modal theory. The 53-TET system provides an exceptional approximation of just intonation intervals, offering both theoretical rigor and practical compositional flexibility.
+The 53-TET system provides an precise approximation of just intonation intervals, offering both theoretical rigor and practical compositional flexibility.
 
 ### Core Components
 
