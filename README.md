@@ -1,20 +1,20 @@
-# 4D Harmonic Eigenspace
+# ANIMA
+This project is formed by a twofold system: 
+1) a 4D Eigenspace visualization map of the psychoacoustic model of dissonance perception. 
+2) A modal Studio to create harmonies on 53-TET and form chord progressions with modal interchange substitutions.
 
-**Interactive 4D Psychoacoustic Dissonance Visualization for Microtonal Harmony**
+**ANIMA (Artificial INtelligence-based Interactive Microtonal Compositional Assistant)**
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Explore-blue?style=for-the-badge)](https://dazzid.github.io/ANIMA_Harmonic_Eigenspace/)
 [![EU Funded](https://img.shields.io/badge/EU%20Funded-MSCA-yellow?style=for-the-badge)](https://cordis.europa.eu/project/id/101203318)
-
-![Harmonic Eigenspace Visualization](figures/EigenSpace.png)
-*Dissonance landscape showing consonant valleys where harmonic series align*
 
 ---
 
 ## 🎵 About This Project
 
-This project is part of **ANIMA** (Artificial INtelligence-based Interactive Microtonal Compositional Assistant), a Marie Skłodowska-Curie Actions (MSCA) Postdoctoral Fellowship funded by the European Union's Horizon Europe program.
+The **ANIMA** (Artificial INtelligence-based Interactive Microtonal Compositional Assistant) Project is a Marie Skłodowska-Curie Actions (MSCA) Postdoctoral Fellowship funded by the European Union's Horizon Europe program.
 
-** STATUS: Under Active Development**
+**STATUS: Under Active Development**
 
 This repository contains research tools for exploring microtonal harmony through computational psychoacoustics. The system visualizes the 4-dimensional consonance/dissonance landscape of tetrachords using the Plomp-Levelt model.
 
@@ -31,6 +31,9 @@ The four dimensions are:
 - **α (alpha)** - x-axis, 1st frequency ratio
 - **β (beta)** - y-axis, 2nd frequency ratio  
 - **γ (gamma)** - z-axis, 3rd frequency ratio
+
+![Harmonic Eigenspace Visualization](figures/EigenSpace.png)
+*Dissonance landscape showing consonant valleys where harmonic series align*
 
 What you see is a **3D visualization slice** of the four-dimensional space of tetrachord dissonance relationships. Each axis represents the interaction of **6 first harmonics** at different frequency ratios, computed using the *Plomp-Levelt* roughness model from Sethares' *Tuning, Timbre, Spectrum, Scale*.
 
@@ -195,12 +198,6 @@ If you use this work in your research, please cite:
   institution = {Music Technology Group, Universitat Pompeu Fabra}
 }
 ``` -->
-
----
-
-### Future Open Source Release
-
-Upon completion of the MSCA fellowship, we plan to release core components under an open-source license (GNU AGPL v3) to benefit the research community while preventing unauthorized commercial exploitation.
 
 ---
 
