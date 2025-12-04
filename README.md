@@ -6,11 +6,7 @@ This project is formed by a twofold system:
 1) A 4D Eigenspace visualization map of the psychoacoustic model of dissonance perception. 
 2) A modal Studio to create harmonies on 53-TET and form chord progressions with modal interchange substitutions.
 
----
-
-## 🎵 About This Project
-
-The **ANIMA** (Artificial INtelligence-based Interactive Microtonal Compositional Assistant) Project is a Marie Skłodowska-Curie Actions (MSCA) Postdoctoral Fellowship funded by the European Union's Horizon Europe program.
+The **ANIMA** Project is a Marie Skłodowska-Curie Actions (MSCA) Postdoctoral Fellowship funded by the European Union's Horizon Europe program.
 
 **STATUS: Under Active Development**
 
