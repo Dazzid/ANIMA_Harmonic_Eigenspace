@@ -645,3 +645,192 @@ body.scene-modalstudio .midi-panic-btn:active {
     font-size: 12px;
     line-height: 1;
 }
+
+/* Modal Studio Info button - match EigenSpace styling */
+#modalstudio-info-button {
+    background: rgba(0, 111, 229, 0.8);
+    border: none;
+    color: white;
+    padding: 7px 20px;
+    font-size: 12px;
+    font-family: 'Source Code Pro', monospace;
+    font-weight: normal;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s ease;
+    line-height: 1;
+}
+
+#modalstudio-info-button:hover {
+    background: rgba(0, 111, 229, 1);
+}
+
+#modalstudio-info-button .info-icon {
+    font-size: 14px;
+    line-height: 1;
+}
+
+/* Modal Studio Info Overlay */
+#modalstudio-info-overlay.info-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 99999;
+    justify-content: center;
+    align-items: center;
+    overflow-y: auto;
+}
+
+#modalstudio-info-overlay .info-panel {
+    background: rgb(255, 250, 240);
+    border-radius: 10px;
+    max-width: 900px;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 40px;
+    margin: 20px;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    scrollbar-color: rgba(209, 209, 209, 0.8) rgba(240, 240, 240, 0.0) !important;
+}
+
+#modalstudio-info-overlay .header-section {
+    text-align: center;
+    margin-bottom: 30px;
+    border-bottom: none;
+    padding-bottom: 20px;
+}
+
+#modalstudio-info-overlay .main-title {
+    font-size: 30px;
+    font-weight: 600;
+    margin: 0 0 5px 0;
+    color: rgba(16, 16, 16, 1);
+}
+
+#modalstudio-info-overlay .subtitle {
+    font-size: 15px;
+    color: rgba(16, 16, 16, 1);
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+#modalstudio-info-overlay .content-section {
+    line-height: 1.6;
+}
+
+#modalstudio-info-overlay .section {
+    margin-bottom: 25px;
+}
+
+#modalstudio-info-overlay h3 {
+    font-size: 16px;
+    color: rgba(16, 16, 16, 1);
+    margin: 20px 0 10px 0;
+    font-weight: 600;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+#modalstudio-info-overlay p {
+    margin: 10px 0;
+    color: rgba(16, 16, 16, 1);
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+#modalstudio-info-overlay ul {
+    margin: 10px 0;
+    padding-left: 30px;
+    color: rgba(16, 16, 16, 1);
+}
+
+#modalstudio-info-overlay li {
+    margin: 5px 0;
+}
+
+#modalstudio-info-overlay .modal-image {
+    margin: 20px 0;
+    text-align: center;
+}
+
+#modalstudio-info-overlay .modal-image img {
+    max-width: 80%;
+    border-radius: 10px;
+    box-shadow: 0 10px 10px rgba(0, 0, 0, 0.1);
+}
+
+#modalstudio-info-overlay .image-caption {
+    margin-top: 10px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+}
+
+#modalstudio-info-overlay .paper-link {
+    color: rgba(0, 111, 229, 1);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(0, 111, 229, 0.3);
+    transition: all 0.2s ease;
+}
+
+#modalstudio-info-overlay .paper-link:hover {
+    border-bottom-color: rgba(0, 111, 229, 1);
+}
+
+#modalstudio-info-overlay strong {
+    color: rgba(0, 0, 0, 1);
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+#modalstudio-info-overlay .close-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(0, 0, 0, 0.1);
+    border: none;
+    color: rgba(16, 16, 16, 1);
+    font-size: 32px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+#modalstudio-info-overlay .close-button:hover {
+    background: rgba(0, 0, 0, 0.2);
+    transform: rotate(90deg);
+}
+
+/* Citation section styling */
+#modalstudio-info-overlay .citation-section {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    padding-top: 20px;
+    margin-top: 10px;
+}
+
+#modalstudio-info-overlay .citation-text {
+    font-family: 'Georgia', serif;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.6;
+    color: rgba(16, 16, 16, 0.9);
+    background: rgba(0, 0, 0, 0.05);
+    padding: 15px;
+    border-radius: 5px;
+    border-left: 3px solid rgba(0, 111, 229, 1);
+}
