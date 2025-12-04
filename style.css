@@ -199,7 +199,6 @@ body.scene-modalstudio #eigenspace-app * {
     transform: translateY(-50%);
     z-index: 100;
     font-family: 'Source Code Pro', monospace;
-    transition: right 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 #colorbar-container canvas {
@@ -257,7 +256,7 @@ body.scene-modalstudio #eigenspace-app * {
     display: flex;
     align-items: center;
     gap: 8px;
-    transition: all 0.2s ease;
+    transition: background 0.2s ease; /* Only transition background, not position */
     line-height: 1;
 }
 

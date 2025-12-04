@@ -17,6 +17,12 @@ const colorbarSketch = (p) => {
     let numSteps = 0;
     let currentStep = 0;
 
+    // Canvas position animation
+    let canvasX = 0;           // Current X position
+    let targetX = 0;           // Target X position
+    const VISIBLE_X = 0;       // In position
+    const HIDDEN_X = 200;      // Out position (slide right off-screen)
+
     // Thresholds from the main visualization
     let thresholds = [];
     let windowSize = 0;
@@ -36,9 +42,44 @@ const colorbarSketch = (p) => {
         let canvas = p.createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
         canvas.parent('colorbar-container');
         p.textFont('Source Code Pro');
+        
+        // Initialize position - start off-screen, no animation on load
+        const colorbarContainer = document.getElementById('colorbar-container');
+        const isHidden = colorbarContainer && colorbarContainer.classList.contains('hidden');
+        
+        canvasX = isHidden ? HIDDEN_X : VISIBLE_X;
+        targetX = isHidden ? HIDDEN_X : VISIBLE_X;
+        
+        // Watch for hidden class changes
+        if (colorbarContainer) {
+            const observer = new MutationObserver(() => {
+                if (colorbarContainer.classList.contains('hidden')) {
+                    targetX = HIDDEN_X; // Slide out
+                } else {
+                    targetX = VISIBLE_X; // Slide in
+                }
+            });
+            
+            observer.observe(colorbarContainer, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+        }
     };
 
     p.draw = function () {
+        // Apply easing to canvas position
+        let distance = targetX - canvasX;
+        if (Math.abs(distance) > 0.1) {
+            canvasX += distance * 0.25; // Easing factor
+        } else {
+            canvasX = targetX;
+        }
+        
+        // Apply translation
+        p.push();
+        p.translate(canvasX, 0);
+        
         p.clear();
         p.noStroke();
         p.fill(0, 0);
@@ -56,6 +97,8 @@ const colorbarSketch = (p) => {
 
         // Draw labels
         drawLabels(barX, barY);
+        
+        p.pop(); // Restore translation
     };
 
     function drawGradientBar(x, y) {

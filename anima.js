@@ -3304,10 +3304,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Update position on load and when toggle button text changes
-    updateModalStudioButtonPosition();
+    // Delay to avoid conflicts with initial page load animations
+    setTimeout(updateModalStudioButtonPosition, 100);
     const vizToggle = document.getElementById('viz-mode-toggle');
     if (vizToggle) {
-        const observer = new MutationObserver(updateModalStudioButtonPosition);
+        const observer = new MutationObserver(() => {
+            setTimeout(updateModalStudioButtonPosition, 50);
+        });
         observer.observe(vizToggle, { childList: true, characterData: true, subtree: true });
     }
     
