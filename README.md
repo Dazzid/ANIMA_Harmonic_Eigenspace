@@ -178,23 +178,6 @@ The color scale reveals **intersection zones** where harmonic interactions creat
 
 ---
 
-<!-- ## 📖 Citation
-
-If you use this work in your research, please cite:
-```bibtex
-@software{dalmazzo2024harmonic_eigenspace,
-  author = {Dalmazzo, David},
-  title = {Harmonic Eigenspace Explorer: Interactive 4D Psychoacoustic Dissonance Visualization},
-  year = {2024},
-  note = {Part of the ANIMA Project (MSCA Postdoctoral Fellowship, Grant No. 101203318)},
-  url = {https://github.com/dazzid/ANIMA_Harmonic_Eigenspace},
-  howpublished = {\url{https://dazzid.github.io/ANIMA_Harmonic_Eigenspace/}},
-  institution = {Music Technology Group, Universitat Pompeu Fabra}
-}
-``` -->
-
----
-
 ## 📘 Acknowledgments
 
 ### Funding
