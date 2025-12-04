@@ -1,12 +1,10 @@
-# ANIMA
-This project is formed by a twofold system: 
-1) a 4D Eigenspace visualization map of the psychoacoustic model of dissonance perception. 
-2) A modal Studio to create harmonies on 53-TET and form chord progressions with modal interchange substitutions.
-
-**ANIMA (Artificial INtelligence-based Interactive Microtonal Compositional Assistant)**
-
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Explore-blue?style=for-the-badge)](https://dazzid.github.io/ANIMA_Harmonic_Eigenspace/)
 [![EU Funded](https://img.shields.io/badge/EU%20Funded-MSCA-yellow?style=for-the-badge)](https://cordis.europa.eu/project/id/101203318)
+
+# ANIMA (Artificial INtelligence-based Interactive Microtonal Compositional Assistant)
+This project is formed by a twofold system: 
+1) A 4D Eigenspace visualization map of the psychoacoustic model of dissonance perception. 
+2) A modal Studio to create harmonies on 53-TET and form chord progressions with modal interchange substitutions.
 
 ---
 
