@@ -21,7 +21,7 @@ window.audioMuted = false;
 let globalDissonanceData = null;
 let currentBaseFreq = 220.0;
 let cachedHarmonicNodes = null; // Cache node positions (in ratio space)
-let visualizationMode = 'sectioned'; // 'sectioned' or 'full3d'
+let visualizationMode = 'full3d'; // 'sectioned' or 'full3d'
 
 const zoneSize = 4.0;
 const zoneFull = 2.5;
@@ -1114,7 +1114,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             opacity: 0.5
         },
         name: 'Full 3D View',
-        visible: false,  // Start hidden; toggle button will show this trace
+        visible: visualizationMode === 'full3d',  // Show if starting in full3d mode
         hovertemplate: '<span style="font-family:Source Code Pro">' +
             '<b>Ratios</b><br>' +
             'α = %{x:.4f}<br>' +
@@ -1207,7 +1207,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     },
                     showlegend: false,
                     hoverinfo: 'skip',
-                    visible: i === 0,
+                    visible: visualizationMode === 'sectioned' && i === 0,
                     opacity: 0.5
                 });
             }
@@ -1231,7 +1231,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 opacity: 0.7
             },
             name: `${(threshold - windowSize / 2).toFixed(3)} - ${(threshold + windowSize / 2).toFixed(3)}`,
-            visible: i === 0, // Only first layer visible
+            visible: visualizationMode === 'sectioned' && i === 0, // Only first layer visible in sectioned mode
             hovertemplate: '<span style="font-family:Source Code Pro">' +
                 '<b>Ratios</b><br>' +
                 'α = %{x:.4f}<br>' +
@@ -1530,14 +1530,19 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
     // Set initial camera to optimal viewing position
     layout.scene.camera = {
-        center: { x: -0.2730976653225596, y: -0.02881156623103831, z: 0.33368750844216766 },
-        eye: { x: -0.28211018700032187, y: 0.6829744133578857, z: 0.3294558403646424 },
+        center: { x: -0.15105184537810834, y: -0.030484985147750807, z: 0.18307076602833255 },
+        eye: { x: 0.8334780659461072, y: 0.6239517960905372, z: 0.9735712873498483 },
         projection: { type: 'perspective' },
-        up: { x: 0.0013124728315837674, y: 0.005961648647514917, z: 0.9999813679066577 }
+        up: { x: 0.0015079867149903488, y: -0.002264134720887479, z: 0.999996299828171 }
     };
 
     Plotly.newPlot('plot', traces, layout, config).then(() => {
-
+        
+        //print the camera to change the initial view
+        // plotDiv.on('plotly_afterplot', function () {
+        //     const camera = plotDiv._fullLayout.scene.camera;
+        //     console.log('Initial camera:', camera);
+        // });
         
         const scene = plotDiv._fullLayout.scene._scene;
         const gl = scene.glplot.gl;
@@ -2110,6 +2115,14 @@ window.addEventListener('load', async () => {
     if (typeof setRootVisualization === 'function') {
         setRootVisualization(currentBaseFreq);
     }
+    
+    // Hide colorbar if starting in full3d mode
+    if (visualizationMode === 'full3d') {
+        const colorbarContainer = document.getElementById('colorbar-container');
+        if (colorbarContainer) {
+            colorbarContainer.classList.add('hidden');
+        }
+    }
 
     // Hide progress, ready to play
     if (progressContainer) progressContainer.style.display = 'none';
@@ -2174,12 +2187,17 @@ window.addEventListener('load', async () => {
     // Visualization mode toggle button - uses fast restyle instead of recreating plot
     const toggleButton = document.getElementById('viz-mode-toggle');
     if (toggleButton) {
+        // Set initial button text based on current mode
+        toggleButton.textContent = visualizationMode === 'sectioned'
+            ? 'Switch to Full 3D View'
+            : 'Switch to Layered View';
+        
         toggleButton.addEventListener('click', function () {
             toggleVisualizationMode();
 
             this.textContent = visualizationMode === 'sectioned'
                 ? 'Switch to Full 3D View'
-                : 'Switch to Sectioned View';
+                : 'Switch to Layered View';
         });
     }
 });
@@ -3272,6 +3290,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (modalBtn) {
         modalBtn.addEventListener('click', () => switchScene(Scenes.MODALSTUDIO));
+    }
+    
+    // Dynamically position Modal Studio button based on viz-mode-toggle width
+    function updateModalStudioButtonPosition() {
+        const vizToggle = document.getElementById('viz-mode-toggle');
+        const modalStudioBtn = document.getElementById('nav-to-modalstudio');
+        if (vizToggle && modalStudioBtn) {
+            const vizToggleRect = vizToggle.getBoundingClientRect();
+            const vizToggleRight = window.innerWidth - vizToggleRect.left;
+            modalStudioBtn.style.right = (vizToggleRight + 1) + 'px'; // 1px gap
+        }
+    }
+    
+    // Update position on load and when toggle button text changes
+    updateModalStudioButtonPosition();
+    const vizToggle = document.getElementById('viz-mode-toggle');
+    if (vizToggle) {
+        const observer = new MutationObserver(updateModalStudioButtonPosition);
+        observer.observe(vizToggle, { childList: true, characterData: true, subtree: true });
     }
     
     // Start with EigenSpace scene

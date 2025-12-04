@@ -239,11 +239,11 @@ body.scene-modalstudio #eigenspace-app * {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); */
 }
 
-/* Modal Studio Navigation Button - positioned 1px to the left of viz-mode-toggle */
+/* Modal Studio Navigation Button - positioned dynamically to the left of viz-mode-toggle */
 #nav-to-modalstudio {
     position: fixed;
     top: 5px;
-    right: 481px;
+    right: calc(282px + 1px); /* 282px is viz-mode-toggle right position + 1px gap */
     background: rgba(0, 111, 229, 0.8);
     border: none;
     color: white;
