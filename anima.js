@@ -23,6 +23,9 @@ let currentBaseFreq = 220.0;
 let cachedHarmonicNodes = null; // Cache node positions (in ratio space)
 let visualizationMode = 'full3d'; // 'sectioned' or 'full3d'
 
+// Store sampled points for dynamic sorting based on camera
+let sampledPointsData = null;
+
 const zoneSize = 4.0;
 const zoneFull = 2.5;
 const chordSize = 7.0;
@@ -1083,13 +1086,28 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         }
     }
 
-    // Sort sampled data by z-coordinate (gamma) from low to high for proper depth perception from top view
-    const sampledPoints = sampledX.map((x, i) => ({
+    // Store sampled points
+    sampledPointsData = sampledX.map((x, i) => ({
         x: x,
         y: sampledY[i],
         z: sampledZ[i],
         d: sampledD[i]
-    })).sort((a, b) => a.z - b.z); // Low z-values rendered first (appear behind when viewed from top)
+    }));
+    
+    // Sort by distance to initial camera position (defined below in layout)
+    // Initial camera eye: (0.833, 0.624, 0.974)
+    const initialEye = { x: 0.8334780659461072, y: 0.6239517960905372, z: 0.9735712873498483 };
+    const sampledPoints = [...sampledPointsData].sort((a, b) => {
+        // Squared distance (faster, maintains order)
+        const distA = Math.pow(a.x - initialEye.x, 2) + 
+                     Math.pow(a.y - initialEye.y, 2) + 
+                     Math.pow(a.z - initialEye.z, 2);
+        const distB = Math.pow(b.x - initialEye.x, 2) + 
+                     Math.pow(b.y - initialEye.y, 2) + 
+                     Math.pow(b.z - initialEye.z, 2);
+        // Sort near to far (near points render first, appear on top)
+        return distA - distB;
+    });
 
     const sortedSampledX = sampledPoints.map(p => p.x);
     const sortedSampledY = sampledPoints.map(p => p.y);
@@ -1660,11 +1678,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         }
     });
 
-    // plotDiv.on('plotly_relayout', function (eventData) {
-    //     if (eventData['scene.camera']) {
-    //         console.log('Camera updated:', eventData['scene.camera']);
-    //     }
-    // });
+
 
     // Attach click event listener - works perfectly with plotly!
     plotDiv.on('plotly_click', async function (eventData) {
@@ -2782,6 +2796,18 @@ class OfApp {
                                     }).filter(f => f != null);
 
                                     if (scaleFreqs.length >= 3) {
+                                        // Update computer keyboard mapping (uses first 4 scale notes: root, 3rd, 5th, 7th)
+                                        if (typeof window.updateKeyboardMapping === 'function' && scaleFreqs.length >= 4) {
+                                            let chordBaseFreqs = scaleFreqs.slice(0, 4); // [root, 2nd, 3rd, 4th] from scale
+                                            
+                                            // Shift frequencies up to comfortable playing range (around 200-400 Hz root)
+                                            while (chordBaseFreqs[0] < 200) {
+                                                chordBaseFreqs = chordBaseFreqs.map(f => f * 2);
+                                            }
+                                            
+                                            window.updateKeyboardMapping(chordBaseFreqs);
+                                        }
+                                        
                                         window.modalStudioKeyMap.updateMidiPiano(scaleFreqs);
 
                                         // Update ScaleEditor chromatic nodes from KeyMap

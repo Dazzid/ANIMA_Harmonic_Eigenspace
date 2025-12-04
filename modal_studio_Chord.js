@@ -113,32 +113,37 @@ class Chord {
         const blendFactor = 0.1;
         let qualityColor;
         
-        // Dominant seventh family (check first - contains "M" and "m")
+        // Dominant seventh family
         if (quality.includes("Mm7") || quality === "Mm7") {
             qualityColor = [233, 233, 233, 1]; // rgba(233, 233, 233, 1)
         }
-        // Major seventh family (check before minor - contains "maj")
+        // Major seventh family 
         else if (quality.includes("maj7")) {
             qualityColor = [255, 190, 0, 1]; // rgba(255, 160, 0, 1)
         }
-        // Major family (check before minor - ø chords can contain "m")
+        // Major family
         else if (quality.includes("M")) {
             qualityColor = [255, 140, 0, 1]; // rgba(255, 98, 0, 1)
         }
-        // Up-major family (check before minor - ø chords can contain "m")
+        // Up-major family
         else if (quality.includes("^M")) {
             qualityColor = [255, 140, 0, 1]; // rgba(255, 140, 0, 1)
         }
 
-        // Diminished family (check before minor - ø chords can contain "m")
-        else if (quality.includes("ø")) {
-            qualityColor = [194, 194, 194, 1]; // rgba(194, 194, 194, 1)
+        // minor Neutral family 
+        else if (quality.includes("n")) {
+            qualityColor = [200, 200, 200, 1]; // rgba(200, 200, 200, 1)
         }
-        // Down-minor family (cyan)
+
+        // major Neutral family 
+        else if (quality.includes("N")) {
+            qualityColor = [222, 222, 222, 1]; // rgba(222, 222, 222, 1)
+        }
+        // Down-minor family 
         else if (quality.includes("vm")) {
             qualityColor = [0, 200, 255, 1]; // rgba(0, 200, 255, 1) - cyan
         }
-        // Minor family (blue)
+        // Minor family 
         else if (quality.includes("m") || quality.includes("m_")) {
             qualityColor = [0, 150, 255, 1]; // rgba(0, 150, 255, 1) - blue
         }
