@@ -1,4 +1,14 @@
 // ============================================================================
+// SCENE MANAGEMENT - MUST BE FIRST (used throughout the code)
+// ============================================================================
+const Scenes = {
+    EIGENSPACE: 0,
+    MODALSTUDIO: 1
+};
+
+let currentScene = Scenes.EIGENSPACE;
+
+// ============================================================================
 // CONFIGURATION FLAGS
 // ============================================================================
 const ENABLE_DISTANCE_LINES = false; // Set to false to disable line rendering for better performance
@@ -11,7 +21,10 @@ window.audioMuted = false;
 let globalDissonanceData = null;
 let currentBaseFreq = 220.0;
 let cachedHarmonicNodes = null; // Cache node positions (in ratio space)
-let visualizationMode = 'sectioned'; // 'sectioned' or 'full3d'
+let visualizationMode = 'full3d'; // 'sectioned' or 'full3d'
+
+// Store sampled points for dynamic sorting based on camera
+let sampledPointsData = null;
 
 const zoneSize = 4.0;
 const zoneFull = 2.5;
@@ -188,7 +201,7 @@ async function initAudio() {
         warmupOsc.stop(audioCtx.currentTime + 0.01);
 
         audioInitialized = true;
-        
+
     } catch (e) {
         console.error('Audio initialization failed:', e);
     }
@@ -1073,13 +1086,28 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         }
     }
 
-    // Sort sampled data by z-coordinate (gamma) from low to high for proper depth perception from top view
-    const sampledPoints = sampledX.map((x, i) => ({
+    // Store sampled points
+    sampledPointsData = sampledX.map((x, i) => ({
         x: x,
         y: sampledY[i],
         z: sampledZ[i],
         d: sampledD[i]
-    })).sort((a, b) => a.z - b.z); // Low z-values rendered first (appear behind when viewed from top)
+    }));
+
+    // Sort by distance to initial camera position (defined below in layout)
+    // Initial camera eye: (0.833, 0.624, 0.974)
+    const initialEye = { x: 0.8334780659461072, y: 0.6239517960905372, z: 0.9735712873498483 };
+    const sampledPoints = [...sampledPointsData].sort((a, b) => {
+        // Squared distance (faster, maintains order)
+        const distA = Math.pow(a.x - initialEye.x, 2) +
+            Math.pow(a.y - initialEye.y, 2) +
+            Math.pow(a.z - initialEye.z, 2);
+        const distB = Math.pow(b.x - initialEye.x, 2) +
+            Math.pow(b.y - initialEye.y, 2) +
+            Math.pow(b.z - initialEye.z, 2);
+        // Sort near to far (near points render first, appear on top)
+        return distA - distB;
+    });
 
     const sortedSampledX = sampledPoints.map(p => p.x);
     const sortedSampledY = sampledPoints.map(p => p.y);
@@ -1104,7 +1132,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             opacity: 0.5
         },
         name: 'Full 3D View',
-        visible: false,  // Start hidden; toggle button will show this trace
+        visible: visualizationMode === 'full3d',  // Show if starting in full3d mode
         hovertemplate: '<span style="font-family:Source Code Pro">' +
             '<b>Ratios</b><br>' +
             'α = %{x:.4f}<br>' +
@@ -1197,7 +1225,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     },
                     showlegend: false,
                     hoverinfo: 'skip',
-                    visible: i === 0,
+                    visible: visualizationMode === 'sectioned' && i === 0,
                     opacity: 0.5
                 });
             }
@@ -1221,7 +1249,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 opacity: 0.7
             },
             name: `${(threshold - windowSize / 2).toFixed(3)} - ${(threshold + windowSize / 2).toFixed(3)}`,
-            visible: i === 0, // Only first layer visible
+            visible: visualizationMode === 'sectioned' && i === 0, // Only first layer visible in sectioned mode
             hovertemplate: '<span style="font-family:Source Code Pro">' +
                 '<b>Ratios</b><br>' +
                 'α = %{x:.4f}<br>' +
@@ -1401,7 +1429,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             textposition: 'top center',
             textfont: { size: 12, color: 'white' },
             name: '53-TET Chords',
-            visible: true,  // VISIBLE AT START
+            visible: true,
             hovertemplate: '<span style="font-family:Source Code Pro">' +
                 '<b>%{customdata}</b><br>' +
                 'α = %{x:.4f}<br>' +
@@ -1453,8 +1481,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             aspectmode: 'cube'
         },
         legend: {
-            x: 0.9,
-            y: 0.15,
+            x: 0.97,
+            y: 0.17,
             xanchor: 'right',
             yanchor: 'top',
             bgcolor: 'rgba(0,0,0,0.0)',
@@ -1520,14 +1548,21 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
     // Set initial camera to optimal viewing position
     layout.scene.camera = {
-        center: { x: -0.2730976653225596, y: -0.02881156623103831, z: 0.33368750844216766 },
-        eye: { x: -0.28211018700032187, y: 0.6829744133578857, z: 0.3294558403646424 },
+        center: { x: -0.15105184537810834, y: -0.030484985147750807, z: 0.18307076602833255 },
+        eye: { x: 0.8334780659461072, y: 0.6239517960905372, z: 0.9735712873498483 },
         projection: { type: 'perspective' },
-        up: { x: 0.0013124728315837674, y: 0.005961648647514917, z: 0.9999813679066577 }
+        up: { x: 0.0015079867149903488, y: -0.002264134720887479, z: 0.999996299828171 }
     };
 
     Plotly.newPlot('plot', traces, layout, config).then(() => {
-        const scene = document.getElementById('plot')._fullLayout.scene._scene;
+
+        //print the camera to change the initial view
+        // plotDiv.on('plotly_afterplot', function () {
+        //     const camera = plotDiv._fullLayout.scene.camera;
+        //     console.log('Initial camera:', camera);
+        // });
+
+        const scene = plotDiv._fullLayout.scene._scene;
         const gl = scene.glplot.gl;
         gl.enable(gl.DEPTH_TEST);
         gl.enable(gl.BLEND);
@@ -1643,11 +1678,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         }
     });
 
-    // plotDiv.on('plotly_relayout', function (eventData) {
-    //     if (eventData['scene.camera']) {
-    //         console.log('Camera updated:', eventData['scene.camera']);
-    //     }
-    // });
+
 
     // Attach click event listener - works perfectly with plotly!
     plotDiv.on('plotly_click', async function (eventData) {
@@ -1700,7 +1731,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     else if (marker.color && Array.isArray(marker.color)) {
                         // Use point.pointNumber as index if pointIndex is undefined
                         const colorIndex = point.pointIndex !== undefined ? point.pointIndex : point.pointNumber;
-                        
+
                         if (colorIndex !== undefined && colorIndex < marker.color.length) {
                             const dissValue = marker.color[colorIndex];
                             console.log('dissValue:', dissValue);
@@ -1785,7 +1816,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     tetSystem: tetSystem
                 };
                 console.log('lastClickedChord:', window.lastClickedChord);
-                
+
                 // Update keyboard mapping visualization with the color immediately
                 if (cellColor && typeof window.updateKeyboardMapping === 'function') {
                     const baseFrequencies = [
@@ -1894,6 +1925,11 @@ function toggleVisualizationMode() {
 
 // Function to update layer visibility - called by P5 colorbar slider
 window.updatePlotlyLayer = function (layerIndex) {
+    // Only respond when in EigenSpace scene
+    if (typeof window.currentScene !== 'undefined' && window.currentScene !== Scenes.EIGENSPACE) {
+        return;
+    }
+
     const plotDiv = document.getElementById('plot');
     const totalTraces = plotDiv.data.length;
     const tracesPerLayer = ENABLE_DISTANCE_LINES ? 2 : 1;
@@ -2002,12 +2038,12 @@ window.updateChordWithDoubling = function () {
 
         // Play the chord with the updated doubling
         playChord(alpha, beta, gamma, currentBaseFreq);
-        
+
         // Update both temporary chord memory and grid's selected chord
         // This ensures the x2 configuration is captured when storing to grid
         const doublingFlags = typeof window.getDoublingFlags === 'function' ?
             window.getDoublingFlags() : { R: false, α: false, β: false, γ: false };
-        
+
         const updatedChord = {
             root: currentBaseFreq,
             alpha: alpha,
@@ -2024,15 +2060,15 @@ window.updateChordWithDoubling = function () {
             cellColor: window.lastClickedChord?.cellColor,
             tetSystem: window.lastClickedChord?.tetSystem
         };
-        
+
         // Always update lastClickedChord
         window.lastClickedChord = updatedChord;
-        
+
         // Update grid to prepare for storage with the modified chord
         if (typeof window.updateGridSelectedChord === 'function') {
             window.updateGridSelectedChord(updatedChord);
         }
-        
+
         console.log('Updated chord with new doubling flags:', doublingFlags);
     }
 };
@@ -2094,6 +2130,14 @@ window.addEventListener('load', async () => {
         setRootVisualization(currentBaseFreq);
     }
 
+    // Hide colorbar if starting in full3d mode
+    if (visualizationMode === 'full3d') {
+        const colorbarContainer = document.getElementById('colorbar-container');
+        if (colorbarContainer) {
+            colorbarContainer.classList.add('hidden');
+        }
+    }
+
     // Hide progress, ready to play
     if (progressContainer) progressContainer.style.display = 'none';
 
@@ -2132,63 +2176,6 @@ window.addEventListener('load', async () => {
             }
         }
     }, 400);
-
-    // Create Store Chord button (stores last clicked chord into the grid)
-    (function createStoreChordButton() {
-        const storeBtn = document.createElement('button');
-        storeBtn.id = 'store-chord-btn';
-        storeBtn.title = 'Store last selected chord into the chord grid';
-        storeBtn.textContent = 'Store Chord';
-        storeBtn.style.marginLeft = '8px';
-        storeBtn.style.padding = '6px 8px';
-        storeBtn.style.borderRadius = '6px';
-        storeBtn.style.background = 'rgba(29,150,255,0.12)';
-        storeBtn.style.color = '#cfefff';
-        storeBtn.style.border = '1px solid rgba(29,150,255,0.18)';
-        storeBtn.addEventListener('click', () => {
-            // Prefer the last clicked chord (Plotly click)
-            if (window.lastClickedChord) {
-                if (typeof window.prepareChordForStorage === 'function') {
-                    window.prepareChordForStorage(window.lastClickedChord);
-                } else {
-                    alert('Chord grid not initialized yet. Open the grid and try again.');
-                }
-                return;
-            }
-
-            // Fallback: try to use currently-playing visualization frequencies
-            const playback = (typeof window.getActualPlaybackFrequencies === 'function') ? window.getActualPlaybackFrequencies() : null;
-            if (playback && playback.length === 4) {
-                try {
-                    const root = playback[0].originalFreq || currentBaseFreq;
-                    const alpha = playback[1].originalFreq / root;
-                    const beta = playback[2].originalFreq / root;
-                    const gamma = playback[3].originalFreq / root;
-                    const chordData = {
-                        root: root,
-                        alpha: alpha,
-                        beta: beta,
-                        gamma: gamma,
-                        frequencies: [root, root * alpha, root * beta, root * gamma],
-                        nodeNumber: null
-                    };
-                    if (typeof window.prepareChordForStorage === 'function') {
-                        window.prepareChordForStorage(chordData);
-                    } else {
-                        alert('Chord grid not initialized yet. Open the grid and try again.');
-                    }
-                } catch (e) {
-                    console.warn('Failed to prepare chord for storage from playback data', e);
-                }
-                return;
-            }
-
-            alert('No chord selected. Click a chord in the visualization first.');
-        });
-
-        document.body.appendChild(storeBtn);
-    })();
-
     /// Add root note selector event listener (if it exists)
     const rootSelector = document.getElementById('root-select');
 
@@ -2214,12 +2201,17 @@ window.addEventListener('load', async () => {
     // Visualization mode toggle button - uses fast restyle instead of recreating plot
     const toggleButton = document.getElementById('viz-mode-toggle');
     if (toggleButton) {
+        // Set initial button text based on current mode
+        toggleButton.textContent = visualizationMode === 'sectioned'
+            ? 'Switch to Full 3D View'
+            : 'Switch to Layered View';
+
         toggleButton.addEventListener('click', function () {
             toggleVisualizationMode();
 
             this.textContent = visualizationMode === 'sectioned'
                 ? 'Switch to Full 3D View'
-                : 'Switch to Sectioned View';
+                : 'Switch to Layered View';
         });
     }
 });
@@ -2232,3 +2224,1286 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
+
+
+//ANIMA code
+// Global audio parameters shared between ADSR GUI and Audio Engine
+window.audioParams = {
+    waveType: 'sine', // 'sine', 'square', 'sawtooth', 'triangle'
+    attack: 0.1,
+    sustain: 0.5,
+    release: 1.0,
+    attackLevel: 0.7,
+    sustainLevel: 0.5,
+    dryWet: 0.1
+};
+
+// Also initialize global mute state
+window.audioMuted = false;
+
+// ofApp.js - Direct port from C++ ofApp.cpp
+class OfApp {
+    constructor() {
+        // C++ ofApp.h member variables
+        this.fiftyThree = [];
+        this.referenceMap = new Map();
+        this.modes = [];
+
+        // Constants from C++ ofApp.h lines 100-115
+        this.SCALE_SIZE = 7;
+        this.size_x = 100;
+        this.size_y = 52;
+        this.round = 11;
+
+        this.interModel = [9, 9, 4, 9, 9, 9, 4];
+        this.starting_note = -40; // C++ ofApp.h line 154
+        this.numOctaves = 5; // C++ ofApp.h line 155
+
+        //Modes positioning
+        this.modeXStart = 10;
+        this.modeYOffset = 35;
+
+        // Colors from C++ ofApp.h lines 122-130
+        this.darkBackground = [230, 229, 228]; // Changed from [26, 25, 24]
+        this.textColor = [0, 0, 0]; // Changed to black for light background
+        this.buttonColor = [230, 230, 230];
+
+        this.MODE_NAMES = ['Ionian', 'Dorian', 'Phrygian', 'Lydian', 'Mixolydian', 'Aeolian', 'Locrian'];
+
+        this.scaleEditorY = 35;
+
+        // Audio engine
+        this.audioEngine = new AudioEngine();
+
+        // Scale Editor
+        this.scaleEditor = new ScaleEditor();
+        this.scaleEditorInitialized = false;
+
+        // Voicing Editor (C++ ofApp.h - VoicingEditor member)
+        this.voicingEditor = new VoicingEditor();
+        this.voicingEditorInitialized = false;
+
+        // Grid (C++ ofApp.h - Grid member)
+        this.grid = new Grid();
+        this.gridInitialized = false;
+
+        // DraggingChords (C++ ofApp.h - DraggingChords member)
+        this.draggingChords = null;
+        this.draggingChordsInitialized = false;
+
+        // Scene management
+        this.currentScene = 'chord'; // 'chord' or 'grid'
+
+        // Track selected chord for VoicingEditor updates (C++ Grid.cpp selectedCellRow/Col)
+        this.selectedChord = null;
+        this.selectedMode = null;
+    }
+
+    // C++: void ofApp::loadJSONData(string filename)
+    async loadJSONData(filename) {
+        try {
+            const response = await fetch('dataset/' + filename);
+            const data = await response.json();
+            this.fiftyThree = data.notes;
+            console.log(`✓ Loaded ${this.fiftyThree.length} notes`);
+            return true;
+        } catch (error) {
+            console.error('Error loading JSON:', error);
+            return false;
+        }
+    }
+
+    // C++: void ofApp::setupReferenceMap()
+    setupReferenceMap() {
+        this.referenceMap.clear();
+        for (let i = 0; i < this.fiftyThree.length; i++) {
+            this.referenceMap.set(this.fiftyThree[i].reference, i);
+        }
+        console.log(`✓ Reference map: ${this.referenceMap.size} entries`);
+    }
+
+    // C++: FT_Scale* ofApp::findScaleByReference(int referenceNumber)
+    findScaleByReference(referenceNumber) {
+        const index = this.referenceMap.get(referenceNumber);
+        if (index !== undefined) {
+            return this.fiftyThree[index];
+        }
+        return null;
+    }
+
+    // Play a single note (for MIDI Piano input)
+    playNote(frequency) {
+        // Send MIDI first (independent of audio mute)
+        let noteId = null;
+        if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
+            noteId = window.midiController.playSingleNote(frequency);
+        }
+
+        // Play audio (audioEngine.playNote checks mute state internally)
+        this.audioEngine.playNote(frequency);
+
+        return noteId;
+    }
+
+    // C++: vector<string> ofApp::getNames(const vector<int> &references)
+    getNames(references) {
+        const names = [];
+        for (let i = 0; i < references.length; i++) {
+            const scale = this.findScaleByReference(references[i]);
+            names.push(scale ? scale.noteName : '?');
+        }
+        return names;
+    }
+
+    // C++: vector<int> ofApp::generateMode(const vector<int> &model, int rotation)
+    generateMode(model, rotation) {
+        const rotated = [];
+        for (let i = 0; i < model.length; i++) {
+            rotated.push(model[(i + rotation) % model.length]);
+        }
+        return rotated;
+    }
+
+    // C++: vector<int> ofApp::accumulateIntervals(const vector<int> &intervals, int noteRef, int numOctaves)
+    accumulateIntervals(intervals, noteRef, numOctaves) {
+        const totalSteps = intervals.length * numOctaves + 1;
+        const accumulated = new Array(totalSteps);
+        accumulated[0] = noteRef;
+
+        let currentStep = 0;
+        for (let octave = 0; octave < numOctaves; octave++) {
+            for (let i = 0; i < intervals.length; i++) {
+                currentStep++;
+                accumulated[currentStep] = accumulated[currentStep - 1] + intervals[i];
+            }
+        }
+
+        return accumulated;
+    }
+
+    // C++: void ofApp::generateAllModes()
+    generateAllModes(p) {
+        this.p = p;
+        this.generateModeGroup(this.interModel, this.modeXStart, this.modeYOffset, this.starting_note, this.numOctaves);
+
+        // Initialize gradient manager
+        if (!window.shaderManager) {
+            window.shaderManager = new ShaderManager();
+            window.shaderManager.initShaders(p);
+        }
+
+        // Initialize Scale Editor after JSON loaded
+        if (!this.scaleEditorInitialized && this.fiftyThree.length > 0) {
+            const radius = this.scaleEditor.outerRingSize;
+            const initialNodes = 7;
+            // Position Scale Editor: 10px from top and right borders
+            // Frame width = 2 * (radius * scaleEditor.factorSize)
+            const frameWidth = 2 * (radius * this.scaleEditor.factorSize);
+            const canvasWidth = this.p.width; // Use canvas width instead of window width
+            const scaleEditorX = Math.max(10, canvasWidth - frameWidth - 10);
+
+            const topLeft = { x: scaleEditorX, y: this.scaleEditorY };
+            console.log('🔧 Scale Editor Initial Calc:', {
+                canvasWidth,
+                frameWidth,
+                scaleEditorX,
+                topLeft,
+                'p.windowWidth': this.p.windowWidth
+            });
+            this.scaleEditor.setup(radius, initialNodes, topLeft, this.fiftyThree);
+            this.scaleEditor.setIntervals(this.interModel);
+
+            // C++ ofApp.cpp line 110: Connect callback to update modes when scale changes
+            this.scaleEditor.onConfigurationChanged = (newConfig) => {
+                this.onEditorConfigChanged(newConfig);
+            };
+
+            // C++ doesn't use callbacks - inversion is applied in mouseReleased()
+            // See ofApp::mouseReleased() lines 630-644
+
+            this.scaleEditor.setDarkMode(false); // Light mode
+            this.scaleEditorInitialized = true;
+
+            // Ensure position is correct after initialization
+            this.updatePositions(p);
+
+            console.log('✅ Scale Editor initialized');
+
+            // C++ ofApp.cpp line 30: Initialize VoicingEditor
+            if (!this.voicingEditorInitialized) {
+                const voicingRadius = this.scaleEditor.outerRingSize; // Match ScaleEditor size
+                // Position VoicingEditor 10px below ScaleEditor
+                // ScaleEditor frame height = 2 * (radius * factorSize)
+                const voicingEditorX = scaleEditorX;
+                const voicingEditorY = this.scaleEditorY + (2 * radius * this.scaleEditor.factorSize) + 1;
+                const voicingTopLeft = { x: voicingEditorX, y: voicingEditorY };
+                console.log('Initializing Voicing Editor at', voicingTopLeft);
+
+                // Setup with radius, position, and note data
+                this.voicingEditor.setup(voicingRadius, voicingTopLeft, this.fiftyThree);
+                this.voicingEditor.setDarkMode(false); // Match ScaleEditor mode
+
+                // C++ ofApp.cpp line 72: Connect callback (Grid.cpp updateSelectedChordVoicing)
+                this.voicingEditor.onVoicingChanged = (newVoicing) => {
+                    // C++ ofApp.cpp lines 93-102
+                    switch (this.currentScene) {
+                        case 'grid':
+                            if (this.gridInitialized) {
+                                this.grid.updateSelectedChordVoicing(newVoicing);
+                            }
+                            break;
+                        case 'chord':
+                            // Update all modes - each checks its own selectedChordIndex
+                            for (let i = 0; i < this.modes.length; i++) {
+                                this.modes[i].updateSelectedChordVoicing(newVoicing);
+                            }
+                            break;
+                    }
+                };
+
+                this.voicingEditorInitialized = true;
+                console.log('✅ Voicing Editor initialized');
+            }
+
+            // C++ ofApp.cpp line 28: Initialize DraggingChords
+            if (!this.draggingChordsInitialized) {
+                const draggingX = 10;
+                const draggingY = (this.size_y * 8) + (10 * 8) + this.modeYOffset; // Below scene buttons
+
+                this.draggingChords = new DraggingChords();
+                this.draggingChords.setup(draggingX, draggingY, this.size_x, this.size_y, this.modes);
+                this.draggingChords.setDarkMode(false);
+                this.draggingChords.setRound(this.round);
+
+                // Set up callbacks
+                this.draggingChords.onCleanup = () => {
+                    if (this.gridInitialized) {
+                        this.grid.cleanAllChords();
+                    }
+                };
+
+                this.draggingChordsInitialized = true;
+                console.log('✅ DraggingChords initialized');
+            }
+
+            // C++ ofApp.cpp line 28: Initialize Grid
+            if (!this.gridInitialized) {
+                const gridX = 10;
+                const gridY = 40; // Below dragging chords (70 + ~200 for dragging area)
+
+                // Use interModel to generate initial scale
+                const scalePositions = this.accumulateIntervals(this.interModel, this.starting_note, this.numOctaves);
+                const scaleNames = this.getNames(scalePositions);
+
+                console.log('Initializing Grid at', { x: gridX, y: gridY });
+                this.grid.p = p; // Store p5 instance
+                this.grid.setup(gridX, gridY, this.size_x, this.size_y, scalePositions, scaleNames);
+                this.grid.setModes(this.modes);
+                this.grid.setDarkMode(false);
+                this.grid.setRound(this.round);
+
+                // Connect Grid callback to VoicingEditor (C++ Grid.cpp onChordSelected)
+                this.grid.onChordSelected = (notes, voicing, chord, mode) => {
+                    // Validate data before sending to VoicingEditor
+                    if (!notes || notes.length === 0) {
+                        console.warn('Grid selected cell has no notes');
+                        return;
+                    }
+                    if (!voicing || voicing.length === 0) {
+                        console.warn('Grid selected cell has no voicing');
+                        return;
+                    }
+                    if (notes.length < voicing.length) {
+                        console.warn('Voicing array longer than notes array');
+                        return;
+                    }
+
+                    // Store which chord is selected (CRITICAL for voicing edits!)
+                    this.selectedChord = chord;
+                    this.selectedMode = mode;
+
+                    console.log(`✓ Grid chord selected: ${notes.length} notes, voicing: [${voicing.join(', ')}]`);
+                    this.voicingEditor.setCurrentScale(notes);
+                    this.voicingEditor.updateCurrentVoicing(notes, voicing);
+
+                    // Play chord audio (C++ ofApp.cpp mousePressed on chords)
+                    const frequencies = voicing.map(pos => {
+                        const scale = this.findScaleByReference(pos);
+                        return scale ? scale.frequency : 440;
+                    });
+
+                    // Send MIDI/MPE output if controller is available and connected
+                    if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
+                        window.midiController.stopChordNotes();
+                        window.midiController.playChord(frequencies, 5);
+                    }
+
+                    // Update MIDI Piano keyboard mapping with the scale frequencies
+                    if (window.modalStudioKeyMap) {
+                        const scaleFreqs = notes.map(note => note.frequency);
+                        window.modalStudioKeyMap.updateMidiPiano(scaleFreqs);
+
+                        // Update ScaleEditor chromatic nodes from KeyMap
+                        if (this.scaleEditor) {
+                            this.scaleEditor.syncChromaticNotesFromKeyMap();
+                        }
+                    }
+
+                    this.audioEngine.playChord(frequencies);
+                    console.log('▶ Playing grid chord:', frequencies.length, 'notes');
+                };
+
+                this.gridInitialized = true;
+                console.log('✅ Grid initialized');
+            }
+
+            // Initialize KeyMap and sync chromatic notes on first load
+            if (window.modalStudioKeyMap && this.modes.length > 0 && this.modes[0].scale) {
+                const scaleFreqs = this.modes[0].scale.slice(0, 7).map(note => {
+                    const scaleData = this.findScaleByReference(note.ft_note);
+                    return scaleData ? scaleData.frequency : null;
+                }).filter(f => f != null);
+
+                if (scaleFreqs.length >= 3) {
+                    window.modalStudioKeyMap.updateMidiPiano(scaleFreqs);
+                    console.log('✓ Initial KeyMap populated');
+
+                    // Sync ScaleEditor chromatic nodes now that KeyMap is ready
+                    if (this.scaleEditor) {
+                        this.scaleEditor.syncChromaticNotesFromKeyMap();
+                    }
+                }
+            }
+        }
+    }
+
+    // C++: void ofApp::generateModeGroup(...)
+    generateModeGroup(model, xStart, yOffset, starting_note, numOctaves) {
+        this.modes = [];
+
+        for (let i = 0; i < this.SCALE_SIZE; i++) {
+            const modeIntervals = this.generateMode(model, i);
+            const modeReference = this.accumulateIntervals(modeIntervals, starting_note, numOctaves);
+            const noteNames = this.getNames(modeReference);
+
+            const x = xStart;
+            const y = yOffset + (i * (this.size_y + 5));
+
+            const inMode = new Mode();
+            inMode.setup(x, y, this.size_x, this.size_y, this.round, modeReference, noteNames);
+            inMode.setModeName(this.MODE_NAMES[i]);
+            inMode.setMode(i);
+
+            this.modes.push(inMode);
+        }
+
+        console.log(`✓ Generated ${this.modes.length} modes`);
+    }
+
+    // C++: void ofApp::draw() - case CHORDS
+    draw(p) {
+        // CRITICAL: Only draw if we're in MODALSTUDIO scene
+        if (currentScene !== Scenes.MODALSTUDIO) {
+            return; // Don't draw Modal Studio when in EigenSpace
+        }
+
+        p.background(...this.darkBackground);
+
+        if (this.currentScene === 'chord') {
+            // Draw Chord Scene
+            p.fill(...this.textColor);
+            p.textSize(18);
+            p.noStroke();
+            p.text('Modes Scene', 15, 20);
+
+            for (let i = 0; i < this.modes.length; i++) {
+                this.modes[i].draw(p, p.mouseX, p.mouseY);
+            }
+
+            // Draw Scale Editor
+            if (this.scaleEditorInitialized) {
+                this.scaleEditor.update(p);
+                this.scaleEditor.draw(p);
+            } else {
+                // Debug: Show why scale editor not drawing
+                if (this.fiftyThree.length === 0) {
+                    console.log('Scale Editor not initialized: waiting for JSON');
+                }
+            }
+
+            // Draw Voicing Editor
+            if (this.voicingEditorInitialized) {
+                this.voicingEditor.update(p);
+                this.voicingEditor.draw(p);
+            }
+        } else if (this.currentScene === 'grid') {
+            p.textSize(18);
+            p.noStroke();
+            p.text('Modal Interchange Studio', 15, 20);
+            // Draw Grid Scene first (background layer)
+            if (this.gridInitialized) {
+                this.grid.draw(p, p.mouseX, p.mouseY);
+                this.grid.update();
+            }
+
+            // Draw DraggingChords on top (foreground layer)
+            if (this.draggingChordsInitialized) {
+                this.draggingChords.update();
+                this.draggingChords.draw(p);
+            }
+
+            // Draw Scale Editor in Grid scene
+            if (this.scaleEditorInitialized) {
+                this.scaleEditor.update(p);
+                this.scaleEditor.draw(p);
+            }
+
+            // Draw Voicing Editor in Grid scene
+            if (this.voicingEditorInitialized) {
+                this.voicingEditor.update(p);
+                this.voicingEditor.draw(p);
+            }
+        }
+    }
+
+    // Update positions when canvas is resized
+    updatePositions(p) {
+        if (this.scaleEditorInitialized) {
+            const radius = this.scaleEditor.outerRingSize;
+            const frameWidth = 2 * (radius * this.scaleEditor.factorSize);
+            const canvasWidth = p.width;
+            const scaleEditorX = Math.max(10, canvasWidth - frameWidth - 10);
+
+            // Update Scale Editor center position
+            const outerRadius = radius * this.scaleEditor.factorSize;
+            this.scaleEditor.center = {
+                x: scaleEditorX + outerRadius,
+                y: this.scaleEditorY + outerRadius
+            };
+            this.scaleEditor.drawCenterY = this.scaleEditor.center.y + 15;
+            // CRITICAL: Update all visual node positions after center changes
+            this.scaleEditor.updateNodePositions();
+
+            console.log('Updated Scale Editor position:', this.scaleEditor.center, 'canvas width:', canvasWidth);
+
+            // Update Voicing Editor position
+            if (this.voicingEditorInitialized) {
+                const voicingEditorX = scaleEditorX;
+                const voicingEditorY = this.scaleEditorY + (2 * radius * this.scaleEditor.factorSize) + 10;
+                const voicingOuterRadius = this.voicingEditor.radius * this.voicingEditor.factorSize;
+                this.voicingEditor.center = {
+                    x: voicingEditorX + voicingOuterRadius,
+                    y: voicingEditorY + voicingOuterRadius
+                };
+                this.voicingEditor.drawCenterY = this.voicingEditor.center.y + 15;
+            }
+        }
+    }
+
+    // Scene switching
+    setScene(sceneName) {
+        this.currentScene = sceneName;
+        console.log('Scene switched to:', sceneName);
+    }
+
+    // Original draw continuation
+    drawChordScene_backup(p) {
+        p.background(...this.darkBackground);
+
+        p.fill(...this.textColor);
+        p.textSize(12);
+        p.text('Chords', 15, 15);
+
+        for (let i = 0; i < this.modes.length; i++) {
+            this.modes[i].draw(p, p.mouseX, p.mouseY);
+        }
+
+        // Draw Scale Editor
+        if (this.scaleEditorInitialized) {
+            this.scaleEditor.update(p);
+            this.scaleEditor.draw(p);
+        } else {
+            // Debug: Show why scale editor not drawing
+            if (this.fiftyThree.length === 0) {
+                console.log('Scale Editor not initialized: waiting for JSON');
+            }
+        }
+
+        // Draw Voicing Editor (C++ ofApp.cpp line 373)
+        if (this.voicingEditorInitialized) {
+            this.voicingEditor.update(p);
+            this.voicingEditor.draw(p);
+        }
+    }
+
+    // C++: void ofApp::mousePressed()
+    mousePressed(mouseX, mouseY) {
+        // CRITICAL: Only process if we're in MODALSTUDIO scene
+        if (currentScene !== Scenes.MODALSTUDIO) {
+            return; // Block all Modal Studio mouse events when in EigenSpace
+        }
+
+        if (this.currentScene === 'chord') {
+            // Forward to Voicing Editor first (C++ ofApp.cpp line 608)
+            let voicingEditorHandled = false;
+            if (this.voicingEditorInitialized) {
+                voicingEditorHandled = this.voicingEditor.mousePressed(mouseX, mouseY);
+            }
+
+            // Forward to Scale Editor
+            if (this.scaleEditorInitialized) {
+                this.scaleEditor.mousePressed(mouseX, mouseY);
+            }
+
+            // Only check chord buttons if VoicingEditor didn't handle the event
+            if (!voicingEditorHandled) {
+                for (let i = 0; i < this.modes.length; i++) {
+                    const mode = this.modes[i];
+                    if (mode.mousePressed(mouseX, mouseY)) {
+                        // Find which chord was clicked
+                        for (let c = 0; c < mode.chords.length; c++) {
+                            const chord = mode.chords[c];
+                            if (chord.isClicked()) {
+                                console.log(`Clicked: ${chord.getChordQuality()} (${mode.modeName})`);
+
+                                // C++ Chord.cpp: Use noteVoicing array generated by voicing() method
+                                const noteVoicing = chord.getNoteVoicing();
+                                console.log(`Voicing refs: ${noteVoicing.join(', ')}`);
+
+                                const frequencies = noteVoicing.map(ref => {
+                                    const scale = this.findScaleByReference(ref);
+                                    if (!scale) {
+                                        console.warn(`Reference ${ref} not found in JSON!`);
+                                        return 440;
+                                    }
+                                    return scale.frequency;
+                                });
+
+                                console.log(`Playing ${frequencies.length} notes: ${frequencies.map(f => f.toFixed(2)).join(', ')}`);
+
+                                // Send MIDI/MPE output if controller is available and connected
+                                if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
+                                    window.midiController.stopChordNotes();
+                                    window.midiController.playChord(frequencies, 5);
+                                }
+
+                                // Update MIDI Piano keyboard mapping with the chord's scale
+                                if (window.modalStudioKeyMap && mode && mode.scale) {
+                                    // Get first 7 notes (one octave) and convert ft_note to frequency
+                                    const scaleFreqs = mode.scale.slice(0, 7).map(note => {
+                                        const scaleData = this.findScaleByReference(note.ft_note);
+                                        return scaleData ? scaleData.frequency : null;
+                                    }).filter(f => f != null);
+
+                                    if (scaleFreqs.length >= 3) {
+                                        // Update computer keyboard mapping (uses first 4 scale notes: root, 3rd, 5th, 7th)
+                                        if (typeof window.updateKeyboardMapping === 'function' && scaleFreqs.length >= 4) {
+                                            let chordBaseFreqs = scaleFreqs.slice(0, 4); // [root, 2nd, 3rd, 4th] from scale
+
+                                            // Shift frequencies up to comfortable playing range (around 200-400 Hz root)
+                                            while (chordBaseFreqs[0] < 200) {
+                                                chordBaseFreqs = chordBaseFreqs.map(f => f * 2);
+                                            }
+
+                                            window.updateKeyboardMapping(chordBaseFreqs);
+                                        }
+
+                                        window.modalStudioKeyMap.updateMidiPiano(scaleFreqs);
+
+                                        // Update ScaleEditor chromatic nodes from KeyMap
+                                        if (this.scaleEditor) {
+                                            this.scaleEditor.syncChromaticNotesFromKeyMap();
+                                        }
+                                    }
+                                }
+
+                                // Play chord
+                                this.audioEngine.playChord(frequencies);
+
+                                // C++ ofApp.cpp lines 34-35: Send chord to VoicingEditor
+                                // C++ Grid.cpp lines 635-656: Store selection state and trigger callback
+                                if (this.voicingEditorInitialized) {
+                                    // Store which chord is selected (single source of truth)
+                                    this.selectedChord = chord;
+                                    this.selectedMode = mode;
+
+                                    const chordNotes = chord.notes; // Scale notes for the chord
+                                    this.voicingEditor.setCurrentScale(mode.scale);
+                                    this.voicingEditor.updateCurrentVoicing(chordNotes, noteVoicing);
+
+                                    console.log(`📍 Selected: ${chord.getChordQuality()} from ${mode.modeName}`);
+                                }
+
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (this.currentScene === 'grid') {
+            // C++ Grid.cpp line 636: Grid forwards to its internal draggingChords
+            if (this.draggingChordsInitialized) {
+                this.draggingChords.mousePressed(mouseX, mouseY);
+            }
+            // C++ ofApp.cpp lines 607-611: GRID scene
+            if (this.gridInitialized) {
+                this.grid.mousePressed(mouseX, mouseY);
+            }
+            if (this.scaleEditorInitialized) {
+                this.scaleEditor.mousePressed(mouseX, mouseY);
+            }
+            if (this.voicingEditorInitialized) {
+                this.voicingEditor.mousePressed(mouseX, mouseY);
+            }
+        }
+    }
+
+    // Original mousePressed continuation (for reference)
+    mousePressedChordScene_backup(mouseX, mouseY) {
+        // Forward to Voicing Editor first (C++ ofApp.cpp line 608)
+        if (this.voicingEditorInitialized) {
+            this.voicingEditor.mousePressed(mouseX, mouseY);
+        }
+
+        // Forward to Scale Editor
+        if (this.scaleEditorInitialized) {
+            this.scaleEditor.mousePressed(mouseX, mouseY);
+        }
+
+        // Check if a chord button was clicked
+        for (let i = 0; i < this.modes.length; i++) {
+            const mode = this.modes[i];
+            if (mode.mousePressed(mouseX, mouseY)) {
+                // Find which chord was clicked
+                for (let c = 0; c < mode.chords.length; c++) {
+                    const chord = mode.chords[c];
+                    if (chord.isClicked()) {
+                        console.log(`Clicked: ${chord.getChordQuality()} (${mode.modeName})`);
+
+                        // C++ Chord.cpp: Use noteVoicing array generated by voicing() method
+                        const noteVoicing = chord.getNoteVoicing();
+                        console.log(`Voicing refs: ${noteVoicing.join(', ')}`);
+
+                        const frequencies = noteVoicing.map(ref => {
+                            const scale = this.findScaleByReference(ref);
+                            if (!scale) {
+                                console.warn(`Reference ${ref} not found in JSON!`);
+                                return 440;
+                            }
+                            return scale.frequency;
+                        });
+
+                        console.log(`Playing ${frequencies.length} notes: ${frequencies.map(f => f.toFixed(2)).join(', ')}`);
+
+                        // Send MIDI/MPE output if controller is available and connected
+                        if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
+                            window.midiController.stopChordNotes();
+                            window.midiController.playChord(frequencies, 5);
+                        }
+
+                        // Update MIDI Piano keyboard mapping with the mode scale
+                        if (window.modalStudioKeyMap && mode && mode.scale) {
+                            // Get first 7 notes (one octave) and convert ft_note to frequency
+                            const scaleFreqs = mode.scale.slice(0, 7).map(note => {
+                                const scaleData = this.findScaleByReference(note.ft_note);
+                                return scaleData ? scaleData.frequency : null;
+                            }).filter(f => f != null);
+
+                            if (scaleFreqs.length >= 3) {
+                                window.modalStudioKeyMap.updateMidiPiano(scaleFreqs);
+
+                                // Update ScaleEditor chromatic nodes from KeyMap
+                                if (this.scaleEditor) {
+                                    this.scaleEditor.syncChromaticNotesFromKeyMap();
+                                }
+                            }
+                        }
+
+                        // Play chord
+                        this.audioEngine.playChord(frequencies);
+
+                        // C++ ofApp.cpp lines 34-35: Send chord to VoicingEditor
+                        // C++ Grid.cpp lines 635-656: Store selection state and trigger callback
+                        if (this.voicingEditorInitialized) {
+                            // Store which chord is selected (single source of truth)
+                            this.selectedChord = chord;
+                            this.selectedMode = mode;
+
+                            const chordNotes = chord.notes; // Scale notes for the chord
+                            this.voicingEditor.setCurrentScale(mode.scale);
+                            this.voicingEditor.updateCurrentVoicing(chordNotes, noteVoicing);
+
+                            console.log(`📍 Selected: ${chord.getChordQuality()} from ${mode.modeName}`);
+                        }
+
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    // C++: void ofApp::mouseDragged()
+    mouseDragged(mouseX, mouseY) {
+        // CRITICAL: Only process if we're in MODALSTUDIO scene
+        if (currentScene !== Scenes.MODALSTUDIO) {
+            return; // Block all Modal Studio drag events when in EigenSpace
+        }
+
+        // Only send drag events to the editor that's currently interacting
+        const scaleEditorInteracting = this.scaleEditorInitialized && this.scaleEditor.isInteracting;
+        const voicingEditorInteracting = this.voicingEditorInitialized && this.voicingEditor.isInteracting;
+
+        if (this.currentScene === 'chord') {
+            // Only forward drag to the editor that's currently interacting
+            if (voicingEditorInteracting && this.voicingEditorInitialized) {
+                this.voicingEditor.mouseDragged(mouseX, mouseY);
+            } else if (scaleEditorInteracting && this.scaleEditorInitialized) {
+                this.scaleEditor.mouseDragged(mouseX, mouseY);
+            }
+        } else if (this.currentScene === 'grid') {
+            // C++ Grid.cpp line 668: Grid forwards to its internal draggingChords
+            if (this.draggingChordsInitialized) {
+                this.draggingChords.mouseDragged(mouseX, mouseY);
+            }
+            // C++ ofApp.cpp lines 588-591: GRID scene
+            if (this.gridInitialized) {
+                this.grid.mouseDragged(mouseX, mouseY);
+            }
+            // Only forward drag to the editor that's currently interacting
+            if (voicingEditorInteracting && this.voicingEditorInitialized) {
+                this.voicingEditor.mouseDragged(mouseX, mouseY);
+            } else if (scaleEditorInteracting && this.scaleEditorInitialized) {
+                this.scaleEditor.mouseDragged(mouseX, mouseY);
+            }
+        }
+    }
+
+    // Original mouseDragged continuation
+    mouseDraggedChordScene_backup(mouseX, mouseY) {
+        // Forward to Voicing Editor (C++ ofApp.cpp line 584)
+        if (this.voicingEditorInitialized) {
+            this.voicingEditor.mouseDragged(mouseX, mouseY);
+        }
+
+        if (this.scaleEditorInitialized) {
+            this.scaleEditor.mouseDragged(mouseX, mouseY);
+        }
+    }
+
+    // C++: void ofApp::mouseReleased()
+    mouseReleased(mouseX, mouseY) {
+        // CRITICAL: Only process if we're in MODALSTUDIO scene
+        if (currentScene !== Scenes.MODALSTUDIO) {
+            return; // Block all Modal Studio release events when in EigenSpace
+        }
+
+        // C++ ofApp.cpp line 630: Get current inversion on every mouse release
+        const myInversion = this.scaleEditorInitialized ? this.scaleEditor.getInversion() : 0;
+
+        if (this.currentScene === 'chord') {
+            // C++ ofApp.cpp lines 641-646: CHORDS scene
+            // Apply inversion to all modes on every mouse release
+            for (let i = 0; i < this.modes.length; i++) {
+                this.modes[i].setInversions(myInversion);
+                this.modes[i].mouseReleased();
+            }
+
+            if (this.scaleEditorInitialized) {
+                this.scaleEditor.mouseReleased(mouseX, mouseY);
+            }
+
+            if (this.voicingEditorInitialized) {
+                this.voicingEditor.mouseReleased(mouseX, mouseY);
+            }
+        } else if (this.currentScene === 'grid') {
+            // C++ Grid.cpp line 671: Grid forwards to its internal draggingChords
+            if (this.draggingChordsInitialized) {
+                this.draggingChords.mouseReleased(mouseX, mouseY, this.grid);
+            }
+            // C++ ofApp.cpp lines 633-639: GRID scene
+            if (this.gridInitialized) {
+                this.grid.mouseReleased(mouseX, mouseY);
+            }
+            if (this.scaleEditorInitialized) {
+                this.scaleEditor.mouseReleased(mouseX, mouseY);
+            }
+            if (this.voicingEditorInitialized) {
+                this.voicingEditor.mouseReleased(mouseX, mouseY);
+            }
+            // C++ line 639: Apply inversion ONLY to dragging chords (not grid cells)
+            if (this.draggingChordsInitialized) {
+                this.draggingChords.setInversions(myInversion);
+            }
+        }
+    }
+
+    // Original mouseReleased continuation
+    mouseReleasedChordScene_backup(mouseX, mouseY) {
+        // Forward to Voicing Editor (C++ ofApp.cpp line 638)
+        if (this.voicingEditorInitialized) {
+            this.voicingEditor.mouseReleased(mouseX, mouseY);
+        }
+
+        if (this.scaleEditorInitialized) {
+            this.scaleEditor.mouseReleased(mouseX, mouseY);
+        }
+
+        // Release all chord buttons
+        for (let i = 0; i < this.modes.length; i++) {
+            this.modes[i].mouseReleased();
+        }
+    }
+
+    // C++ ofApp.cpp lines 174-210 - Callback when ScaleEditor configuration changes
+    onEditorConfigChanged(newConfig) {
+        console.log('🔄 Scale configuration changed:', newConfig);
+        this.interModel = [...newConfig];
+        this.starting_note = this.scaleEditor.startingStep;
+
+        // C++ ofApp.cpp lines 189-205: Regenerate all modes with new intervals
+        this.generateModeGroup(this.interModel, this.modeXStart, this.modeYOffset, this.starting_note, this.numOctaves);
+
+        // Update Grid with new scale (C++ Grid.cpp updateScale)
+        if (this.gridInitialized) {
+            const scalePositions = this.accumulateIntervals(this.interModel, this.starting_note, this.numOctaves);
+            const scaleNames = this.getNames(scalePositions);
+            this.grid.updateScale(scalePositions, scaleNames);
+            this.grid.setModes(this.modes);
+            console.log('✓ Grid updated with new scale');
+        }
+
+        // Update DraggingChords with new modes and inversions (C++ ofApp.cpp lines 185-187, 200-201)
+        if (this.draggingChordsInitialized && this.scaleEditorInitialized) {
+            const inversionNumber = this.scaleEditor.getInversion();
+            this.draggingChords.setInversions(inversionNumber);
+            this.draggingChords.updateScale(this.modes);
+            console.log('✓ DraggingChords updated with new modes');
+        }
+
+        // Log the first mode's chords to verify update
+        if (this.modes.length > 0 && this.modes[0].chords.length > 0) {
+            const firstChordQuality = this.modes[0].chords[0].getChordQuality();
+            console.log('✓ Mode 0 (Ionian) first chord:', firstChordQuality);
+        }
+
+        // Update MIDI Piano keyboard mapping with the new scale
+        if (window.modalStudioKeyMap && this.modes.length > 0 && this.modes[0].scale) {
+            // Get first 7 notes (one octave) and convert ft_note to frequency
+            const scaleFreqs = this.modes[0].scale.slice(0, 7).map(note => {
+                const scaleData = this.findScaleByReference(note.ft_note);
+                return scaleData ? scaleData.frequency : null;
+            }).filter(f => f != null);
+
+            if (scaleFreqs.length >= 3) {
+                window.modalStudioKeyMap.updateMidiPiano(scaleFreqs);
+                console.log('✓ KeyMap updated with new scale frequencies');
+
+                // Update ScaleEditor chromatic nodes from KeyMap
+                if (this.scaleEditor) {
+                    this.scaleEditor.syncChromaticNotesFromKeyMap();
+                }
+            }
+        }
+
+        console.log('✓ All 7 modes regenerated with new scale');
+    }
+}
+
+// ============================================================================
+// SCENE MANAGEMENT (C++ ofApp.cpp pattern)
+// Note: Scenes enum defined at top of file
+// ============================================================================
+
+// ============================================================================
+// UNIFIED EVENT HANDLERS (C++ pattern with switch statements)
+// ============================================================================
+
+function switchScene(newScene) {
+    currentScene = newScene;
+
+    const eigenContainer = document.getElementById('eigenspace-app');
+    const modalContainer = document.getElementById('modalstudio-app');
+    const eigenAudioGui = document.getElementById('eigenspace-audio-gui');
+    const modalAudioGui = document.getElementById('modalstudio-audio-gui');
+
+    // EigenSpace buttons (fixed position, need manual hide/show)
+    const vizModeToggle = document.getElementById('viz-mode-toggle');
+    const navToModalStudio = document.getElementById('nav-to-modalstudio');
+    const gridToggle = document.getElementById('grid-toggle');
+    const midiToggle = document.getElementById('midi-toggle');
+    const infoButton = document.getElementById('info-button');
+
+    // Add scene class to body for CSS targeting
+    document.body.classList.remove('scene-eigenspace', 'scene-modalstudio');
+
+    // C++ switch(scene) pattern - complete event isolation
+    switch (currentScene) {
+        case Scenes.EIGENSPACE:
+            document.body.classList.add('scene-eigenspace');
+            if (eigenContainer) eigenContainer.style.display = 'block';
+            if (modalContainer) modalContainer.style.display = 'none';
+
+            // Re-enable pointer events on Plotly plot
+            const plotDivEigen = document.getElementById('plot');
+            if (plotDivEigen) plotDivEigen.style.pointerEvents = 'auto';
+
+            // Re-enable colorbar p5 event handling
+            if (typeof colorbarP5 !== 'undefined' && typeof colorbarP5.enableEvents === 'function') {
+                colorbarP5.enableEvents();
+            }
+
+            // Show EigenSpace buttons
+            if (vizModeToggle) vizModeToggle.style.display = 'flex';
+            if (navToModalStudio) navToModalStudio.style.display = 'flex';
+            if (gridToggle) gridToggle.style.display = 'flex';
+            if (midiToggle) midiToggle.style.display = 'flex';
+            if (infoButton) infoButton.style.display = 'flex';
+
+            // Show Plotly modebar (legend is part of the plot SVG and shows automatically)
+            let modebarEigen = document.querySelector('.modebar');
+            if (modebarEigen) modebarEigen.style.display = 'flex';
+
+            // ADSR: Always visible in EigenSpace, dark mode
+            if (eigenAudioGui) eigenAudioGui.style.display = 'block';
+            if (modalAudioGui) modalAudioGui.style.display = 'none';
+            if (window.adsrCanvas) window.adsrCanvas.parent('eigenspace-audio-gui');
+            if (typeof setDark === 'function') setDark(true);
+            window.adsrCurrentScene = 'eigenspace';
+
+            console.log('[ANIMA] Scene: EigenSpace');
+            break;
+
+        case Scenes.MODALSTUDIO:
+            document.body.classList.add('scene-modalstudio');
+            if (eigenContainer) eigenContainer.style.display = 'none';
+            if (modalContainer) modalContainer.style.display = 'block';
+
+            // Disable pointer events on Plotly plot to prevent ghost clicks
+            const plotDiv = document.getElementById('plot');
+            if (plotDiv) plotDiv.style.pointerEvents = 'none';
+
+            // Disable colorbar p5 event handling to prevent ghost slider interactions
+            if (typeof colorbarP5 !== 'undefined' && typeof colorbarP5.disableEvents === 'function') {
+                colorbarP5.disableEvents();
+            }
+
+            // Hide EigenSpace buttons
+            if (vizModeToggle) vizModeToggle.style.display = 'none';
+            if (navToModalStudio) navToModalStudio.style.display = 'none';
+            if (gridToggle) gridToggle.style.display = 'none';
+            if (midiToggle) midiToggle.style.display = 'none';
+            if (infoButton) infoButton.style.display = 'none';
+
+            // Hide Plotly modebar (legend is part of the plot and hidden with container)
+            let modebarModal = document.querySelector('.modebar');
+            if (modebarModal) modebarModal.style.display = 'none';
+
+            // ADSR: Hidden by default in Modal Studio (controlled by audioToggle button)
+            if (eigenAudioGui) eigenAudioGui.style.display = 'none';
+
+            console.log('[ANIMA] Scene: Modal Studio');
+            break;
+    }
+}
+
+// ============================================================================
+// MOUSE EVENT HANDLERS (C++ pattern with switch statements)
+// Ensures mouse events are ONLY active for the current scene
+// ============================================================================
+
+// Global mouse state tracking
+let mouseIsPressed = false;
+
+// Intercept ALL mouse events and route based on current scene
+document.addEventListener('mousedown', function (e) {
+    mouseIsPressed = true;
+
+    switch (currentScene) {
+        case Scenes.EIGENSPACE:
+            // EigenSpace: Plotly handles its own clicks via plotDiv.on('plotly_click')
+            // p5 ADSR (adsr.js) has its own global mousePressed() that will run automatically
+            // Don't interfere - let Plotly and p5 manage the event
+            break;
+
+        case Scenes.MODALSTUDIO:
+            // Modal Studio: ONLY process if we're in this scene
+            // p5 sketch will call window.app.mousePressed() via its own mousePressed()
+            break;
+    }
+});
+
+document.addEventListener('mousemove', function (e) {
+    if (!mouseIsPressed) return;
+
+    switch (currentScene) {
+        case Scenes.EIGENSPACE:
+            // EigenSpace: p5 ADSR (adsr.js) has its own global mouseDragged()
+            break;
+
+        case Scenes.MODALSTUDIO:
+            // Modal Studio: p5 sketch handles via mouseDragged()
+            break;
+    }
+});
+
+document.addEventListener('mouseup', function (e) {
+    mouseIsPressed = false;
+
+    switch (currentScene) {
+        case Scenes.EIGENSPACE:
+            // EigenSpace: p5 ADSR (adsr.js) has its own global mouseReleased()
+            break;
+
+        case Scenes.MODALSTUDIO:
+            // Modal Studio: p5 sketch handles via mouseReleased()
+            break;
+    }
+});
+
+// ============================================================================
+// KEYBOARD HANDLER (C++ pattern with switch statements)
+// ============================================================================
+
+window.addEventListener('keydown', function (e) {
+    // Scene-specific keyboard handling
+    switch (currentScene) {
+        case Scenes.EIGENSPACE:
+            // EigenSpace keyboard shortcuts (root note selection)
+            const freq = keyToFreq[e.key.toLowerCase()];
+            if (freq) {
+                currentBaseFreq = freq;
+                const clickOutput = document.getElementById('click-output');
+                if (clickOutput) {
+                    clickOutput.textContent =
+                        `Root: ${freqToName[freq]} (${freq.toFixed(2)} Hz) - Click any point to hear`;
+                }
+                if (typeof setRootVisualization === 'function') {
+                    setRootVisualization(freq);
+                }
+                if (typeof clearChordVisualization === 'function') {
+                    clearChordVisualization();
+                }
+            }
+            // MIDI toggle
+            if (e.key === 'p' || e.key === 'P') {
+                if (window.midiController) {
+                    window.midiController.toggleUI();
+                }
+            }
+            break;
+
+        case Scenes.MODALSTUDIO:
+            // Modal Studio keyboard shortcuts handled by p5 sketch
+            // (p5 has its own keyPressed in sketch)
+            break;
+    }
+});
+
+// ============================================================================
+// INITIALIZATION
+// ============================================================================
+
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('[ANIMA] Initializing unified application...');
+
+    // Wire up navigation buttons
+    const eigenBtn = document.getElementById('nav-to-eigenspace');
+    const modalBtn = document.getElementById('nav-to-modalstudio');
+
+    if (eigenBtn) {
+        eigenBtn.addEventListener('click', () => switchScene(Scenes.EIGENSPACE));
+    }
+    if (modalBtn) {
+        modalBtn.addEventListener('click', () => switchScene(Scenes.MODALSTUDIO));
+    }
+
+    // Dynamically position Modal Studio button based on viz-mode-toggle width
+    function updateModalStudioButtonPosition() {
+        const vizToggle = document.getElementById('viz-mode-toggle');
+        const modalStudioBtn = document.getElementById('nav-to-modalstudio');
+        if (vizToggle && modalStudioBtn) {
+            const vizToggleRect = vizToggle.getBoundingClientRect();
+            const vizToggleRight = window.innerWidth - vizToggleRect.left;
+            modalStudioBtn.style.right = (vizToggleRight + 1) + 'px'; // 1px gap
+        }
+    }
+
+    // Update position on load and when toggle button text changes
+    // Delay to avoid conflicts with initial page load animations
+    setTimeout(updateModalStudioButtonPosition, 100);
+    const vizToggle = document.getElementById('viz-mode-toggle');
+    if (vizToggle) {
+        const observer = new MutationObserver(() => {
+            setTimeout(updateModalStudioButtonPosition, 50);
+        });
+        observer.observe(vizToggle, { childList: true, characterData: true, subtree: true });
+    }
+
+    // Start with EigenSpace scene
+    switchScene(Scenes.EIGENSPACE);
+
+    // Debug: Check if buttons exist
+    const vizBtn = document.getElementById('viz-mode-toggle');
+    const navModalBtn = document.getElementById('nav-to-modalstudio');
+    console.log('viz-mode-toggle exists:', !!vizBtn);
+    console.log('nav-to-modalstudio exists:', !!navModalBtn);
+
+    console.log('[ANIMA] Ready! Press 1 for EigenSpace, 2 for Modal Studio');
+});
+
+// Expose globally for debugging
+window.ANIMA = {
+    switchScene: switchScene,
+    getCurrentScene: () => currentScene,
+    Scenes: Scenes
+};
+
+// ============================================================================
+// P5.JS SKETCH INITIALIZATION (from modal_studio_sketch.js)
+// ============================================================================
+
+const sketch = (p) => {
+    let app;
+    const MIN_WIDTH = 1330;
+    const MIN_HEIGHT = 1000;
+
+    p.setup = async () => {
+        const w = Math.max(p.windowWidth, MIN_WIDTH);
+        const h = Math.max(p.windowHeight, MIN_HEIGHT);
+        p.createCanvas(w, h);
+        p.textFont('Source Code Pro');
+        app = new OfApp();
+
+        // Scene toggle button handler
+        let isModalScene = true;
+        const toggleButton = document.getElementById('scene-toggle');
+        const sceneLabel = document.getElementById('scene-label');
+        const audioToggle = document.getElementById('audio-toggle');
+        const audioLabel = document.getElementById('audio-label');
+        const audioGuiContainer = document.getElementById('modalstudio-audio-gui');
+
+        if (toggleButton) {
+            toggleButton.addEventListener('click', () => {
+                isModalScene = !isModalScene;
+                if (isModalScene) {
+                    app.setScene('chord');
+                    sceneLabel.textContent = 'Modal Interchange';
+                } else {
+                    app.setScene('grid');
+                    sceneLabel.textContent = 'Modal Scene';
+                }
+            });
+        }
+
+        if (audioGuiContainer) {
+            audioGuiContainer.style.display = 'none';
+        }
+
+        if (audioToggle && audioLabel && audioGuiContainer) {
+            audioToggle.addEventListener('click', () => {
+                if (audioGuiContainer.style.display === 'none') {
+                    // Show ADSR in Modal Studio
+                    audioGuiContainer.style.display = 'block';
+                    audioLabel.textContent = 'Audio Settings: Hide';
+                    // Reparent ADSR canvas to Modal Studio container
+                    if (window.adsrCanvas) {
+                        window.adsrCanvas.parent('modalstudio-audio-gui');
+                    }
+                    // Set light mode for Modal Studio
+                    if (typeof setDark === 'function') {
+                        setDark(false);
+                    }
+                    // Mark that ADSR is controlling Modal Studio audio
+                    window.adsrCurrentScene = 'modalstudio';
+                } else {
+                    // Hide ADSR in Modal Studio (stays hidden until button clicked again)
+                    audioGuiContainer.style.display = 'none';
+                    audioLabel.textContent = 'Audio Settings: Show';
+                    // Keep ADSR in Modal Studio container but hidden
+                    // No need to reparent back to EigenSpace
+                }
+            });
+        }
+
+        await app.loadJSONData('53_reference_notes.json');
+        app.setupReferenceMap();
+        app.generateAllModes(p);
+
+        // Initialize audio on first click
+        document.addEventListener('click', async () => {
+            if (!app.audioEngine.audioInitialized) {
+                await app.audioEngine.initAudio();
+                console.log('🔊 Audio system ready');
+            }
+        }, { once: true });
+
+        // Initialize MIDI controller
+        setTimeout(async () => {
+            if (typeof MIDIController !== 'undefined') {
+                window.midiController = new MIDIController();
+                const initialized = await window.midiController.initialize();
+                if (initialized) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    console.log('🎹 MIDI Controller ready');
+                    console.log('Available devices:', window.midiController.getOutputDevices());
+
+                    // Modal Studio MIDI button (already in HTML with id="modalstudio-midi-toggle")
+                    const midiButton = document.getElementById('modalstudio-midi-toggle');
+                    if (midiButton) {
+                        midiButton.style.display = 'flex';
+                        midiButton.addEventListener('click', () => {
+                            window.midiController.toggleUI();
+                        });
+                    }
+                }
+            }
+
+            if (typeof MIDIPianoHandler !== 'undefined') {
+                window.midiPianoHandler = new MIDIPianoHandler();
+            }
+        }, 400);
+
+        // Don't call setDark(false) here - it affects the global ADSR from adsr.js
+        // Modal Studio components handle their own dark mode via setDarkMode()
+        window.app = app;
+        window.playNote = (freq) => app.playNote(freq);
+    };
+
+    p.draw = () => {
+        if (app) {
+            app.draw(p);
+        }
+    };
+
+    p.mousePressed = () => {
+        if (app) {
+            app.mousePressed(p.mouseX, p.mouseY);
+        }
+    };
+
+    p.mouseDragged = () => {
+        if (app) {
+            app.mouseDragged(p.mouseX, p.mouseY);
+        }
+    };
+
+    p.mouseReleased = () => {
+        if (app) {
+            app.mouseReleased(p.mouseX, p.mouseY);
+        }
+    };
+
+    p.windowResized = () => {
+        const w = Math.max(p.windowWidth, MIN_WIDTH);
+        const h = Math.max(p.windowHeight, MIN_HEIGHT);
+        p.resizeCanvas(w, h);
+        if (app) {
+            app.updatePositions(p);
+        }
+    };
+};
+
+// Initialize p5 sketch
+new p5(sketch, 'canvas-container');
+
