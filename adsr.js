@@ -306,15 +306,30 @@ function drawKnob() {
     strokeWeight(1);
     circle(knobX, knobY, knobR * 2);
 
-    // FILLED ARC showing value
-    const percentage = 0.99;
-    const minAngle = -PI * percentage;
-    const maxAngle = PI * percentage;
-    const startAngle = minAngle - HALF_PI;
-    const endAngle = map(audioParams.dryWet, 0, 1, minAngle, maxAngle) - HALF_PI;
-    fill(buttonActiveColor);
-    noStroke();
-    arc(knobX, knobY, knobR * 2, knobR * 2, startAngle, endAngle, PIE);
+        // ANNULAR SECTOR (outer ring wedge) showing value, 5px thick near the edge
+        const percentage = 0.99;
+        const minAngle = -PI * percentage;
+        const maxAngle = PI * percentage;
+        const startAngle = minAngle - HALF_PI;
+        const endAngle = map(audioParams.dryWet, 0, 1, minAngle, maxAngle) - HALF_PI;
+
+        const thickness = 5;
+        const outerR = knobR;
+        const innerR = Math.max(1, knobR - thickness);
+
+        // Use raw canvas path to draw an annular wedge
+        push();
+        noStroke();
+        fill(buttonActiveColor);
+        const ctx = drawingContext;
+        ctx.beginPath();
+        // Outer arc from start → end
+        ctx.arc(knobX, knobY, outerR, startAngle, endAngle, false);
+        // Inner arc from end → start (reverse), closing the ring wedge
+        ctx.arc(knobX, knobY, innerR, endAngle, startAngle, true);
+        ctx.closePath();
+        ctx.fill();
+        pop();
 
     // Indicator line (restore this!)
     const angle = map(audioParams.dryWet, 0, 1, minAngle, maxAngle) - HALF_PI;
