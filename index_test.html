@@ -4,7 +4,6 @@
 <head>
     <meta charset="UTF-8">
     <title>ANIMA - Unified App</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,13 +23,12 @@
     <script src="midi_mpe.js"></script>
     <script src="midi_piano.js"></script>
 
-    <!-- Load  component scripts (NOT test.js - code is in anima.js) -->
+    <!-- Load EigenSpace component scripts (NOT test.js - code is in anima.js) -->
     <script src="binary-loader.js"></script>
     <script src="adsr.js"></script>
     <script src="colorbar-slider.js"></script>
     <script src="chord_visualization.js"></script>
     <script src="info_overlay.js"></script>
-    <script src="modal_studio_info_overlay.js"></script>
     <script src="key_map.js"></script>
     <script src="grid.js"></script>
 
@@ -47,6 +45,8 @@
     <script src="modal_studio_DraggingChords.js"></script>
     <script src="modal_studio_shaders.js"></script>
 
+    <!-- Load ANIMA unified app LAST (contains all main code) -->
+    <script src="anima.js"></script>
 </head>
 
 <body>
@@ -62,7 +62,7 @@
             </div>
             <div id="eigenspace-audio-gui"></div>
             <div id="chord-visualization-container"></div>
-            <div id="colorbar-container" class="hidden"></div>
+            <div id="colorbar-container"></div>
             <div id="plot"></div>
             <div id="click-output">Computing visualization...</div>
         </div>
@@ -80,8 +80,7 @@
             <button id="audio-toggle" class="scene-button">
                 <span id="audio-label">Audio Settings: Show</span>
             </button>
-            <button id="modalstudio-info-button" class="scene-button">Info</button>
-            <button id="modalstudio-midi-toggle" class="scene-button" style="margin-left: auto;">
+            <button id="modalstudio-midi-toggle" class="scene-button">
                 <span class="midi-icon">🎹</span>
                 <span>MIDI</span>
             </button>
@@ -89,9 +88,6 @@
         <div id="modalstudio-audio-gui" style="display: none;"></div>
         <div id="canvas-container"></div>
     </div>
-
-    <!-- Load ANIMA unified app LAST - after DOM is ready -->
-    <script src="test.js"></script>
 </body>
 
 </html>

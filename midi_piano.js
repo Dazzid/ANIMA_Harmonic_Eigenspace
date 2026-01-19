@@ -183,7 +183,7 @@ class MidiPianoHandler {
     }
 
     // Map MIDI note number to frequency using the 13-note scale
-    // Maps the root to its correct piano key, then distributes the scale chromatically
+    // Standard piano octave = 12 semitones. Map to first 12 notes of scale.
     midiNoteToFrequency(midiNote) {
         if (!this.currentScale || this.currentScale.length !== 13) {
             console.warn('MIDI Piano: No valid scale available');
@@ -198,21 +198,14 @@ class MidiPianoHandler {
         // Calculate how many semitones away from the root MIDI note
         const semitonesFromRoot = midiNote - this.rootMidiNote;
 
-        // Calculate octave offset and scale degree
-        // We use 12 semitones per octave (standard piano layout)
-        // The 13th note in our scale is the octave, so we only use indices 0-11
+        // Standard piano: 12 semitones per octave
         const octaveOffset = Math.floor(semitonesFromRoot / 12);
-        let scaleDegree = semitonesFromRoot % 12;
+        let scaleDegree = ((semitonesFromRoot % 12) + 12) % 12;
 
-        // Handle negative wrapping correctly
-        if (scaleDegree < 0) {
-            scaleDegree += 12;
-        }
-
-        // Get the base frequency from the scale (use only first 12 notes)
+        // Use first 12 notes from the 13-note scale (13th is the octave)
         const baseNote = this.currentScale[scaleDegree];
 
-        // Apply octave transposition
+        // Multiply by powers of 2 for each octave
         const frequency = baseNote.freq * Math.pow(2, octaveOffset);
 
         console.log(`MIDI ${midiNote} (${semitonesFromRoot >= 0 ? '+' : ''}${semitonesFromRoot} from root) → Scale[${scaleDegree}] × 2^${octaveOffset} = ${frequency.toFixed(2)} Hz`);
@@ -251,7 +244,8 @@ class MidiPianoHandler {
         // This will trigger both web audio and MIDI output
         if (window.playNote) {
             const noteId = window.playNote(frequency);
-            this.activeNotes.set(midiNote, noteId);
+            // Store noteId (even if null) so we can track for visualization
+            this.activeNotes.set(midiNote, noteId || `viz_${midiNote}`);
         } else {
             console.error('MIDI Piano: playNote function not available');
         }
@@ -264,8 +258,11 @@ class MidiPianoHandler {
         console.log(`MIDI Piano: Note OFF - MIDI ${midiNote}`);
 
         const noteId = this.activeNotes.get(midiNote);
-        if (noteId && window.midiController) {
-            window.midiController.stopSpecificNotes([noteId]);
+        if (noteId) {
+            // Stop the audio (only if it's a real noteId, not a visualization ID)
+            if (window.midiController && !String(noteId).startsWith('viz_')) {
+                window.midiController.stopSpecificNotes([noteId]);
+            }
             this.activeNotes.delete(midiNote);
         }
     }
@@ -282,6 +279,25 @@ class MidiPianoHandler {
         }
     }
 
+    updateChordVisualization() {
+        if (!window.setMIDIActiveNotes) return;
+
+        const midiNotes = [];
+        this.activeNotes.forEach((noteId, midiNote) => {
+            const freq = this.midiNoteToFrequency(midiNote);
+            if (freq) {
+                midiNotes.push({ freq: freq, velocity: 100, midiNote });
+            }
+        });
+
+        window.setMIDIActiveNotes(midiNotes);
+    }
+
+    // Call this repeatedly to update visualization (called from outside)
+    updateVisualizationLoop() {
+        this.updateChordVisualization();
+    }
+
     // Stop all currently playing notes (panic button)
     stopAllNotes() {
         console.log('MIDI Piano: Stopping all notes');
@@ -291,13 +307,20 @@ class MidiPianoHandler {
             }
         });
         this.activeNotes.clear();
+        
+        // Clear chord visualization
     }
 }
 
 // Create global instance
 window.midiPianoHandler = new MidiPianoHandler();
 
-// Track if button has been set up to prevent duplicate listeners
+// Update visualization every frame
+setInterval(() => {
+    if (window.midiPianoHandler) {
+        window.midiPianoHandler.updateVisualizationLoop();
+    }
+}, 16); // ~60fpslicate listeners
 let isButtonSetup = false;
 
 // Setup UI toggle button

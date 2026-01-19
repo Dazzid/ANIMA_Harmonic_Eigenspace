@@ -38,6 +38,9 @@ class ChordVisualization {
         this.keyboardMappedFreqs = [];
         this.mappedScaleColor = [255, 255, 255]; // Default white
 
+        // MIDI keyboard active notes (exact frequencies, not normalized to 12-TET)
+        this.midiActiveNotes = []; // Array of {freq: number, velocity: number}
+
         this.bgColor = 'rgba(33, 33, 33, 0.9)';
 
         // Frequency doubling flags for each voice
@@ -126,6 +129,9 @@ class ChordVisualization {
 
         // Draw background spectrum area
         this.drawSpectrumBackground(p);
+
+        // Draw MIDI active notes (shows exact frequency positions)
+        this.drawMIDINotes(p);
 
         // Draw frequency axis
         // this.drawFrequencyAxis(p);
@@ -269,6 +275,33 @@ class ChordVisualization {
                 p.stroke(40);
                 p.line(this.spectrumX - 5, y, this.spectrumX + 2, y);
             }
+        }
+    }
+
+    //----------------------------------------------------------------------------------------
+    drawMIDINotes(p) {
+        // Draw subtle white rectangles for currently pressed MIDI keys
+        // Shows exact frequency position (not normalized to 12-TET) to see micro-tuning displacement
+        if (!this.midiActiveNotes || this.midiActiveNotes.length === 0) {
+            return;
+        }
+
+        const bgX = this.spectrumX;
+        const bgWidth = 300;
+
+        if (!this.midiActiveNotes || this.midiActiveNotes.length === 0) {
+            return;
+        }
+
+        p.noStroke();
+        for (let note of this.midiActiveNotes) {
+            const freq = note.freq;
+            const y = this.freqToY(freq);
+            const rectHeight = 12;
+            
+            // Subtle white rectangle with 20% alpha (51 = 0.2 * 255)
+            p.fill(255, 255, 255, 51);
+            p.rect(bgX + 5, y - rectHeight/2, bgWidth - 10, rectHeight, 8);
         }
     }
 
@@ -769,5 +802,13 @@ window.getActualPlaybackFrequencies = function () {
 window.setKeyboardMappedScale = function (frequencies, color) {
     if (chordViz) {
         chordViz.setKeyboardMappedScale(frequencies, color);
+    }
+};
+
+window.setMIDIActiveNotes = function (notes) {
+    // notes should be an array of {freq: number, velocity: number}
+    // freq is the exact frequency (not normalized to 12-TET)
+    if (chordViz) {
+        chordViz.midiActiveNotes = notes || [];
     }
 };
