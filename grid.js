@@ -550,4 +550,5 @@ window.updateGridSelectedChord = function (chordData) {
     // Also update lastClickedChord for consistency
     window.lastClickedChord = chordData;
 };
+
 console.log('Chord Memory Grid module loaded');

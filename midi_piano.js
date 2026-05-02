@@ -171,9 +171,9 @@ class MidiPianoHandler {
         this.currentScale = scale13Notes;
         this.rootFrequency = rootFreq;
 
-        console.log('MIDI Piano: Scale updated');
-        console.log(`  Root frequency: ${rootFreq.toFixed(2)} Hz`);
-        console.log(`  13-note scale:`, scale13Notes.map(n => n.freq.toFixed(2) + ' Hz'));
+        //console.log('MIDI Piano: Scale updated');
+        //console.log(`  Root frequency: ${rootFreq.toFixed(2)} Hz`);
+        //console.log(`  13-note scale:`, scale13Notes.map(n => n.freq.toFixed(2) + ' Hz'));
 
         // Find which scale note is closest to the actual root frequency
         this.findClosestToRoot();
@@ -196,8 +196,8 @@ class MidiPianoHandler {
         // relative to middle C (MIDI 60)
         this.rootMidiNote = closestMidiNote;
 
-        console.log(`MIDI Piano: Root ${this.rootFrequency.toFixed(2)} Hz → MIDI note ${closestMidiNote}`);
-        console.log(`  Scale[0] will be mapped to MIDI ${closestMidiNote}`);
+        //console.log(`MIDI Piano: Root ${this.rootFrequency.toFixed(2)} Hz → MIDI note ${closestMidiNote}`);
+        //console.log(`  Scale[0] will be mapped to MIDI ${closestMidiNote}`);
     }
 
     // Map MIDI note number to frequency using the 13-note scale

@@ -77,9 +77,6 @@ class Grid {
         this.labelXOffset = 0;
         this.startY = 270; // Will be updated in setup
         
-        // Debug
-        this.printGrid = false;
-        
         // Initialize cells (C++ Grid.cpp lines 11-22) - Total 64 cells
         for (let row = 0; row < this.rows; row++) {
             for (let col = 0; col < this.cols; col++) {
@@ -587,6 +584,57 @@ class Grid {
         this.selectedCellRow = -1;
         this.selectedCellCol = -1;
     }
+
+    // Print the 8x8 grid chord names to console for easy copy-paste
+    printGrid() {
+        const separator = '-'.repeat(120);
+        let lines = [];
+        lines.push('');
+        lines.push(separator);
+        lines.push('MODAL STUDIO GRID (8x8)');
+        lines.push(separator);
+
+        // Header with column numbers
+        const colWidth = 15;
+        const rowLabelWidth = 15;
+        const headerCols = [];
+        for (let col = 0; col < 8; col++) {
+            headerCols.push(`Col ${col}`.padEnd(colWidth));
+        }
+        let header = 'Row\\Col'.padEnd(rowLabelWidth) + '| ' + headerCols.join('| ') + '|';
+        lines.push(header);
+        lines.push(separator);
+
+        for (let row = 0; row < 8; row++) {
+            const modeLabel = this.getModeLabel(row);
+            let cells = [];
+            for (let col = 0; col < 8; col++) {
+                const index = row * 8 + col;
+                const cell = this.cells[index];
+                const chord = cell.chord;
+                // Same logic as chord drawing: info first, then finalInfo, then quality
+                let label = '';
+                if (chord.info && chord.info.length > 0 && chord.info !== 'Empty' && chord.info !== 'Drop Here') {
+                    label = chord.info;
+                } else if (chord.finalInfo && chord.finalInfo.length > 0) {
+                    label = chord.finalInfo;
+                } else if (chord.quality && chord.quality !== 'Empty' && chord.quality !== 'Drop Here') {
+                    label = chord.quality;
+                } else {
+                    label = 'Empty';
+                }
+                cells.push(label.padEnd(colWidth));
+            }
+            const rowLabel = modeLabel ? `${row} (${modeLabel})` : `${row}`;
+            lines.push(`${rowLabel.padEnd(rowLabelWidth)}| ${cells.join('| ')}|`);
+        }
+
+        lines.push(separator);
+        lines.push('');
+        const output = lines.join('\n');
+        console.log(output);
+        return output;
+    }
     
     // Calculate modal interchange for all rows based on row 0 chord progression
     calculateModalInterchange() {
@@ -1062,5 +1110,10 @@ class Grid {
         // C++ Grid.cpp lines 717-723: ALWAYS run modal substitution after drop
         // If parent is empty, modal substitution will clear the column
         this.calculateModalInterchange();
+        
+        // Print grid to console after each drop
+        this.printGrid();
     }
+
+    
 }

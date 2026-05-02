@@ -174,7 +174,7 @@ class Mode {
             if (this.chords[i].checkHover(mouseX, mouseY)) {
                 this.chords[i].setChordClicked(true);
                 this.selectedChordIndex = i; // C++ Mode.cpp line 328
-                console.log(`✓ Mode (${this.modeName}): selectedChordIndex=${this.selectedChordIndex}`);
+                //console.log(`✓ Mode (${this.modeName}): selectedChordIndex=${this.selectedChordIndex}`);
                 return true;
             }
         }

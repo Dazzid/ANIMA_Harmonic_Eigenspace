@@ -104,7 +104,7 @@ class AudioEngine {
     async playChord(frequencies) {
         // Check global mute state from ADSR GUI
         if (window.audioMuted || this.audioMuted) {
-            console.log('[Audio] Muted, skipping playback');
+            //console.log('[Audio] Muted, skipping playback');
             return;
         }
         

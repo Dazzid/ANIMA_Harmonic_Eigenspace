@@ -1722,17 +1722,17 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 let tetSystem = null;
 
                 // DEBUG: Log point structure
-                console.log('Point data:', point);
-                console.log('point.data:', point.data);
-                console.log('point.fullData:', point.fullData);
-                console.log('point.pointIndex:', point.pointIndex);
-                console.log('point.pointNumber:', point.pointNumber);
+                //console.log('Point data:', point);
+                //console.log('point.data:', point.data);
+                //console.log('point.fullData:', point.fullData);
+                //console.log('point.pointIndex:', point.pointIndex);
+                //console.log('point.pointNumber:', point.pointNumber);
 
                 // Extract color for ALL points (nodes and TET chords)
                 if (point.fullData && point.fullData.marker) {
                     const marker = point.fullData.marker;
-                    console.log('marker:', marker);
-                    console.log('marker.color:', marker.color);
+                    //console.log('marker:', marker);
+                    //console.log('marker.color:', marker.color);
 
                     // Helper to parse rgba color strings
                     const parseRgba = (rgbaStr) => {
@@ -1743,7 +1743,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     // Case 1: Color is a string (TET chords)
                     if (typeof marker.color === 'string') {
                         cellColor = parseRgba(marker.color);
-                        console.log('cellColor (from string):', cellColor);
+                        //console.log('cellColor (from string):', cellColor);
                     }
                     // Case 2: Color is an array (nodes with dissonance values)
                     else if (marker.color && Array.isArray(marker.color)) {
@@ -1752,11 +1752,11 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
                         if (colorIndex !== undefined && colorIndex < marker.color.length) {
                             const dissValue = marker.color[colorIndex];
-                            console.log('dissValue:', dissValue);
+                            //console.log('dissValue:', dissValue);
                             const cmin = marker.cmin || 0;
                             const cmax = marker.cmax || 15;
                             const norm = Math.max(0, Math.min(1, (dissValue - cmin) / (cmax - cmin)));
-                            console.log('norm:', norm);
+                            //console.log('norm:', norm);
 
                             // Use the actual colorscale from the visualization
                             const colorscale = marker.colorscale || [
@@ -1790,7 +1790,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                                     Math.round(color1[1] + (color2[1] - color1[1]) * t),
                                     Math.round(color1[2] + (color2[2] - color1[2]) * t)
                                 ];
-                                console.log('cellColor (from array):', cellColor);
+                                //console.log('cellColor (from array):', cellColor);
                             }
                         }
                     }
@@ -1833,7 +1833,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     cellColor: cellColor,
                     tetSystem: tetSystem
                 };
-                console.log('lastClickedChord:', window.lastClickedChord);
+                //console.log('lastClickedChord:', window.lastClickedChord);
 
                 // Update keyboard mapping visualization with the color immediately
                 if (cellColor && typeof window.updateKeyboardMapping === 'function') {
@@ -2310,7 +2310,7 @@ class OfApp {
         this.draggingChordsInitialized = false;
 
         // Scene management
-        this.currentScene = 'chord'; // 'chord' or 'grid'
+        this.currentScene = 'grid'; // 'chord' or 'grid'
 
         // Track selected chord for VoicingEditor updates (C++ Grid.cpp selectedCellRow/Col)
         this.selectedChord = null;
@@ -2540,7 +2540,7 @@ class OfApp {
                     this.selectedChord = chord;
                     this.selectedMode = mode;
 
-                    console.log(`✓ Grid chord selected: ${notes.length} notes, voicing: [${voicing.join(', ')}]`);
+                    //console.log(`✓ Grid chord selected: ${notes.length} notes, voicing: [${voicing.join(', ')}]`);
                     this.voicingEditor.setCurrentScale(notes);
                     this.voicingEditor.updateCurrentVoicing(notes, voicing);
 
@@ -2558,7 +2558,10 @@ class OfApp {
 
                     // Update MIDI Piano keyboard mapping with the scale frequencies
                     if (window.modalStudioKeyMap) {
-                        const scaleFreqs = notes.map(note => note.frequency);
+                        const scaleFreqs = notes.map(note => {
+                            const scaleData = this.findScaleByReference(note.ft_note);
+                            return scaleData ? scaleData.frequency : null;
+                        }).filter(f => f != null);
                         window.modalStudioKeyMap.updateMidiPiano(scaleFreqs);
 
                         // Update ScaleEditor chromatic nodes from KeyMap
@@ -2568,7 +2571,7 @@ class OfApp {
                     }
 
                     this.audioEngine.playChord(frequencies);
-                    console.log('▶ Playing grid chord:', frequencies.length, 'notes');
+                    //console.log('▶ Playing grid chord:', frequencies.length, 'notes');
                 };
 
                 this.gridInitialized = true;
@@ -2782,22 +2785,22 @@ class OfApp {
                         for (let c = 0; c < mode.chords.length; c++) {
                             const chord = mode.chords[c];
                             if (chord.isClicked()) {
-                                console.log(`Clicked: ${chord.getChordQuality()} (${mode.modeName})`);
+                                //console.log(`Clicked: ${chord.getChordQuality()} (${mode.modeName})`);
 
                                 // C++ Chord.cpp: Use noteVoicing array generated by voicing() method
                                 const noteVoicing = chord.getNoteVoicing();
-                                console.log(`Voicing refs: ${noteVoicing.join(', ')}`);
+                                //console.log(`Voicing refs: ${noteVoicing.join(', ')}`);
 
                                 const frequencies = noteVoicing.map(ref => {
                                     const scale = this.findScaleByReference(ref);
                                     if (!scale) {
-                                        console.warn(`Reference ${ref} not found in JSON!`);
+                                        //console.warn(`Reference ${ref} not found in JSON!`);
                                         return 440;
                                     }
                                     return scale.frequency;
                                 });
 
-                                console.log(`Playing ${frequencies.length} notes: ${frequencies.map(f => f.toFixed(2)).join(', ')}`);
+                                //console.log(`Playing ${frequencies.length} notes: ${frequencies.map(f => f.toFixed(2)).join(', ')}`);
 
                                 // Send MIDI/MPE output if controller is available and connected
                                 if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
@@ -2849,7 +2852,7 @@ class OfApp {
                                     this.voicingEditor.setCurrentScale(mode.scale);
                                     this.voicingEditor.updateCurrentVoicing(chordNotes, noteVoicing);
 
-                                    console.log(`📍 Selected: ${chord.getChordQuality()} from ${mode.modeName}`);
+                                    //console.log(`📍 Selected: ${chord.getChordQuality()} from ${mode.modeName}`);
                                 }
 
                                 return;
@@ -3394,12 +3397,13 @@ const sketch = (p) => {
         app = new OfApp();
         
         // Scene toggle button handler
-        let isModalScene = true;
+        let isModalScene = false;
         const toggleButton = document.getElementById('scene-toggle');
         const sceneLabel = document.getElementById('scene-label');
         const audioToggle = document.getElementById('audio-toggle');
         const audioLabel = document.getElementById('audio-label');
         const audioGuiContainer = document.getElementById('modalstudio-audio-gui');
+        sceneLabel.textContent = 'Modal Scene';
         
         if (toggleButton) {
             toggleButton.addEventListener('click', () => {

@@ -345,7 +345,7 @@ class MIDIController {
             return this.noteChannels[0];
         }
         const channel = this.channelPool.shift();
-        console.log(`[Channel Allocation] Allocated channel ${channel + 1}. Free channels: ${this.channelPool.length}`);
+        //console.log(`[Channel Allocation] Allocated channel ${channel + 1}. Free channels: ${this.channelPool.length}`);
         return channel;
     }
 
@@ -353,7 +353,7 @@ class MIDIController {
         // Only release if not already in pool
         if (!this.channelPool.includes(channel)) {
             this.channelPool.unshift(channel); // Add to front for immediate reuse
-            console.log(`[Channel Release] Released channel ${channel + 1}. Free channels: ${this.channelPool.length}`);
+            //console.log(`[Channel Release] Released channel ${channel + 1}. Free channels: ${this.channelPool.length}`);
         } else {
             console.warn(`[Channel Release] Channel ${channel + 1} already in pool! (duplicate release attempt)`);
         }

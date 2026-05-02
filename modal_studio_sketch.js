@@ -157,6 +157,9 @@ const sketch = (p) => {
             const y = grid.globalPosition.y + row * (grid.cellHeight + grid.cellSpacingY) + 10;
             grid.mousePressed(x, y);
         };
+
+        // Print 8x8 grid chord names to console
+        window.printGrid = () => app.grid.printGrid();
     };
     
     p.draw = () => {

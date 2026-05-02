@@ -152,7 +152,7 @@ class ScaleEditor {
     
     // C++ ScaleEditor.cpp lines 22-47 - setup method
     setup(r, initialNodes, topLeft, noteDataArray) {
-        console.log('ScaleEditor.setup called', { r, initialNodes, topLeft, noteDataCount: noteDataArray?.length });
+        //console.log('ScaleEditor.setup called', { r, initialNodes, topLeft, noteDataCount: noteDataArray?.length });
         this.radius = r;
         // Center should be at outerRadius distance from topLeft for proper positioning
         const outerRadius = this.radius * this.factorSize;
@@ -175,7 +175,7 @@ class ScaleEditor {
         
         this.currentInversion = 'ROOT';
         
-        console.log('ScaleEditor.setup complete', { center: this.center, numNodes: this.numNodes });
+        // console.log('ScaleEditor.setup complete', { center: this.center, numNodes: this.numNodes });
     }
     
     // C++ ScaleEditor.cpp lines 64-73 - Get current scale degrees
@@ -472,7 +472,7 @@ class ScaleEditor {
         while (this.inversionRotation >= Math.PI * 2) this.inversionRotation -= Math.PI * 2;
         
         this.currentInversion = this.getNearestInversion(this.inversionRotation);
-        console.log('🎯 Rotation:', this.inversionRotation, 'Current inversion:', this.currentInversion);
+        // console.log('🎯 Rotation:', this.inversionRotation, 'Current inversion:', this.currentInversion);
     }
     
     // C++ ScaleEditor.cpp lines 271-296 - Get nearest inversion
@@ -612,7 +612,7 @@ class ScaleEditor {
             this.drawRootSelector(p);
             this.drawInversionWheel(p);
         } catch (error) {
-            console.error('ScaleEditor draw error:', error);
+            // console.error('ScaleEditor draw error:', error);
         }
     }
     
@@ -1207,7 +1207,7 @@ class ScaleEditor {
     // C++ ScaleEditor.cpp lines 1158-1179 - Mouse released
     mouseReleased(mouseX, mouseY) {
         if (this.isRotatingInversion) {
-            console.log('🔄 Mouse released on inversion wheel');
+            // console.log('🔄 Mouse released on inversion wheel');
             this.targetInversionRotation = this.findNearestInversionAngle(this.inversionRotation);
             this.animationStartRotation = this.inversionRotation;
             this.animationStartTime = Date.now() / 1000;
@@ -1216,16 +1216,16 @@ class ScaleEditor {
             const prevInversion = this.currentInversion;
             this.currentInversion = this.getNearestInversion(this.targetInversionRotation);
             
-            console.log('🔄 prevInversion:', prevInversion, 'currentInversion:', this.currentInversion);
+            // console.log('🔄 prevInversion:', prevInversion, 'currentInversion:', this.currentInversion);
             
             // Fire callback if inversion changed
             if (prevInversion !== this.currentInversion && this.onInversionChanged) {
-                console.log('🔄 Inversion changed from', prevInversion, 'to', this.currentInversion);
+                //console.log('🔄 Inversion changed from', prevInversion, 'to', this.currentInversion);
                 this.onInversionChanged(this.currentInversion);
             } else if (prevInversion === this.currentInversion) {
-                console.log('🔄 Inversion did NOT change - still', this.currentInversion);
+                //console.log('🔄 Inversion did NOT change - still', this.currentInversion);
             } else if (!this.onInversionChanged) {
-                console.log('🔄 ERROR: onInversionChanged callback is NULL');
+                //console.log('🔄 ERROR: onInversionChanged callback is NULL');
             }
         }
         
@@ -1234,7 +1234,7 @@ class ScaleEditor {
         
         // C++ line 1171: Trigger callback if selectedNode was active OR root was rotating
         if (this.onConfigurationChanged && (this.selectedNode >= 0 || this.isRotating)) {
-            console.log('🎯 Root rotation released, triggering update. startingStep:', this.startingStep);
+            //console.log('🎯 Root rotation released, triggering update. startingStep:', this.startingStep);
             this.onConfigurationChanged(this.nodeSteps);
         }
         
@@ -1248,7 +1248,7 @@ class ScaleEditor {
     // C++ ScaleEditor.hpp line 57: setIntervals - Set intervals from external source
     setIntervals(newIntervals) {
         if (newIntervals.length !== this.numNodes) {
-            console.warn('ScaleEditor: New intervals size doesn\'t match number of nodes');
+           // console.warn('ScaleEditor: New intervals size doesn\'t match number of nodes');
             return;
         }
         this.nodeSteps = [...newIntervals];
@@ -1265,7 +1265,7 @@ class ScaleEditor {
     // Sync chromatic notes from ModalStudioKeyMap
     syncChromaticNotesFromKeyMap() {
         if (!window.modalStudioKeyMap) {
-            console.log('ScaleEditor: ModalStudioKeyMap not found');
+            //console.log('ScaleEditor: ModalStudioKeyMap not found');
             return;
         }
         
@@ -1276,8 +1276,8 @@ class ScaleEditor {
         
         const keyMapScale = window.modalStudioKeyMap.currentScale;
         
-        console.log('ScaleEditor: Syncing chromatic notes...');
-        console.log('  KeyMap scale length:', keyMapScale.length);
+        //console.log('ScaleEditor: Syncing chromatic notes...');
+        //console.log('  KeyMap scale length:', keyMapScale.length);
         
         // Build the actual scale steps from nodeSteps (cumulative intervals)
         const modalScaleSteps = [];
@@ -1287,17 +1287,17 @@ class ScaleEditor {
             cumulative += this.nodeSteps[i];
         }
         
-        console.log('  Modal scale intervals:', modalScaleSteps);
+        //console.log('  Modal scale intervals:', modalScaleSteps);
         
         // Extract chromatic notes that are NOT in the modal scale
         this.chromaticNotesData = keyMapScale
             .slice(0, 12)  // Exclude octave (13th note)
             .filter(note => !note.isScaleNote);
         
-        console.log('  Found', this.chromaticNotesData.length, 'chromatic notes from KeyMap');
+        //console.log('  Found', this.chromaticNotesData.length, 'chromatic notes from KeyMap');
         
         if (this.chromaticNotesData.length === 0) {
-            console.log('  No chromatic notes to display');
+            //console.log('  No chromatic notes to display');
             this.chromaticSteps = [];
             return;
         }
@@ -1315,8 +1315,8 @@ class ScaleEditor {
             return interval;
         });
         
-        console.log('✓ ScaleEditor: Synced', this.chromaticSteps.length, 'chromatic notes');
-        console.log('  Chromatic intervals:', this.chromaticSteps);
+        //console.log('✓ ScaleEditor: Synced', this.chromaticSteps.length, 'chromatic notes');
+        //console.log('  Chromatic intervals:', this.chromaticSteps);
         
         // Update visual positions
         this.updateChromaticPositions();

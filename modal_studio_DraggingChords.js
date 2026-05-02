@@ -84,10 +84,10 @@ class DraggingChords {
         // Store modes and create chords
         this.updateScale(modes);
         
-        console.log('DraggingChords setup complete', {
-            position: { x, y },
-            chords: this.chords.length
-        });
+        // console.log('DraggingChords setup complete', {
+        //     position: { x, y },
+        //     chords: this.chords.length
+        // });
     }
     
     // C++ DraggingChords.cpp lines 49-55 - Set dark mode
@@ -98,7 +98,7 @@ class DraggingChords {
     
     // C++ DraggingChords.cpp lines 58-63 - Set inversions
     setInversions(refInversion) {
-        console.log('🎵 DraggingChords.setInversions called with:', refInversion);
+        // console.log('🎵 DraggingChords.setInversions called with:', refInversion);
         for (const chord of this.chords) {
             // Skip Empty and Clean buttons
             if (chord.info === "Empty" || chord.info === "Clean") {
@@ -107,7 +107,7 @@ class DraggingChords {
             
             if (chord.handleInversions) {
                 chord.handleInversions(refInversion);
-                console.log('🎵 Updated draggable chord:', chord.finalInfo || chord.quality);
+                // console.log('🎵 Updated draggable chord:', chord.finalInfo || chord.quality);
             }
             if (chord.setGlobalInversion) {
                 chord.setGlobalInversion(refInversion);

@@ -58,7 +58,7 @@ class ModalStudioKeyMap {
         const rootFreq = validFreqs[0];
         this.rootFrequency = rootFreq;
 
-        console.log('[ModalStudioKeyMap] Input scale frequencies:', validFreqs.map(f => f.toFixed(2)).join(', '));
+        //console.log('[ModalStudioKeyMap] Input scale frequencies:', validFreqs.map(f => f.toFixed(2)).join(', '));
 
         // Step 1: Convert scale frequencies to 53-TET steps relative to root
         const scaleSteps = validFreqs.map(freq => {
@@ -68,7 +68,7 @@ class ModalStudioKeyMap {
 
         // Sort and remove duplicates
         const uniqueScaleSteps = [...new Set(scaleSteps)].sort((a, b) => a - b);
-        console.log('[ModalStudioKeyMap] Scale mapped to 53-TET steps:', uniqueScaleSteps.join(', '));
+        //console.log('[ModalStudioKeyMap] Scale mapped to 53-TET steps:', uniqueScaleSteps.join(', '));
 
         // Step 2: Build a 12-note chromatic scale
         // We'll place the 7 modal notes at appropriate positions and fill in the gaps
@@ -198,10 +198,10 @@ class ModalStudioKeyMap {
             isScaleNote: true
         });
 
-        console.log('[ModalStudioKeyMap] Generated 13-note chromatic scale:');
+        //console.log('[ModalStudioKeyMap] Generated 13-note chromatic scale:');
         scale12Notes.forEach((note, i) => {
             const scaleLabel = note.isScaleNote ? ' ★' : '';
-            console.log(`  [${i}]: ${note.freq.toFixed(2)} Hz (step ${note.step})${scaleLabel}`);
+            //console.log(`  [${i}]: ${note.freq.toFixed(2)} Hz (step ${note.step})${scaleLabel}`);
         });
 
         this.currentScale = scale12Notes;
@@ -219,7 +219,7 @@ class ModalStudioKeyMap {
 
         // Update MIDI piano handler with the new scale
         if (window.midiPianoHandler && window.midiPianoHandler.updateScale) {
-            console.log('[ModalStudioKeyMap] Updating MIDI Piano with new scale');
+            //console.log('[ModalStudioKeyMap] Updating MIDI Piano with new scale');
             window.midiPianoHandler.updateScale(scale12, this.rootFrequency);
         } else {
             console.warn('[ModalStudioKeyMap] MIDI Piano handler not available');

@@ -356,10 +356,10 @@ class VoicingEditor {
             for (let pos of this.currentVoicing) {
                 newPositions.push(pos.absoluteTET);
             }
-            console.log('🔄 VoicingEditor notifying change:', newPositions);
+            //console.log('🔄 VoicingEditor notifying change:', newPositions);
             this.onVoicingChanged(newPositions);
         } else {
-            console.warn('⚠️ VoicingEditor: onVoicingChanged callback not set!');
+            //console.warn('⚠️ VoicingEditor: onVoicingChanged callback not set!');
         }
     }
     
@@ -583,17 +583,17 @@ class VoicingEditor {
     // VOICING ANALYSIS (from .cpp lines 549-575)
     // ========================================================================
     updateCurrentVoicing(notes, positions) {
-        console.log('🎵 VoicingEditor.updateCurrentVoicing called:', {
-            notesCount: notes.length,
-            positionsCount: positions.length,
-            positions: positions,
-            notesFtNotes: notes.map(n => n.ft_note)
-        });
-        console.log('📍 Incoming positions (absoluteTET):', positions);
-        console.log('📍 Current voicing before update:', this.currentVoicing.map(v => `${v.noteName}(oct:${v.octave}, abs:${v.absoluteTET})`));
+        // console.log('🎵 VoicingEditor.updateCurrentVoicing called:', {
+        //     notesCount: notes.length,
+        //     positionsCount: positions.length,
+        //     positions: positions,
+        //     notesFtNotes: notes.map(n => n.ft_note)
+        // });
+        // console.log('📍 Incoming positions (absoluteTET):', positions);
+        // console.log('📍 Current voicing before update:', this.currentVoicing.map(v => `${v.noteName}(oct:${v.octave}, abs:${v.absoluteTET})`));
         
         if (notes.length === 0 || positions.length === 0) {
-            console.warn('⚠️ VoicingEditor: Empty notes or positions array');
+            //console.warn('⚠️ VoicingEditor: Empty notes or positions array');
             return;
         }
         
@@ -602,11 +602,11 @@ class VoicingEditor {
         this.identifyChordComponents();
         this.calculateExtendedComponents();
         
-        console.log('✓ VoicingEditor updated:', {
-            voicingCount: this.currentVoicing.length,
-            isChordClicked: this.isChordClicked,
-            voicing: this.currentVoicing.map(v => `${v.noteName}(oct:${v.octave}, tet:${v.normalizedTET})`)
-        });
+        // console.log('✓ VoicingEditor updated:', {
+        //     voicingCount: this.currentVoicing.length,
+        //     isChordClicked: this.isChordClicked,
+        //     voicing: this.currentVoicing.map(v => `${v.noteName}(oct:${v.octave}, tet:${v.normalizedTET})`)
+        // });
     }
     
     analyzeVoicing(notes, voicingPositions) {
@@ -659,7 +659,7 @@ class VoicingEditor {
                 
                 // Insert after root (at index 1)
                 this.currentVoicing.splice(1, 0, doubledRoot);
-                console.log(`🎯 Added doubled root: ${doubledRoot.noteName} at octave ${doubledRoot.octave} (gap was ${octaveGap} rings)`);
+                //console.log(`🎯 Added doubled root: ${doubledRoot.noteName} at octave ${doubledRoot.octave} (gap was ${octaveGap} rings)`);
             }
         }
     }
@@ -841,9 +841,9 @@ class VoicingEditor {
         
         if (this.Report){
             // Log voicing positions used for ring placement
-            console.log('🎼 Voicing positions on rings:', this.currentVoicing.map(pos => 
-                `note#${this.currentVoicing.indexOf(pos)}: normalizedTET=${pos.normalizedTET}, octave=${pos.octave}, absoluteTET=${pos.absoluteTET}`
-            ));
+            // console.log('🎼 Voicing positions on rings:', this.currentVoicing.map(pos => 
+            //     `note#${this.currentVoicing.indexOf(pos)}: normalizedTET=${pos.normalizedTET}, octave=${pos.octave}, absoluteTET=${pos.absoluteTET}`
+            // ));
             this.Report = false;
         }
         
@@ -1228,7 +1228,7 @@ class VoicingEditor {
     }
     
     mouseReleased(x, y, button) {
-        console.log('VoicingEditor.mouseReleased called - resetting isDraggingTitleBar');
+        //console.log('VoicingEditor.mouseReleased called - resetting isDraggingTitleBar');
         this.isDraggingTitleBar = false;
         
         // Only notify of changes if we were actually dragging a note

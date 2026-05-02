@@ -79,7 +79,7 @@ function calculateDynamic12Notes(chordFreqs) {
     const rootStep = uniqueChordSteps[0];
     const chordIntervals = uniqueChordSteps.map(step => step - rootStep);
 
-    console.log(`Chord intervals in 53-TET steps: ${chordIntervals.join(', ')}`);
+    //console.log(`Chord intervals in 53-TET steps: ${chordIntervals.join(', ')}`);
 
     // Classify intervals and assign keyboard positions dynamically
     // 53-TET interval ranges (based on just intonation):
