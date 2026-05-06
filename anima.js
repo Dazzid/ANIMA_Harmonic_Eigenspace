@@ -30,6 +30,7 @@ let currentScene = Scenes.EIGENSPACE;
 // CONFIGURATION FLAGS
 // ============================================================================
 const ENABLE_DISTANCE_LINES = false; // Set to false to disable line rendering for better performance
+const MAX_EYE_DISTANCE = 3.0; // Eigenspace 3D: max camera eye-to-center distance (zoom-out cap)
 
 // Audio mute state (controlled by ADSR mute button)
 window.audioMuted = false;
@@ -1161,7 +1162,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
     // Gaussian curve point distribution
     let numLayers = 200;
-    let windowSize = (vmax - vmin) / 50;
+    let windowSize = (vmax - vmin) / 25;
     let thresholds = linspace(vmin, vmax, numLayers);
     const tracesPerLayer = ENABLE_DISTANCE_LINES ? 2 : 1;
 
@@ -1697,6 +1698,73 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     });
 
 
+
+    // Constrain zoom-out: cap the camera eye-to-center distance.
+    //
+    // Reading the camera correctly is the whole game. Plotly's gl3d module
+    // keeps two cameras: the layout one at `_fullLayout.scene.camera` (updated
+    // only on relayout cycles) and the live one at `_fullLayout.scene._scene`
+    // (updated on every interaction frame). Reading the layout one during a
+    // wheel interaction returns stale data, which makes the cap appear sticky
+    // (zoom-in works but the next zoom-out is blocked because the layout still
+    // shows distance == cap). We always read live.
+    function getLiveCamera() {
+        const sceneLayout = plotDiv._fullLayout && plotDiv._fullLayout.scene;
+        const liveScene = sceneLayout && sceneLayout._scene;
+        if (liveScene && typeof liveScene.getCamera === 'function') {
+            try {
+                const cam = liveScene.getCamera();
+                if (cam && cam.eye && cam.center) return cam;
+            } catch (e) { /* fall through */ }
+        }
+        return sceneLayout && sceneLayout.camera;
+    }
+    function eyeDistance(cam) {
+        if (!cam || !cam.eye || !cam.center) return null;
+        const dx = cam.eye.x - cam.center.x;
+        const dy = cam.eye.y - cam.center.y;
+        const dz = cam.eye.z - cam.center.z;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    // Pre-block wheel events at the cap so Plotly never advances the zoom past
+    // it. We only swallow zoom-out (deltaY > 0); zoom-in always passes through.
+    // Capture phase + passive:false is required to call preventDefault().
+    plotDiv.addEventListener('wheel', function (e) {
+        if (currentScene !== Scenes.EIGENSPACE) return;
+        if (e.deltaY <= 0) return;
+        const dist = eyeDistance(getLiveCamera());
+        if (dist === null) return;
+        if (dist >= MAX_EYE_DISTANCE) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+        }
+    }, { capture: true, passive: false });
+
+    // Safety net for non-wheel paths and the small overshoot from the wheel
+    // tick that first crosses the cap. Fires on interaction end only, so it
+    // can't race wheel events tick-by-tick.
+    let isClampingCamera = false;
+    plotDiv.on('plotly_relayout', function (eventData) {
+        if (isClampingCamera) return;
+        const cam = (eventData && eventData['scene.camera']) || getLiveCamera();
+        const dist = eyeDistance(cam);
+        if (dist === null || dist <= MAX_EYE_DISTANCE) return;
+        const scale = MAX_EYE_DISTANCE / dist;
+        const clamped = {
+            center: { x: cam.center.x, y: cam.center.y, z: cam.center.z },
+            eye: {
+                x: cam.center.x + (cam.eye.x - cam.center.x) * scale,
+                y: cam.center.y + (cam.eye.y - cam.center.y) * scale,
+                z: cam.center.z + (cam.eye.z - cam.center.z) * scale
+            },
+            up: cam.up,
+            projection: cam.projection
+        };
+        isClampingCamera = true;
+        const done = () => { isClampingCamera = false; };
+        Plotly.relayout(plotDiv, { 'scene.camera': clamped }).then(done, done);
+    });
 
     // Attach click event listener - works perfectly with plotly!
     plotDiv.on('plotly_click', async function (eventData) {
