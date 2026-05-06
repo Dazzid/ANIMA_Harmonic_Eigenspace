@@ -191,7 +191,7 @@ class Grid {
         for (const info of this.rowModeInfos) {
             if (info.targetRow === row) {
                 const modeName = this.getModeNameForIndex(info.modeIndex);
-                return (info.isParallel ? "P: " : "R: ") + modeName;
+                return (info.isParallel ? "Parallel " : "Relative ") + modeName;
             }
         }
         return "";
@@ -474,18 +474,18 @@ class Grid {
         }
         
         // Draw mode labels to the right of each row (C++ Grid.cpp lines 613-621)
-        // p.fill(...this.textColor);
-        // p.noStroke();
-        // p.textAlign(p.LEFT, p.CENTER);
-        // p.textSize(13);
-        
-        // for (let row = 0; row < this.rows; row++) {
-        //     const label = this.getModeLabel(row);
-        //     if (label) {
-        //         const yPos = this.startY + (row * (this.cellHeight + this.cellSpacingY)) + (this.cellHeight / 2);
-        //         p.text(label, this.labelXOffset, yPos);
-        //     }
-        // }
+        p.fill(...this.textColor);
+        p.noStroke();
+        p.textAlign(p.LEFT, p.CENTER);
+        p.textSize(13);
+
+        for (let row = 0; row < this.rows; row++) {
+            const label = this.getModeLabel(row);
+            if (label) {
+                const yPos = this.startY + (row * (this.cellHeight + this.cellSpacingY)) + (this.cellHeight / 2);
+                p.text(label, this.labelXOffset, yPos);
+            }
+        }
         
         p.pop();
     }
