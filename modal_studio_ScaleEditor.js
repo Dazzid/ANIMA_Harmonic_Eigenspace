@@ -446,9 +446,16 @@ class ScaleEditor {
             if (allowRotation) {
                 this.rootRotation = potentialRotation;
             }
-            
+
             this.previousAngle = mouseAngle;
+            const prevStartingStep = this.startingStep;
             this.updateRootNote();
+
+            // Fire callback during drag when the root actually changes,
+            // so MIDI keyboard mapping (and modes) follow root rotation live.
+            if (this.startingStep !== prevStartingStep && this.onConfigurationChanged) {
+                this.onConfigurationChanged(this.nodeSteps);
+            }
         }
     }
     
@@ -1149,11 +1156,21 @@ class ScaleEditor {
             if (intervalFromRoot !== this.chromaticSteps[this.selectedChromaticNode]) {
                 this.chromaticSteps[this.selectedChromaticNode] = intervalFromRoot;
                 this.updateChromaticPositions();
-                
-                // Update KeyMap with the new chromatic note position
+
+                // Update KeyMap with the new chromatic note position and push
+                // the refreshed scale to the MIDI piano so the keyboard mapping
+                // follows chromatic edits live.
                 if (window.modalStudioKeyMap && this.chromaticNotesData[this.selectedChromaticNode]) {
-                    const rootStep = window.modalStudioKeyMap.currentScale[0].step;
-                    this.chromaticNotesData[this.selectedChromaticNode].step = rootStep + intervalFromRoot;
+                    const km = window.modalStudioKeyMap;
+                    const rootStep = km.currentScale[0].step;
+                    const note = this.chromaticNotesData[this.selectedChromaticNode];
+                    note.step = rootStep + intervalFromRoot;
+                    note.ratio = km.get53tetRatio(note.step);
+                    note.freq = km.rootFrequency * note.ratio;
+
+                    if (window.midiPianoHandler && window.midiPianoHandler.updateScale) {
+                        window.midiPianoHandler.updateScale(km.currentScale, km.rootFrequency);
+                    }
                 }
             }
             return;
