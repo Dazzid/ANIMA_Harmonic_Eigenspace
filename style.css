@@ -509,6 +509,7 @@ body.scene-modalstudio #eigenspace-app * {
     max-width: 100%;
     height: auto;
     border-radius: 20px;
+    background:  rgba(255, 250, 240, 0.9);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
@@ -566,7 +567,7 @@ body.scene-modalstudio #eigenspace-app * {
 
 /* Selection styling */
 #info-overlay ::selection {
-    background: rgb(255, 255, 255);
+    background: rgb(255, 250, 240,);
     color: white;
 }
 

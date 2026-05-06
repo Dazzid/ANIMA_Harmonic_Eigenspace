@@ -46,7 +46,7 @@ let visualizationMode = 'full3d'; // 'sectioned' or 'full3d'
 let sampledPointsData = null;
 
 const zoneSize = 4.0;
-const zoneFull = 2.5;
+const zoneFull = 1.0;
 const chordSize = 7.0;
 const localMinSize = 9.0;
 
@@ -1066,7 +1066,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
     // ========== CREATE FULL 3D TRACE (first trace, initially hidden) ==========
     // Use stratified sampling to ensure all dissonance ranges are represented
-    const samplingRate = 0.2;
+    const samplingRate = 0.8;
     const sampledX = [], sampledY = [], sampledZ = [], sampledD = [];
 
     // Group points by dissonance range to ensure even distribution
