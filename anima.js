@@ -45,7 +45,7 @@ let visualizationMode = 'full3d'; // 'sectioned' or 'full3d'
 // Store sampled points for dynamic sorting based on camera
 let sampledPointsData = null;
 
-const zoneSize = 4.0;
+const zoneSize = 3.0;
 const zoneFull = 1.0;
 const chordSize = 7.0;
 const localMinSize = 9.0;
