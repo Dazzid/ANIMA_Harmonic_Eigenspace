@@ -60,7 +60,8 @@ class MIDIController {
         }
 
         try {
-            this.midiAccess = await navigator.requestMIDIAccess({ sysex: false });
+            // SysEx required by the Launchpad Pro MK3 integration (launchpad.js).
+            this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
             // console.log('MIDI Access granted');
 
             // Listen for device connection changes
@@ -134,7 +135,8 @@ class MIDIController {
     async refreshDevices() {
         try {
             // Re-request MIDI access to refresh device list
-            this.midiAccess = await navigator.requestMIDIAccess({ sysex: false });
+            // SysEx required by the Launchpad Pro MK3 integration (launchpad.js).
+            this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
 
             // Wait for device enumeration
             await new Promise(resolve => setTimeout(resolve, 100));

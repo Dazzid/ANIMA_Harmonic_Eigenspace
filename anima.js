@@ -2259,6 +2259,11 @@ window.addEventListener('load', async () => {
                     document.body.appendChild(midiButton);
                     console.log('MIDI integration ready');
                 }
+
+                // Initialize Launchpad Pro MK3 (shares midiAccess from MIDIController).
+                if (window.launchpadHandler && typeof window.launchpadHandler.initialize === 'function') {
+                    window.launchpadHandler.initialize();
+                }
             }
         }
     }, 400);
@@ -3261,8 +3266,9 @@ function switchScene(newScene) {
             window.adsrCurrentScene = 'eigenspace';
             
             console.log('[ANIMA] Scene: EigenSpace');
+            if (window.launchpadHandler) window.launchpadHandler.setScene(Scenes.EIGENSPACE);
             break;
-            
+
         case Scenes.MODALSTUDIO:
             document.body.classList.add('scene-modalstudio');
             if (eigenContainer) eigenContainer.style.display = 'none';
@@ -3292,6 +3298,7 @@ function switchScene(newScene) {
             if (eigenAudioGui) eigenAudioGui.style.display = 'none';
             
             console.log('[ANIMA] Scene: Modal Studio');
+            if (window.launchpadHandler) window.launchpadHandler.setScene(Scenes.MODALSTUDIO);
             break;
     }
 }
@@ -3546,9 +3553,14 @@ const sketch = (p) => {
                             window.midiController.toggleUI();
                         });
                     }
+
+                    // Initialize Launchpad Pro MK3 if not already connected
+                    if (window.launchpadHandler && !window.launchpadHandler.connected) {
+                        window.launchpadHandler.initialize();
+                    }
                 }
             }
-            
+
             if (typeof MIDIPianoHandler !== 'undefined') {
                 window.midiPianoHandler = new MIDIPianoHandler();
             }

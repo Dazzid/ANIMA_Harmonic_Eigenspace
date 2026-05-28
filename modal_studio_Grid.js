@@ -76,6 +76,11 @@ class Grid {
         // Label drawing settings
         this.labelXOffset = 0;
         this.startY = 270; // Will be updated in setup
+
+        // Cell currently held down via Launchpad pad. Used by draw() to force
+        // the chord's mouseClicked / mouseHoverCheck flags so the LP press
+        // renders identically to a mouse click.
+        this._lpPressed = null;
         
         // Initialize cells (C++ Grid.cpp lines 11-22) - Total 64 cells
         for (let row = 0; row < this.rows; row++) {
@@ -431,6 +436,9 @@ class Grid {
                 this.onChordSelected(notes, voicing, cell.chord, mode);
                 //console.log(`✓ Grid cell selected: (${row},${col}), mode: ${mode ? mode.modeName : 'unknown'}, notes: ${notes.length}, voicing: ${voicing.length}`);
             }
+            // Refresh LP cell colors only; the press highlight is reserved for
+            // physical LP pad presses.
+            if (window.launchpadHandler) window.launchpadHandler.refreshLeds();
         }
     }
     
@@ -453,26 +461,33 @@ class Grid {
     // C++ Grid.cpp lines 520-598 - Draw method
     draw(p, mouseX, mouseY) {
         p.push();
-        
+
         // Draw each cell
         for (let row = 0; row < 8; row++) {
             for (let col = 0; col < 8; col++) {
                 // Calculate index using literal 8
                 const index = row * 8 + col;
                 const cell = this.cells[index];
-                
+
                 const x = this.globalPosition.x + col * (this.cellWidth + this.cellSpacingX);
                 const y = this.globalPosition.y + row * (this.cellHeight + this.cellSpacingY);
-                
+
                 // Update hover state for this chord
                 cell.chord.checkHover(mouseX, mouseY);
-                
+
+                // If the Launchpad is holding this pad, make the cell render
+                // exactly as if the mouse were clicking it.
+                if (this._lpPressed && this._lpPressed.row === row && this._lpPressed.col === col) {
+                    cell.chord.mouseHoverCheck = true;
+                    cell.chord.mouseClicked = true;
+                }
+
                 // Draw cell using the chord's own draw method to handle hover/click states correctly
                 // Chord's draw() method handles everything: background color, hover/click states, and text
                 cell.chord.draw(p, x, y, this.cellWidth, this.cellHeight);
             }
         }
-        
+
         // Draw mode labels to the right of each row (C++ Grid.cpp lines 613-621)
         p.fill(...this.textColor);
         p.noStroke();
@@ -486,7 +501,7 @@ class Grid {
                 p.text(label, this.labelXOffset, yPos);
             }
         }
-        
+
         p.pop();
     }
     
@@ -515,6 +530,66 @@ class Grid {
         }
         const index = row * 8 + col;
         return this.cells[index].colorCode;
+    }
+
+    // RGB (0-255) of the cell's underlying color (mode tint or chord color).
+    // The Launchpad handler overlays its own press highlight on top, so this
+    // function intentionally ignores selection state.
+    getCellRGB(row, col) {
+        if (row < 0 || row >= 8 || col < 0 || col >= 8) return [0, 0, 0];
+        const cell = this.cells[row * 8 + col];
+        if (!cell || !cell.chord) return [0, 0, 0];
+        return cell.chord.defaultColor || [240, 240, 240];
+    }
+
+    // Programmatic trigger equivalent to a mouse click on (row, col).
+    // Used by the Launchpad so a pad press reproduces the click path exactly.
+    selectCellByRowCol(row, col) {
+        if (row < 0 || row >= 8 || col < 0 || col >= 8) return false;
+        const cellIndex = row * 8 + col;
+        const cell = this.cells[cellIndex];
+        const notes = cell.chord.getNotes();
+        if (!notes || notes.length === 0) return false;
+
+        if (this.selectedCellRow >= 0 && this.selectedCellCol >= 0) {
+            const prevIndex = this.selectedCellRow * 8 + this.selectedCellCol;
+            if (prevIndex >= 0 && prevIndex < 64) {
+                this.cells[prevIndex].chord.setChordClicked(false);
+            }
+        }
+
+        this.selectedCellRow = row;
+        this.selectedCellCol = col;
+        cell.chord.setChordClicked(true);
+
+        const modeIndexMap = [0, 1, 2, 5, 1, 2, 5, 6];
+        const modeIndex = modeIndexMap[row] || 0;
+        const mode = this.modes && this.modes[modeIndex] ? this.modes[modeIndex] : null;
+        const voicing = cell.chord.getNoteVoicing();
+
+        if (this.onChordSelected) {
+            this.onChordSelected(notes, voicing, cell.chord, mode);
+        }
+        if (window.launchpadHandler) window.launchpadHandler.refreshLeds();
+        return true;
+    }
+
+    setLPPress(row, col) {
+        this._lpPressed = { row, col };
+    }
+    clearLPPress(row, col) {
+        if (this._lpPressed && this._lpPressed.row === row && this._lpPressed.col === col) {
+            this._lpPressed = null;
+        }
+    }
+
+    // True when the cell has a playable chord (used by Launchpad for LED brightness)
+    cellHasChord(row, col) {
+        if (row < 0 || row >= 8 || col < 0 || col >= 8) return false;
+        const cell = this.cells[row * 8 + col];
+        if (!cell || !cell.chord) return false;
+        const notes = cell.chord.getNotes();
+        return !!(notes && notes.length > 0);
     }
     
     // Clean all chords from grid
@@ -546,7 +621,8 @@ class Grid {
         // Clear the selection so no cell shows the orange highlight
         this.selectedCellRow = -1;
         this.selectedCellCol = -1;
-        
+
+        if (window.launchpadHandler) window.launchpadHandler.refreshLeds();
         //console.log('✓ All chords cleaned from grid');
     }
     
@@ -1110,7 +1186,10 @@ class Grid {
         // C++ Grid.cpp lines 717-723: ALWAYS run modal substitution after drop
         // If parent is empty, modal substitution will clear the column
         this.calculateModalInterchange();
-        
+
+        // Mirror new cell colors on the Launchpad immediately
+        if (window.launchpadHandler) window.launchpadHandler.refreshLeds();
+
         // Print grid to console after each drop
         this.printGrid();
     }

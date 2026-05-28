@@ -75,6 +75,9 @@ const createGridSketch = (p) => {
             // UI state
             this.hoveredCell = { row: -1, col: -1 };
             this.waitingForCell = false;
+            // Cell currently held down via Launchpad pad. drawCell() treats it
+            // exactly like the user is clicking with the mouse.
+            this._lpPressed = null;
             // Colors
             this.emptyColor = [50, 50, 50];
             this.filledColor = [0, 111, 229];
@@ -148,11 +151,12 @@ const createGridSketch = (p) => {
             const x = this.x + col * (this.cellSize + this.cellPadding);
             const y = this.y + row * (this.cellSize + this.cellPadding);
             const isHovered = (this.hoveredCell.row === row && this.hoveredCell.col === col);
+            const isLPPressed = !!(this._lpPressed && this._lpPressed.row === row && this._lpPressed.col === col);
             const chord = this.storage[row][col];
             const isFilled = chord !== null;
             // Choose color
             let fillColor;
-            if (this.clicked && isHovered) {
+            if ((this.clicked && isHovered) || isLPPressed) {
                 fillColor = this.isClicked;
             } else if (this.waitingForCell && isHovered) {
                 fillColor = this.waitingColor;
@@ -312,10 +316,12 @@ const createGridSketch = (p) => {
                 timestamp: Date.now()
             };
             console.log(`Stored chord at [${row}][${col}] with doubling:`, this.storage[row][col]);
+            if (window.launchpadHandler) window.launchpadHandler.refreshLeds();
         }
         recallChord(row, col) {
             const chord = this.storage[row][col];
             if (!chord) return;
+            if (window.launchpadHandler) window.launchpadHandler.refreshLeds();
             console.log(`Recalling chord from [${row}][${col}]:`, chord);
             // Reproduce the chord using existing project APIs (visualization + audio + mappings)
             try {
@@ -380,6 +386,7 @@ const createGridSketch = (p) => {
             if (row >= 0 && row < this.gridSize && col >= 0 && col < this.gridSize) {
                 this.storage[row][col] = null;
                 console.log(`Cleared cell [${row}][${col}]`);
+                if (window.launchpadHandler) window.launchpadHandler.refreshLeds();
             }
         }
         clearAll() {
@@ -389,6 +396,29 @@ const createGridSketch = (p) => {
                 }
             }
             console.log('All cells cleared');
+            if (window.launchpadHandler) window.launchpadHandler.refreshLeds();
+        }
+        setLPPress(row, col) {
+            this._lpPressed = { row, col };
+        }
+        clearLPPress(row, col) {
+            if (this._lpPressed && this._lpPressed.row === row && this._lpPressed.col === col) {
+                this._lpPressed = null;
+            }
+        }
+
+        // RGB (0-255) of the cell's underlying color. The Launchpad handler
+        // overlays its own press highlight on top.
+        getCellRGB(row, col) {
+            if (row < 0 || row >= this.gridSize || col < 0 || col >= this.gridSize) {
+                return [0, 0, 0];
+            }
+            const chord = this.storage[row][col];
+            if (chord) {
+                if (chord.cellColor) return chord.cellColor;      // node color from visualization
+                return this.filledColor;                          // default blue
+            }
+            return this.emptyColor;
         }
         exportData() {
             return {
@@ -427,6 +457,11 @@ function setupGridContainer() {
         transition: right 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     `;
     document.body.appendChild(container);
+    // Eagerly create the sketch so external surfaces (Launchpad) can query
+    // storage/state before the user has opened the panel.
+    if (!gridSketch) {
+        gridSketch = new p5(createGridSketch, 'grid-container');
+    }
     console.log('Grid container created');
 }
 function setupGridToggleButton() {

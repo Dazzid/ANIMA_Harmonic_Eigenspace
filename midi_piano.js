@@ -114,6 +114,12 @@ class MidiPianoHandler {
                 continue;
             }
 
+            // Skip Launchpad: handled by launchpadHandler, must not trigger piano notes.
+            if (input.name && /launchpad/i.test(input.name)) {
+                console.log(`MIDI Piano: [SKIPPED] ${input.name} (Launchpad — routed to launchpadHandler)`);
+                continue;
+            }
+
             console.log(`MIDI Piano: [LISTENER ATTACHED] ${input.name} (ID: ${input.id}, Type: ${input.type}, State: ${input.state})`);
 
             // Store the device name for debugging

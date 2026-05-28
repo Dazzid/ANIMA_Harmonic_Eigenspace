@@ -76,6 +76,13 @@ Plan: `eigenspace.js` + `modal_studio_app.js` + slim `anima.js` (router only, ~4
 
 Do not start this work until explicitly revisited.
 
+## Lunch the web-app locally
+python3 -m http.server 8000 
+Open:
+http://localhost:8000/anima.html 
+Check: lsof -i :8000 -sTCP:LISTEN
+kill PID
+
 ### 6.2 Other open threads
 *(add here as they arise)*
 
