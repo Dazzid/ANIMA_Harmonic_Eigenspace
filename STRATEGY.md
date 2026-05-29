@@ -31,36 +31,35 @@ Local dev server: `python3 -m http.server 8000` → http://localhost:8000/
 
 **Modal Studio modules** (`modal_studio_*.js`)
 - `KeyMap`, `audio`, `Note`, `Chord`, `Mode`, `ScaleEditor`, `VoicingEditor`, `Grid`, `DraggingChords`, `shaders`, `info_overlay`, `adsr`, `main`, `sketch`
+- In the **unified app**, the Modal Studio scene is `modal_studio_app.js` (the `OfApp` class), which composes the `modal_studio_*.js` modules above. `main`/`sketch`/`adsr` are used only by the **standalone** `modal_studio.html`.
 
-**Core**
-- `anima.js` (~3531 lines) — hosts both apps + scene router. See section 5.
+**Core (unified app — split from the old monolithic anima.js, 2026-05-29)**
+- `eigenspace.js` (~2400 lines) — EigenSpace scene: dissonance math, audio synth, TET helpers, numeric helpers, `createVisualization` + Plotly, load-time init, `EigenspaceScene`.
+- `modal_studio_app.js` (~950 lines) — `OfApp` class + `ModalStudioScene`.
+- `anima.js` (~360 lines) — **router only**: `Scenes`/`currentScene`, `SceneManager`, `switchScene`, single p5 sketch, DOM/nav wiring, `window.playNote` entry, `window.ANIMA`. Loads last.
 
-## 4. Scene routing (current architecture)
+## 4. Scene routing (current architecture, post-split)
 
 ```
-Scenes = { EIGENSPACE, MODALSTUDIO }
-currentScene = Scenes.EIGENSPACE  // default
-switchScene(newScene) — flips state, no re-init
+Scenes = { EIGENSPACE: 0, MODALSTUDIO: 1 }
+currentScene = Scenes.EIGENSPACE  // default; kept in sync by SceneManager
+
+// Each scene is an object implementing the contract:
+//   enter / exit / draw / mousePressed / mouseDragged / mouseReleased / keyPressed / resize
+SceneManager = { scenes, active, register(name,scene), switchTo(name) }
+//   switchTo: active.exit() → swap → set body class (mutually exclusive) → active.enter()
+switchScene(name)  // thin wrapper over SceneManager.switchTo(name)
 ```
 
-All p5 lifecycle hooks (`setup`, `draw`, mouse, keyboard) dispatch via `switch (currentScene)`. Toggle button calls `switchScene()` directly. **This is intentional: the toggle must be instant and stateful — no app reload, audio context preserved, scene state retained.**
+The single p5 sketch and the global key/mouse listeners delegate to `SceneManager.active` **only** — an inactive scene is never drawn or sent events (kills the old behind-the-scenes 60fps render). `EigenspaceScene.draw` is a no-op (Plotly self-renders); `ModalStudioScene.draw` runs `OfApp.draw`.
 
-## 5. anima.js structure
+`EigenspaceScene` also owns its **interactive p5 sub-components** — `colorbarP5` (colorbar-slider.js), `gridSketch` (grid.js, Chord Memory), `chordVizP5` (chord_visualization.js) — via `activateComponents(active)`, which toggles both their mouse events (`enable/disableEvents`) and draw loop (`loop/noLoop`) on `enter()`/`exit()`. Without this they stay clickable/redrawing behind the active scene.
 
-| Lines | Section |
-|---|---|
-| 1–27 | Header, license, `Scenes` enum, `currentScene` |
-| 29–73 | Config flags, key→freq tables |
-| 76–164 | Dissonance math (Plomp–Levelt, refinement) |
-| 166–461 | Audio synthesis (reverb, playNote, chord, ADSR) |
-| 463–833 | TET ratio helpers + chord position tables (12/31/53-TET) |
-| 835–1020 | Numeric helpers (linspace, harmonic node finder, percentile, interpolation) |
-| 1022–1976 | `createVisualization` + Plotly layer toggling |
-| 1977–2244 | Save binary, root/chord update, run-computation pipeline |
-| 2247–2261 | Global audio params bridge |
-| 2263–3133 | `OfApp` class — Modal Studio app (chord/grid scenes, drag, voicing) |
-| 3134–3382 | Scene router, unified mouse/keyboard dispatch, init |
-| 3384–end | p5 sketch initialization |
+`window.playNote` (external triggers: key_map.js, midi_piano.js) is defined **once** in anima.js, routing to Modal Studio's engine via `window.app`. EigenSpace's own point-clicks use its local `playChord()`.
+
+**The toggle stays instant and stateful** — no app reload, audio context + `OfApp` instance preserved, scene state retained.
+
+## 5. (removed) — `anima.js` is no longer monolithic; see §3 Core and §4 above.
 
 ## 6. Pending / future work
 
@@ -120,9 +119,10 @@ p.mousePressed = () => SceneManager.active?.mousePressed(p.mouseX, p.mouseY)  //
 - [x] `ModalStudioScene.enter()` no longer reaches into colorbar — deactivation owned by `EigenspaceScene.exit()` (run by SceneManager before the new scene's `enter()`).
 - [ ] Verify: saved chord not triggerable from Modal Studio; EigenSpace components live again on return; console clean.
 
-**Phase 3 — Dedupe & docs**
-- [ ] Dedupe shared `modal_studio_*.js` list across `index.html` / `anima.html` / `modal_studio.html`.
-- [ ] Update STRATEGY §5 file map; flip memory note `anima.js split deferred` → done.
+**Phase 3 — Dedupe & docs** ✅ done
+- [x] Reconciled `index.html` ↔ `anima.html` (now identical local script lists; added missing `modal_studio_info_overlay.js` to anima.html — the Modal Studio Info button was dead there). True cross-file dedup isn't possible without a build/include step (plain script tags); `modal_studio.html` stays separate (standalone). *Note: modal_studio.html references `modal_studio_Audio.js` (capital A) — works on macOS's case-insensitive FS, would break on Linux; pre-existing, out of scope.*
+- [x] Updated STRATEGY §3/§4/§5 to the post-split architecture.
+- [ ] Flip memory note `anima.js split deferred` → done (doing now).
 
 #### Explicit cross-file interface (the scope hazard — resolve lexically today, must be `window.*` after the cut)
 | Symbol | Owner | Consumed by |
