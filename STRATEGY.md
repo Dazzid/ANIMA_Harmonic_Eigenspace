@@ -15,11 +15,11 @@ Both run on top of p5.js. Audio uses Web Audio + p5.sound. Plotly drives the Eig
 
 ## 2. Entry points
 
-- `index.html` — main entry. Loads p5, Plotly, all component scripts, then `anima.js` last.
-- `anima.html` — alternate entry, near-duplicate of index.html.
-- `modal_studio.html` — standalone Modal Studio entry (uses `modal_studio_main.js` + `modal_studio_sketch.js` instead of `anima.js`).
+- `index.html` — **main entry** (the one GitHub Pages serves). Loads p5, Plotly, all component scripts, then the scene files + `anima.js` last.
+- `anima.html` — alternate entry. **Identical local script list to index.html — keep the two in sync** when adding/removing scripts.
+- `modal_studio.html` — standalone Modal Studio entry (uses `modal_studio_main.js` + `modal_studio_sketch.js` instead of `anima.js`). Independent of the unified app.
 
-Local dev server: `python3 -m http.server 8000` → http://localhost:8000/
+Local dev server: `python3 -m http.server 8000` → http://localhost:8000/ (check port: `lsof -i :8000 -sTCP:LISTEN`; stop: `kill <PID>`). See §8 for deploy.
 
 ## 3. File map
 
@@ -59,107 +59,70 @@ The single p5 sketch and the global key/mouse listeners delegate to `SceneManage
 
 **The toggle stays instant and stateful** — no app reload, audio context + `OfApp` instance preserved, scene state retained.
 
-## 5. (removed) — `anima.js` is no longer monolithic; see §3 Core and §4 above.
+## 5. Adding a new scene (recipe)
+
+The architecture is built so a new scene is a localized, low-risk addition — no new `switch` arms across lifecycle hooks.
+
+1. **Give it a file.** New scene logic → its own `*.js` (e.g. `my_scene.js`), loaded **before** `anima.js`. Reuse existing component modules where useful.
+2. **Add the enum value** in `anima.js`: `Scenes = { EIGENSPACE:0, MODALSTUDIO:1, MYSCENE:2 }`.
+3. **Write the scene object** implementing the contract — `enter / exit / draw / mousePressed / mouseDragged / mouseReleased / keyPressed / resize` (+ optional `bodyClass: 'scene-myscene'`):
+   - `enter()` — show your DOM container; activate your interactive components.
+   - `exit()` — hide/deactivate; **stop any p5 sub-component events + draw loops** (copy the `EigenspaceScene.activateComponents` pattern).
+   - `draw(p)` — per-frame render; make it a **no-op if you self-render** (like Plotly).
+   - ⚠️ Do **not** reference `Scenes` inside the object literal (it loads before `anima.js`) — `SceneManager.register` assigns `.name` for you.
+4. **Register it** in `anima.js`: `SceneManager.register(Scenes.MYSCENE, MyScene)`.
+5. **Wire a nav button** in the DOM → `switchScene(Scenes.MYSCENE)`.
+6. **Load order** in `index.html` *and* `anima.html`: shared components → scene files → `anima.js` last. Keep the two HTML entries identical.
+
+**Gotchas (learned in the split — see §6.1):**
+- Body scene classes are mutually exclusive; the manager clears all then sets the active one. Don't toggle them yourself in `enter()`.
+- Any extra p5 instance you create fires `mousePressed` on **any** window press → gate it by scene in `enter/exit`, or its UI stays live behind other scenes.
+- Top-level `let`/`const` globals are visible everywhere **at runtime**, but not before their script runs — reference them only inside methods/handlers, never at load time.
 
 ## 6. Pending / future work
 
-### 6.1 Split anima.js — scene-based architecture (IN PROGRESS, revisited 2026-05-29)
-Target: `eigenspace.js` + `modal_studio_app.js` + slim `anima.js` (router only, ~400 lines).
+### 6.1 Scene-based split of anima.js — ✅ DONE (shipped to `master`, 2026-05-29)
+The monolithic `anima.js` (~3611 lines) was split into `eigenspace.js` + `modal_studio_app.js` + slim router `anima.js` (~360), with a Scene contract + `SceneManager` (see §3/§4). Live on `master` / GitHub Pages.
 
-**Acceptance bar:** scene toggle must remain instant and stateful — no re-mount, no re-init, no re-compute. Audio context and OfApp instance preserved across toggles.
+**What it achieved:** independent per-scene code + one central handler; **inactive scenes are never drawn or sent events** (removed the old behind-the-scenes 60fps render); the fluid stateful toggle was preserved (no re-mount/re-init/re-compute — `OfApp` instance + audio context stay alive).
 
-**Current status (2026-05-29):** on branch `refactor/scene-architecture`. Phases 0–2 done & committed (split verified faithful: `anima.js` 3611→342 lines; `eigenspace.js` + `modal_studio_app.js` carry the rest). Scene-independence + frame-saving for EigenSpace sub-components implemented, pending verify/commit. Remaining: Phase 2b (`playNote` routing) + Phase 3 (HTML dedupe + docs).
+**Durable lessons / watch-outs (apply to any future scene work):**
+- **Mutually-exclusive body classes:** `SceneManager.switchTo` clears every scene's `bodyClass` then sets only the active one. Both present once froze EigenSpace via `body.scene-modalstudio #eigenspace-app * { pointer-events:none }`.
+- **Extra p5 instances leak:** EigenSpace has three besides the router sketch (`colorbarP5`, `gridSketch`, `chordVizP5`); each one's `mousePressed` fires on *any* window press. `EigenspaceScene.activateComponents()` gates their events **and** draw loop (`loop`/`noLoop`) per scene. A new scene with its own p5 instance must do the same.
+- **Load-time vs runtime refs:** `Scenes` lives in last-loaded `anima.js`; scene objects must not reference it in their literal (`.name` is set by `register`). Cross-script `let`/`const` globals resolve at runtime via the shared global lexical scope, not at load time.
+- **Audio:** two engines exist (EigenSpace `playChord`; Modal Studio `AudioEngine`). `window.playNote` is defined **once** in anima.js and routes external triggers (keymap, MIDI piano) to Modal Studio's engine. Kept unified per user preference (a scene-aware split was considered and rejected).
 
-#### Goals (why we're doing this)
-1. Eigenspace loads once — never rebuilt on toggle. *(Already true: 3D viz is Plotly, built once on `load`.)*
-2. Modal Studio state preserved when switching to Eigenspace and back. *(Already true: single `OfApp` instance in `window.app`, only `display` toggled.)*
-3. Independent code per scene + one central handler, so adding scenes is cheap.
-4. Central handler renders/updates **only the active scene** — no parallel compute. *(NOT true today — see below.)*
-
-#### Key finding driving the work
-There is **no loop guard** (`noLoop`/`frameRate`/scene check) anywhere. `p.draw = () => { if (app) app.draw(p); }` runs every frame, so the **entire Modal Studio scene renders at 60fps behind a `display:none` div while Eigenspace is showing**. Mouse events are already guarded inside `OfApp.mousePressed` (`if (currentScene !== Scenes.MODALSTUDIO) return`), but rendering is not.
-
-#### Design decisions (agreed)
-- **Loop control:** single p5 instance always looping; `draw()` delegates to the active scene only. Inactive scene's `draw` is simply never called. (No per-scene p5 instances — that risks Modal Studio re-init.)
-- **Init timing:** eager — both scenes init at startup, exactly like today (preserves the "loads once" guarantee).
-- **No bundler / ES modules** — stays script-tag globals (Conventions §7).
-
-#### Architecture: Scene contract + SceneManager
-Every scene is an object implementing: `init / enter / exit / draw / mousePressed / mouseDragged / mouseReleased / keyPressed / resize`.
-```
-SceneManager = { scenes, active, switchTo(name) }   // switchTo: active.exit() → swap → active.enter()
-p.draw         = () => SceneManager.active?.draw(p)  // ← goal 4: inactive scene never renders
-p.mousePressed = () => SceneManager.active?.mousePressed(p.mouseX, p.mouseY)  // etc.
-```
-`EigenspaceScene.draw` is a no-op (Plotly self-renders), so toggling to Eigenspace stops the Modal Studio render loop entirely.
-
-#### Process (check off as we go)
-**Phase 0 — Safety net** ✅ done
-- [x] Branch off `master` → `refactor/scene-architecture`.
-- [x] Baseline: Eigenspace + Modal Studio load and toggle correctly.
-
-**Phase 1 — Scene contract IN PLACE (only behavioral change; still one file)** ✅ done & verified
-- [x] Add `SceneManager`, `EigenspaceScene`, `ModalStudioScene` objects wrapping existing behavior.
-- [x] Rewire single p5 sketch + keydown to delegate through `SceneManager.active`.
-- [x] `switchScene(name)` becomes a thin wrapper around `SceneManager.switchTo(name)`.
-- [x] Verified. **Bug found & fixed:** per-scene `enter()` added its body class but never cleared the other's → both classes lingered → `body.scene-modalstudio #eigenspace-app * { pointer-events:none }` froze EigenSpace on return. Fix: `switchTo()` clears all scenes' `bodyClass`, sets only the active one (mutual exclusion, generalized for future scenes).
-
-**Phase 2 — Physical split (mechanical, zero behavior change)** ✅ done & verified
-- [x] `eigenspace.js` — dissonance math, audio synth, TET helpers, numeric helpers, `createVisualization` + Plotly toggling, `window load` init, `EigenspaceScene`.
-- [x] `modal_studio_app.js` — `OfApp` class + `ModalStudioScene`.
-- [x] `anima.js` (slim, 342 lines) — `Scenes`, `currentScene`, `SceneManager`, `switchScene`, single p5 sketch, DOM/nav wiring, `window.ANIMA`.
-- [x] Faithfulness proven by code-line diff: only intended diffs are the removed `name: Scenes.X` literals + `register()` now assigning `scene.name` (avoids load-time `Scenes` ref since `Scenes` lives in last-loaded `anima.js`).
-- [x] Load order updated in `index.html` + `anima.html`: shared → eigenspace → modal_studio_app → anima.js (last).
-- [x] **Phase 2b — `window.playNote` explicit cleanup (no audible change):** there are two synth engines (EigenSpace's `playNote`/`playChord`; Modal Studio's `AudioEngine`). Routing today is *mixed*: EigenSpace 3D point-clicks → EigenSpace engine (via local `playChord`); keymap + MIDI piano → `window.playNote` → Modal Studio engine. `window.playNote` was set by eigenspace.js then overwritten in p5 setup (last-writer-wins by load order). **Decision (user):** keep current sound, just remove the race. Now defined **once** in the router (anima.js), call-time guarded on `window.app`; eigenspace.js no longer assigns it. *(Pending verify/commit. Considered & rejected: scene-aware routing — would split engines, opposite of the desired unified feel.)*
-
-**Phase 2.5 — Scene independence (sub-component gating)** 🔧 implemented, pending verify/commit
-- *Problem:* EigenSpace has **three** independent p5 instances besides the main router sketch — `colorbarP5` (colorbar-slider.js), `gridSketch` (grid.js, the Chord Memory grid), `chordVizP5` (chord_visualization.js). Each one's `mousePressed` fires on **any** window press, so their cells stayed clickable behind Modal Studio (saved chords triggerable; hidden but live).
-- [x] grid.js + chord_visualization.js: add `eventsEnabled` gate + `enableEvents()/disableEvents()` (mirrors colorbar). `chordVizP5` given a module handle.
-- [x] `EigenspaceScene.activateComponents(active)`: toggles all three as a group — both **events** (enable/disable) and **draw loop** (`loop()/noLoop()`), so inactive components also stop repainting hidden canvases (saves frames). `enter()`→active, `exit()`→inactive.
-- [x] `ModalStudioScene.enter()` no longer reaches into colorbar — deactivation owned by `EigenspaceScene.exit()` (run by SceneManager before the new scene's `enter()`).
-- [ ] Verify: saved chord not triggerable from Modal Studio; EigenSpace components live again on return; console clean.
-
-**Phase 3 — Dedupe & docs** ✅ done
-- [x] Reconciled `index.html` ↔ `anima.html` (now identical local script lists; added missing `modal_studio_info_overlay.js` to anima.html — the Modal Studio Info button was dead there). True cross-file dedup isn't possible without a build/include step (plain script tags); `modal_studio.html` stays separate (standalone). *Note: modal_studio.html references `modal_studio_Audio.js` (capital A) — works on macOS's case-insensitive FS, would break on Linux; pre-existing, out of scope.*
-- [x] Updated STRATEGY §3/§4/§5 to the post-split architecture.
-- [ ] Flip memory note `anima.js split deferred` → done (doing now).
-
-#### Explicit cross-file interface (the scope hazard — resolve lexically today, must be `window.*` after the cut)
+**Cross-file interface (current reality):**
 | Symbol | Owner | Consumed by |
 |---|---|---|
-| `Scenes`, `currentScene` | anima.js | both scenes |
-| `window.playNote` | **ambiguous today** — fix in Phase 2 | both |
-| `audioParams`, `audioMuted`, `audioCtx` | eigenspace.js (audio core) | modal studio audio |
-| `setDark`, `adsrCanvas`, `adsrCurrentScene` | adsr.js (shared) | both |
-| `colorbarP5`, `setRootVisualization`, `clearChordVisualization` | eigenspace UI | EigenspaceScene |
+| `Scenes`, `currentScene`, `window.playNote`, `window.app` | anima.js (router) | both scenes |
+| audio core: `audioCtx`, `audioParams`, `audioMuted`, `playNote`/`playChord` | eigenspace.js | EigenSpace |
+| `setDark`, `window.adsrCanvas`, `window.adsrCurrentScene` | adsr.js (shared) | both |
+| `colorbarP5`, `gridSketch`, `chordVizP5`, `setRootVisualization`, `clearChordVisualization` | EigenSpace components | EigenspaceScene |
 
-Note: `OfApp.this.currentScene` ('chord'/'grid') is distinct from global `currentScene` (EIGENSPACE/MODALSTUDIO) — no collision.
-
-#### Out of scope
-- No bundler/modules. No touching OfApp internals, dissonance math, or Plotly trace building. No re-init on toggle (OfApp instance + audio context stay alive). Don't touch uncommitted grid.js / launchpad.js.
-
-#### Adding scene #3 afterward
-Write one object implementing the contract + `SceneManager.scenes[...] = NewScene`. No new `switch` arms across lifecycle hooks.
-
-## Lunch the web-app locally
-python3 -m http.server 8000 
-Open:
-http://localhost:8000/anima.html 
-Check: lsof -i :8000 -sTCP:LISTEN
-kill PID
+Note: `OfApp.this.currentScene` ('chord'/'grid', Modal Studio's *internal* sub-scene) is distinct from the global `currentScene` (EIGENSPACE/MODALSTUDIO) — no collision.
 
 ### 6.2 Other open threads
-*(add here as they arise)*
+- Menu/UI redesign using Tailwind (see §7).
+- *(add here as they arise)*
 
 ## 7. Conventions
 
-- Globals are intentional — these are script-tag scripts, not ES modules. Don't introduce a bundler casually.
-- Keep `Scenes` enum + `currentScene` declared before any consumer loads.
-- Modal Studio code lives in `modal_studio_*.js` — match that naming for any new Modal Studio module.
-- Eigenspace code currently lives inside `anima.js`; new Eigenspace logic goes there until the split happens.
-- We will implement Menu design using https://tailwindcss.com/showcase
+- **Globals are intentional** — these are script-tag scripts, not ES modules. Don't introduce a bundler casually.
+- **Where code goes:** EigenSpace logic → `eigenspace.js`; Modal Studio → `modal_studio_app.js` / `modal_studio_*.js` modules; router-only code (scene plumbing, p5 sketch, DOM wiring) → `anima.js`. A new scene → its own file (see §5).
+- `Scenes`/`currentScene` live in `anima.js` (loads last). Reference them only at **runtime** (inside methods/handlers), never at a script's load time — see §6.1 lessons.
+- Keep `index.html` and `anima.html` script lists **identical** when adding/removing scripts.
+- Menu/UI redesign will use Tailwind — https://tailwindcss.com/showcase
 
-## 8. References
+## 8. Deployment & branch workflow
+
+- **`master` is the live branch.** GitHub Pages serves the repo root of `master` → `https://dazzid.github.io/ANIMA_Harmonic_Eigenspace/` (default page `index.html`).
+- **Single-branch development.** Work directly on `master`; no long-lived feature branches. Use `checkpoint:` commit messages as named revert points.
+- **Every `git push origin master` updates the public site** (rebuilds in ~1 min). Commit freely; **push only when ready to go live.**
+- **Rollback:** `git revert <sha>`, or reset to a known-good `checkpoint:` commit, then push. Pre-split rollback point: `29e25ad` (*checkpoint: launchpad added*).
+- **Before pushing:** preview locally (§2) and sanity-check the scene toggle + audio.
+
+## 9. References
 
 - Project: ANIMA MSCA Postdoctoral Fellowship (Project ID 101203318), Horizon Europe.
 - Citation: Dalmazzo, D. (2025). *ANIMA Harmonic Eigenspace: 4D Psychoacoustic Dissonance Visualization for Microtonal Harmony.* MSCA Project 101203318.
