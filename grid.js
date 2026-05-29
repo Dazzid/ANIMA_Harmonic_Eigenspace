@@ -28,6 +28,10 @@ let gridMuted = false; // Grid mute state
 // p5.js sketch in instance mode
 const createGridSketch = (p) => {
     let chordGrid;
+    // Gated by the active scene (see EigenspaceScene.activateComponents). This p5
+    // instance's mousePressed fires on any window press, so without this gate the
+    // chord-memory cells stay clickable while another scene is shown on top.
+    let eventsEnabled = true;
     p.setup = function () {
         // Create canvas for grid
         canvasWidth = 500;
@@ -46,10 +50,14 @@ const createGridSketch = (p) => {
         }
     };
     p.mousePressed = function () {
+        if (!eventsEnabled) return;
         if (chordGrid && chordGrid.handleClick(p)) {
             return false; // Prevent default
         }
     };
+    // Scene gating hooks (mirrors colorbar-slider.js) — called by EigenspaceScene.
+    p.enableEvents = function () { eventsEnabled = true; };
+    p.disableEvents = function () { eventsEnabled = false; };
     // ChordMemoryGrid class
     class ChordMemoryGrid {
         constructor(p5Instance) {

@@ -758,7 +758,12 @@ class ChordVisualization {
 let chordViz = new ChordVisualization();
 
 // Create P5 instance for chord visualization
-new p5(function (p) {
+// Held in a module-scope handle so EigenspaceScene can gate its events by scene
+// (this p5 instance's mousePressed fires on any window press).
+let chordVizP5 = new p5(function (p) {
+    // Gated by the active scene (see EigenspaceScene.activateComponents).
+    let eventsEnabled = true;
+
     p.setup = function () {
         chordViz.setup(p);
     };
@@ -768,13 +773,18 @@ new p5(function (p) {
     };
 
     p.mousePressed = function () {
+        if (!eventsEnabled) return false;
         // Check if mouse is within the canvas bounds
-        if (p.mouseX >= 0 && p.mouseX <= chordViz.W && 
+        if (p.mouseX >= 0 && p.mouseX <= chordViz.W &&
             p.mouseY >= 0 && p.mouseY <= chordViz.H) {
             return chordViz.handleMouseClick(p.mouseX, p.mouseY);
         }
         return false;
     };
+
+    // Scene gating hooks (mirrors colorbar-slider.js) — called by EigenspaceScene.
+    p.enableEvents = function () { eventsEnabled = true; };
+    p.disableEvents = function () { eventsEnabled = false; };
 });
 
 // Expose global functions for integration with test.js

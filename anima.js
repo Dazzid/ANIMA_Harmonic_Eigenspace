@@ -195,6 +195,21 @@ window.ANIMA = {
 };
 
 // ============================================================================
+// EXTERNAL AUDIO ENTRY POINT
+// ----------------------------------------------------------------------------
+// window.playNote is the single shared entry used by external note triggers —
+// key_map.js (computer keyboard) and midi_piano.js — in BOTH scenes. It routes
+// to Modal Studio's audio engine (app.playNote), which is the established synth
+// for these triggers. EigenSpace's own 3D point-clicks use its local playChord()
+// in eigenspace.js and are unaffected.
+//
+// Defined ONCE here, call-time guarded on window.app. Previously eigenspace.js
+// set window.playNote and the p5 setup overwrote it — routing depended on script
+// load order. This single definition removes that race with no audible change.
+// ============================================================================
+window.playNote = (freq) => (window.app ? window.app.playNote(freq) : undefined);
+
+// ============================================================================
 // P5.JS SKETCH INITIALIZATION (from modal_studio_sketch.js)
 // ============================================================================
 
@@ -308,7 +323,8 @@ const sketch = (p) => {
         // Don't call setDark(false) here - it affects the global ADSR from adsr.js
         // Modal Studio components handle their own dark mode via setDarkMode()
         window.app = app;
-        window.playNote = (freq) => app.playNote(freq);
+        // window.playNote is defined once at module scope (see EXTERNAL AUDIO
+        // ENTRY POINT above) and routes through window.app — no need to set it here.
     };
     
     // Single p5 loop — delegate to the ACTIVE scene only. When EigenSpace is

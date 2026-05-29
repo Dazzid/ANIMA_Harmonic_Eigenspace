@@ -914,10 +914,9 @@ const ModalStudioScene = {
         const plotDiv = document.getElementById('plot');
         if (plotDiv) plotDiv.style.pointerEvents = 'none';
 
-        // Disable colorbar p5 event handling to prevent ghost slider interactions
-        if (typeof colorbarP5 !== 'undefined' && typeof colorbarP5.disableEvents === 'function') {
-            colorbarP5.disableEvents();
-        }
+        // Note: EigenSpace's interactive p5 sub-components (colorbar, grid, chord
+        // visualization) are deactivated by EigenspaceScene.exit(), which the
+        // SceneManager runs before this enter(). Nothing to disable here.
 
         // Hide EigenSpace buttons
         const vizModeToggle = document.getElementById('viz-mode-toggle');

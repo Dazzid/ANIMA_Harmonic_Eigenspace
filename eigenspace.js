@@ -272,8 +272,10 @@ async function playNote(frequency) {
     return noteId;
 }
 
-// Make playNote available globally
-window.playNote = playNote;
+// NOTE: window.playNote is owned by the router (anima.js) — it routes external
+// note triggers (keymap, MIDI piano) to Modal Studio's engine. This local
+// playNote() is EigenSpace's own synth; EigenSpace plays via playChord() above.
+// (Do not reassign window.playNote here — that previously caused a load-order race.)
 
 // Play chord with given frequency ratios -------------------------------------------------------------
 // Debounce tracking
@@ -2351,10 +2353,11 @@ const EigenspaceScene = {
         const plotDivEigen = document.getElementById('plot');
         if (plotDivEigen) plotDivEigen.style.pointerEvents = 'auto';
 
-        // Re-enable colorbar p5 event handling
-        if (typeof colorbarP5 !== 'undefined' && typeof colorbarP5.enableEvents === 'function') {
-            colorbarP5.enableEvents();
-        }
+        // Activate EigenSpace's interactive p5 sub-components (colorbar, chord
+        // memory grid, chord visualization). They each run their own p5 instance
+        // whose mouse handlers fire on ANY window press, so they must be gated by
+        // scene — otherwise their cells stay clickable behind Modal Studio.
+        this.activateComponents(true);
 
         // Show EigenSpace buttons
         const vizModeToggle = document.getElementById('viz-mode-toggle');
@@ -2383,7 +2386,32 @@ const EigenspaceScene = {
         if (window.launchpadHandler) window.launchpadHandler.setScene(Scenes.EIGENSPACE);
     },
 
-    exit() { /* no teardown needed; the next scene's enter() handles show/hide */ },
+    exit() {
+        // Deactivate interactive sub-components so they stop responding to clicks
+        // while another scene is active.
+        this.activateComponents(false);
+    },
+
+    // Enable/disable EigenSpace's interactive p5 sub-components as a group. Each
+    // is an independent p5 instance exposing enableEvents()/disableEvents() plus
+    // the native p5 loop()/noLoop(). When inactive we both ignore their mouse
+    // events AND stop their draw loop, so they don't repaint hidden canvases
+    // every frame while another scene is shown. Any instance not yet created is
+    // skipped. (On re-activation, loop() resumes drawing from current state.)
+    activateComponents(active) {
+        const components = [
+            typeof colorbarP5 !== 'undefined' ? colorbarP5 : null,
+            typeof gridSketch !== 'undefined' ? gridSketch : null,
+            typeof chordVizP5 !== 'undefined' ? chordVizP5 : null,
+        ];
+        for (const c of components) {
+            if (!c) continue;
+            const eventsFn = active ? c.enableEvents : c.disableEvents;
+            if (typeof eventsFn === 'function') eventsFn.call(c);
+            const loopFn = active ? c.loop : c.noLoop;
+            if (typeof loopFn === 'function') loopFn.call(c);
+        }
+    },
 
     // Plotly self-renders; p5 ADSR/colorbar run their own global p5 handlers.
     draw(p) { /* no-op */ },

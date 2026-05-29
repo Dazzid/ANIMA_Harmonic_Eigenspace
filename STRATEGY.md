@@ -69,6 +69,8 @@ Target: `eigenspace.js` + `modal_studio_app.js` + slim `anima.js` (router only, 
 
 **Acceptance bar:** scene toggle must remain instant and stateful — no re-mount, no re-init, no re-compute. Audio context and OfApp instance preserved across toggles.
 
+**Current status (2026-05-29):** on branch `refactor/scene-architecture`. Phases 0–2 done & committed (split verified faithful: `anima.js` 3611→342 lines; `eigenspace.js` + `modal_studio_app.js` carry the rest). Scene-independence + frame-saving for EigenSpace sub-components implemented, pending verify/commit. Remaining: Phase 2b (`playNote` routing) + Phase 3 (HTML dedupe + docs).
+
 #### Goals (why we're doing this)
 1. Eigenspace loads once — never rebuilt on toggle. *(Already true: 3D viz is Plotly, built once on `load`.)*
 2. Modal Studio state preserved when switching to Eigenspace and back. *(Already true: single `OfApp` instance in `window.app`, only `display` toggled.)*
@@ -93,23 +95,30 @@ p.mousePressed = () => SceneManager.active?.mousePressed(p.mouseX, p.mouseY)  //
 `EigenspaceScene.draw` is a no-op (Plotly self-renders), so toggling to Eigenspace stops the Modal Studio render loop entirely.
 
 #### Process (check off as we go)
-**Phase 0 — Safety net**
-- [ ] Branch off `master` (leave uncommitted grid.js / launchpad.js untouched).
-- [ ] Baseline checklist: Eigenspace loads → toggle to Modal Studio → toggle back → play a note in each → ADSR show/hide → MIDI button appears.
+**Phase 0 — Safety net** ✅ done
+- [x] Branch off `master` → `refactor/scene-architecture`.
+- [x] Baseline: Eigenspace + Modal Studio load and toggle correctly.
 
-**Phase 1 — Scene contract IN PLACE (only behavioral change; still one file)**
-- [ ] Add `SceneManager`, `EigenspaceScene`, `ModalStudioScene` objects wrapping existing functions (bodies call current code; `enter()` wraps the current `switchScene` case blocks).
-- [ ] Rewire single p5 sketch to delegate `draw`/mouse/resize through `SceneManager.active`.
-- [ ] `switchScene(name)` becomes a thin wrapper around `SceneManager.switchTo(name)`.
-- [ ] Verify against Phase 0 checklist.
+**Phase 1 — Scene contract IN PLACE (only behavioral change; still one file)** ✅ done & verified
+- [x] Add `SceneManager`, `EigenspaceScene`, `ModalStudioScene` objects wrapping existing behavior.
+- [x] Rewire single p5 sketch + keydown to delegate through `SceneManager.active`.
+- [x] `switchScene(name)` becomes a thin wrapper around `SceneManager.switchTo(name)`.
+- [x] Verified. **Bug found & fixed:** per-scene `enter()` added its body class but never cleared the other's → both classes lingered → `body.scene-modalstudio #eigenspace-app * { pointer-events:none }` froze EigenSpace on return. Fix: `switchTo()` clears all scenes' `bodyClass`, sets only the active one (mutual exclusion, generalized for future scenes).
 
-**Phase 2 — Physical split (mechanical, zero behavior change)**
-- [ ] `eigenspace.js` — dissonance math, audio synth, TET helpers, numeric helpers, `createVisualization` + Plotly toggling, `window load` init, `EigenspaceScene`.
-- [ ] `modal_studio_app.js` — `OfApp` class + `ModalStudioScene`.
-- [ ] `anima.js` (slim) — `Scenes`, `currentScene`, `SceneManager`, `switchScene`, single p5 sketch, DOM/nav wiring, `window.ANIMA`.
-- [ ] Resolve `window.playNote` overwrite: each scene routes its own audio instead of last-write-wins.
-- [ ] Update load order in `index.html` + `anima.html`: shared → eigenspace → modal_studio_app → anima.js (last).
-- [ ] Verify against checklist after each file move.
+**Phase 2 — Physical split (mechanical, zero behavior change)** ✅ done & verified
+- [x] `eigenspace.js` — dissonance math, audio synth, TET helpers, numeric helpers, `createVisualization` + Plotly toggling, `window load` init, `EigenspaceScene`.
+- [x] `modal_studio_app.js` — `OfApp` class + `ModalStudioScene`.
+- [x] `anima.js` (slim, 342 lines) — `Scenes`, `currentScene`, `SceneManager`, `switchScene`, single p5 sketch, DOM/nav wiring, `window.ANIMA`.
+- [x] Faithfulness proven by code-line diff: only intended diffs are the removed `name: Scenes.X` literals + `register()` now assigning `scene.name` (avoids load-time `Scenes` ref since `Scenes` lives in last-loaded `anima.js`).
+- [x] Load order updated in `index.html` + `anima.html`: shared → eigenspace → modal_studio_app → anima.js (last).
+- [x] **Phase 2b — `window.playNote` explicit cleanup (no audible change):** there are two synth engines (EigenSpace's `playNote`/`playChord`; Modal Studio's `AudioEngine`). Routing today is *mixed*: EigenSpace 3D point-clicks → EigenSpace engine (via local `playChord`); keymap + MIDI piano → `window.playNote` → Modal Studio engine. `window.playNote` was set by eigenspace.js then overwritten in p5 setup (last-writer-wins by load order). **Decision (user):** keep current sound, just remove the race. Now defined **once** in the router (anima.js), call-time guarded on `window.app`; eigenspace.js no longer assigns it. *(Pending verify/commit. Considered & rejected: scene-aware routing — would split engines, opposite of the desired unified feel.)*
+
+**Phase 2.5 — Scene independence (sub-component gating)** 🔧 implemented, pending verify/commit
+- *Problem:* EigenSpace has **three** independent p5 instances besides the main router sketch — `colorbarP5` (colorbar-slider.js), `gridSketch` (grid.js, the Chord Memory grid), `chordVizP5` (chord_visualization.js). Each one's `mousePressed` fires on **any** window press, so their cells stayed clickable behind Modal Studio (saved chords triggerable; hidden but live).
+- [x] grid.js + chord_visualization.js: add `eventsEnabled` gate + `enableEvents()/disableEvents()` (mirrors colorbar). `chordVizP5` given a module handle.
+- [x] `EigenspaceScene.activateComponents(active)`: toggles all three as a group — both **events** (enable/disable) and **draw loop** (`loop()/noLoop()`), so inactive components also stop repainting hidden canvases (saves frames). `enter()`→active, `exit()`→inactive.
+- [x] `ModalStudioScene.enter()` no longer reaches into colorbar — deactivation owned by `EigenspaceScene.exit()` (run by SceneManager before the new scene's `enter()`).
+- [ ] Verify: saved chord not triggerable from Modal Studio; EigenSpace components live again on return; console clean.
 
 **Phase 3 — Dedupe & docs**
 - [ ] Dedupe shared `modal_studio_*.js` list across `index.html` / `anima.html` / `modal_studio.html`.
