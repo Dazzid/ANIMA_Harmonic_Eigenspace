@@ -3213,94 +3213,192 @@ class OfApp {
 // UNIFIED EVENT HANDLERS (C++ pattern with switch statements)
 // ============================================================================
 
-function switchScene(newScene) {
-    currentScene = newScene;
-    
-    const eigenContainer = document.getElementById('eigenspace-app');
-    const modalContainer = document.getElementById('modalstudio-app');
-    const eigenAudioGui = document.getElementById('eigenspace-audio-gui');
-    const modalAudioGui = document.getElementById('modalstudio-audio-gui');
-    
-    // EigenSpace buttons (fixed position, need manual hide/show)
-    const vizModeToggle = document.getElementById('viz-mode-toggle');
-    const navToModalStudio = document.getElementById('nav-to-modalstudio');
-    const gridToggle = document.getElementById('grid-toggle');
-    const midiToggle = document.getElementById('midi-toggle');
-    const infoButton = document.getElementById('info-button');
-    
-    // Add scene class to body for CSS targeting
-    document.body.classList.remove('scene-eigenspace', 'scene-modalstudio');
-    
-    // C++ switch(scene) pattern - complete event isolation
-    switch (currentScene) {
-        case Scenes.EIGENSPACE:
-            document.body.classList.add('scene-eigenspace');
-            if (eigenContainer) eigenContainer.style.display = 'block';
-            if (modalContainer) modalContainer.style.display = 'none';
-            
-            // Re-enable pointer events on Plotly plot
-            const plotDivEigen = document.getElementById('plot');
-            if (plotDivEigen) plotDivEigen.style.pointerEvents = 'auto';
-            
-            // Re-enable colorbar p5 event handling
-            if (typeof colorbarP5 !== 'undefined' && typeof colorbarP5.enableEvents === 'function') {
-                colorbarP5.enableEvents();
-            }
-            
-            // Show EigenSpace buttons
-            if (vizModeToggle) vizModeToggle.style.display = 'flex';
-            if (navToModalStudio) navToModalStudio.style.display = 'flex';
-            if (gridToggle) gridToggle.style.display = 'flex';
-            if (midiToggle) midiToggle.style.display = 'flex';
-            if (infoButton) infoButton.style.display = 'flex';
-            
-            // Show Plotly modebar (legend is part of the plot SVG and shows automatically)
-            let modebarEigen = document.querySelector('.modebar');
-            if (modebarEigen) modebarEigen.style.display = 'flex';
-            
-            // ADSR: Always visible in EigenSpace, dark mode
-            if (eigenAudioGui) eigenAudioGui.style.display = 'block';
-            if (modalAudioGui) modalAudioGui.style.display = 'none';
-            if (window.adsrCanvas) window.adsrCanvas.parent('eigenspace-audio-gui');
-            if (typeof setDark === 'function') setDark(true);
-            window.adsrCurrentScene = 'eigenspace';
-            
-            console.log('[ANIMA] Scene: EigenSpace');
-            if (window.launchpadHandler) window.launchpadHandler.setScene(Scenes.EIGENSPACE);
-            break;
+// ============================================================================
+// SCENE CONTRACT + CENTRAL HANDLER
+// ----------------------------------------------------------------------------
+// Every scene is an object implementing: enter / exit / draw / mousePressed /
+// mouseDragged / mouseReleased / keyPressed / resize. The SceneManager owns the
+// active scene; the single p5 sketch and the global event listeners delegate to
+// SceneManager.active ONLY. An inactive scene is never drawn and never receives
+// events — that is what kills the wasted parallel render loop.
+//
+// Adding a scene later: write one object implementing this shape and register it
+// with SceneManager.register(Scenes.X, theScene). No new switch arms required.
+// ============================================================================
 
-        case Scenes.MODALSTUDIO:
-            document.body.classList.add('scene-modalstudio');
-            if (eigenContainer) eigenContainer.style.display = 'none';
-            if (modalContainer) modalContainer.style.display = 'block';
-            
-            // Disable pointer events on Plotly plot to prevent ghost clicks
-            const plotDiv = document.getElementById('plot');
-            if (plotDiv) plotDiv.style.pointerEvents = 'none';
-            
-            // Disable colorbar p5 event handling to prevent ghost slider interactions
-            if (typeof colorbarP5 !== 'undefined' && typeof colorbarP5.disableEvents === 'function') {
-                colorbarP5.disableEvents();
+const EigenspaceScene = {
+    name: Scenes.EIGENSPACE,
+    bodyClass: 'scene-eigenspace',
+
+    enter() {
+        const eigenContainer = document.getElementById('eigenspace-app');
+        const modalContainer = document.getElementById('modalstudio-app');
+        const eigenAudioGui = document.getElementById('eigenspace-audio-gui');
+        const modalAudioGui = document.getElementById('modalstudio-audio-gui');
+
+        if (eigenContainer) eigenContainer.style.display = 'block';
+        if (modalContainer) modalContainer.style.display = 'none';
+
+        // Re-enable pointer events on Plotly plot
+        const plotDivEigen = document.getElementById('plot');
+        if (plotDivEigen) plotDivEigen.style.pointerEvents = 'auto';
+
+        // Re-enable colorbar p5 event handling
+        if (typeof colorbarP5 !== 'undefined' && typeof colorbarP5.enableEvents === 'function') {
+            colorbarP5.enableEvents();
+        }
+
+        // Show EigenSpace buttons
+        const vizModeToggle = document.getElementById('viz-mode-toggle');
+        const navToModalStudio = document.getElementById('nav-to-modalstudio');
+        const gridToggle = document.getElementById('grid-toggle');
+        const midiToggle = document.getElementById('midi-toggle');
+        const infoButton = document.getElementById('info-button');
+        if (vizModeToggle) vizModeToggle.style.display = 'flex';
+        if (navToModalStudio) navToModalStudio.style.display = 'flex';
+        if (gridToggle) gridToggle.style.display = 'flex';
+        if (midiToggle) midiToggle.style.display = 'flex';
+        if (infoButton) infoButton.style.display = 'flex';
+
+        // Show Plotly modebar (legend is part of the plot SVG and shows automatically)
+        let modebarEigen = document.querySelector('.modebar');
+        if (modebarEigen) modebarEigen.style.display = 'flex';
+
+        // ADSR: Always visible in EigenSpace, dark mode
+        if (eigenAudioGui) eigenAudioGui.style.display = 'block';
+        if (modalAudioGui) modalAudioGui.style.display = 'none';
+        if (window.adsrCanvas) window.adsrCanvas.parent('eigenspace-audio-gui');
+        if (typeof setDark === 'function') setDark(true);
+        window.adsrCurrentScene = 'eigenspace';
+
+        console.log('[ANIMA] Scene: EigenSpace');
+        if (window.launchpadHandler) window.launchpadHandler.setScene(Scenes.EIGENSPACE);
+    },
+
+    exit() { /* no teardown needed; the next scene's enter() handles show/hide */ },
+
+    // Plotly self-renders; p5 ADSR/colorbar run their own global p5 handlers.
+    draw(p) { /* no-op */ },
+    mousePressed(x, y) { /* Plotly + p5 ADSR handle their own events */ },
+    mouseDragged(x, y) { /* idem */ },
+    mouseReleased(x, y) { /* idem */ },
+    resize(p) { /* Plotly responds to its own resize */ },
+
+    keyPressed(e) {
+        // EigenSpace keyboard shortcuts (root note selection)
+        const freq = keyToFreq[e.key.toLowerCase()];
+        if (freq) {
+            currentBaseFreq = freq;
+            const clickOutput = document.getElementById('click-output');
+            if (clickOutput) {
+                clickOutput.textContent =
+                    `Root: ${freqToName[freq]} (${freq.toFixed(2)} Hz) - Click any point to hear`;
             }
-            
-            // Hide EigenSpace buttons
-            if (vizModeToggle) vizModeToggle.style.display = 'none';
-            if (navToModalStudio) navToModalStudio.style.display = 'none';
-            if (gridToggle) gridToggle.style.display = 'none';
-            if (midiToggle) midiToggle.style.display = 'none';
-            if (infoButton) infoButton.style.display = 'none';
-            
-            // Hide Plotly modebar (legend is part of the plot and hidden with container)
-            let modebarModal = document.querySelector('.modebar');
-            if (modebarModal) modebarModal.style.display = 'none';
-            
-            // ADSR: Hidden by default in Modal Studio (controlled by audioToggle button)
-            if (eigenAudioGui) eigenAudioGui.style.display = 'none';
-            
-            console.log('[ANIMA] Scene: Modal Studio');
-            if (window.launchpadHandler) window.launchpadHandler.setScene(Scenes.MODALSTUDIO);
-            break;
-    }
+            if (typeof setRootVisualization === 'function') {
+                setRootVisualization(freq);
+            }
+            if (typeof clearChordVisualization === 'function') {
+                clearChordVisualization();
+            }
+        }
+        // MIDI toggle
+        if (e.key === 'p' || e.key === 'P') {
+            if (window.midiController) {
+                window.midiController.toggleUI();
+            }
+        }
+    },
+};
+
+const ModalStudioScene = {
+    name: Scenes.MODALSTUDIO,
+    bodyClass: 'scene-modalstudio',
+
+    enter() {
+        const eigenContainer = document.getElementById('eigenspace-app');
+        const modalContainer = document.getElementById('modalstudio-app');
+        const eigenAudioGui = document.getElementById('eigenspace-audio-gui');
+
+        if (eigenContainer) eigenContainer.style.display = 'none';
+        if (modalContainer) modalContainer.style.display = 'block';
+
+        // Disable pointer events on Plotly plot to prevent ghost clicks
+        const plotDiv = document.getElementById('plot');
+        if (plotDiv) plotDiv.style.pointerEvents = 'none';
+
+        // Disable colorbar p5 event handling to prevent ghost slider interactions
+        if (typeof colorbarP5 !== 'undefined' && typeof colorbarP5.disableEvents === 'function') {
+            colorbarP5.disableEvents();
+        }
+
+        // Hide EigenSpace buttons
+        const vizModeToggle = document.getElementById('viz-mode-toggle');
+        const navToModalStudio = document.getElementById('nav-to-modalstudio');
+        const gridToggle = document.getElementById('grid-toggle');
+        const midiToggle = document.getElementById('midi-toggle');
+        const infoButton = document.getElementById('info-button');
+        if (vizModeToggle) vizModeToggle.style.display = 'none';
+        if (navToModalStudio) navToModalStudio.style.display = 'none';
+        if (gridToggle) gridToggle.style.display = 'none';
+        if (midiToggle) midiToggle.style.display = 'none';
+        if (infoButton) infoButton.style.display = 'none';
+
+        // Hide Plotly modebar (legend is part of the plot and hidden with container)
+        let modebarModal = document.querySelector('.modebar');
+        if (modebarModal) modebarModal.style.display = 'none';
+
+        // ADSR: Hidden by default in Modal Studio (controlled by audioToggle button)
+        if (eigenAudioGui) eigenAudioGui.style.display = 'none';
+
+        console.log('[ANIMA] Scene: Modal Studio');
+        if (window.launchpadHandler) window.launchpadHandler.setScene(Scenes.MODALSTUDIO);
+    },
+
+    exit() { /* no teardown needed */ },
+
+    draw(p) { if (window.app) window.app.draw(p); },
+    mousePressed(x, y) { if (window.app) window.app.mousePressed(x, y); },
+    mouseDragged(x, y) { if (window.app) window.app.mouseDragged(x, y); },
+    mouseReleased(x, y) { if (window.app) window.app.mouseReleased(x, y); },
+    resize(p) { if (window.app) window.app.updatePositions(p); },
+
+    keyPressed(e) { /* Modal Studio keyboard handled by p5 sketch */ },
+};
+
+const SceneManager = {
+    scenes: {},
+    active: null,
+
+    register(name, scene) { this.scenes[name] = scene; },
+
+    switchTo(name) {
+        const next = this.scenes[name];
+        if (!next) {
+            console.warn('[ANIMA] Unknown scene:', name);
+            return;
+        }
+        if (this.active && this.active.exit) this.active.exit();
+        this.active = next;
+        currentScene = name; // keep global in sync (OfApp guards, launchpad, listeners read it)
+
+        // Body scene class is mutually exclusive: clear every scene's class, then
+        // set the active one. (CSS keys off these, e.g. disabling EigenSpace pointer
+        // events while Modal Studio is active — both classes present would freeze it.)
+        Object.values(this.scenes).forEach(s => {
+            if (s.bodyClass) document.body.classList.remove(s.bodyClass);
+        });
+        if (next.bodyClass) document.body.classList.add(next.bodyClass);
+
+        if (next.enter) next.enter();
+    },
+};
+
+SceneManager.register(Scenes.EIGENSPACE, EigenspaceScene);
+SceneManager.register(Scenes.MODALSTUDIO, ModalStudioScene);
+
+// Thin wrapper kept for existing callers (nav buttons, window.ANIMA, init).
+function switchScene(newScene) {
+    SceneManager.switchTo(newScene);
 }
 
 // ============================================================================
@@ -3362,37 +3460,9 @@ document.addEventListener('mouseup', function(e) {
 // ============================================================================
 
 window.addEventListener('keydown', function(e) {
-    // Scene-specific keyboard handling
-    switch (currentScene) {
-        case Scenes.EIGENSPACE:
-            // EigenSpace keyboard shortcuts (root note selection)
-            const freq = keyToFreq[e.key.toLowerCase()];
-            if (freq) {
-                currentBaseFreq = freq;
-                const clickOutput = document.getElementById('click-output');
-                if (clickOutput) {
-                    clickOutput.textContent =
-                        `Root: ${freqToName[freq]} (${freq.toFixed(2)} Hz) - Click any point to hear`;
-                }
-                if (typeof setRootVisualization === 'function') {
-                    setRootVisualization(freq);
-                }
-                if (typeof clearChordVisualization === 'function') {
-                    clearChordVisualization();
-                }
-            }
-            // MIDI toggle
-            if (e.key === 'p' || e.key === 'P') {
-                if (window.midiController) {
-                    window.midiController.toggleUI();
-                }
-            }
-            break;
-            
-        case Scenes.MODALSTUDIO:
-            // Modal Studio keyboard shortcuts handled by p5 sketch
-            // (p5 has its own keyPressed in sketch)
-            break;
+    // Delegate to the active scene only.
+    if (SceneManager.active && SceneManager.active.keyPressed) {
+        SceneManager.active.keyPressed(e);
     }
 });
 
@@ -3572,37 +3642,29 @@ const sketch = (p) => {
         window.playNote = (freq) => app.playNote(freq);
     };
     
+    // Single p5 loop — delegate to the ACTIVE scene only. When EigenSpace is
+    // active its draw() is a no-op, so the Modal Studio app is not rendered.
     p.draw = () => {
-        if (app) {
-            app.draw(p);
-        }
+        if (SceneManager.active) SceneManager.active.draw(p);
     };
-    
+
     p.mousePressed = () => {
-        if (app) {
-            app.mousePressed(p.mouseX, p.mouseY);
-        }
+        if (SceneManager.active) SceneManager.active.mousePressed(p.mouseX, p.mouseY);
     };
-    
+
     p.mouseDragged = () => {
-        if (app) {
-            app.mouseDragged(p.mouseX, p.mouseY);
-        }
+        if (SceneManager.active) SceneManager.active.mouseDragged(p.mouseX, p.mouseY);
     };
-    
+
     p.mouseReleased = () => {
-        if (app) {
-            app.mouseReleased(p.mouseX, p.mouseY);
-        }
+        if (SceneManager.active) SceneManager.active.mouseReleased(p.mouseX, p.mouseY);
     };
-    
+
     p.windowResized = () => {
         const w = Math.max(p.windowWidth, MIN_WIDTH);
         const h = Math.max(p.windowHeight, MIN_HEIGHT);
         p.resizeCanvas(w, h);
-        if (app) {
-            app.updatePositions(p);
-        }
+        if (SceneManager.active) SceneManager.active.resize(p);
     };
 };
 
