@@ -65,7 +65,10 @@ Dissonance Visualization for Microtonal Harmony.MSCA Project 101203318.
     <script src="modal_studio_DraggingChords.js"></script>
     <script src="modal_studio_shaders.js"></script>
     
-    <!-- Load ANIMA unified app LAST (contains all main code) -->
+    <!-- Scene modules load before the router -->
+    <script src="eigenspace.js"></script>
+    <script src="modal_studio_app.js"></script>
+    <!-- Load ANIMA router LAST (SceneManager + p5 sketch + DOM wiring) -->
     <script src="anima.js"></script>
 </head>
 

@@ -110,7 +110,10 @@ Dissonance Visualization for Microtonal Harmony.MSCA Project 101203318.
         <div id="canvas-container"></div>
     </div>
 
-    <!-- Load ANIMA unified app LAST - after DOM is ready -->
+    <!-- Scene modules load before the router -->
+    <script src="eigenspace.js"></script>
+    <script src="modal_studio_app.js"></script>
+    <!-- Load ANIMA router LAST - after DOM is ready -->
     <script src="anima.js"></script>
 </body>
 
