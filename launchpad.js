@@ -73,18 +73,66 @@ class LaunchpadHandler {
 
         if (!this._exitInstalled) {
             window.addEventListener('beforeunload', () => this.exit());
+            // Other apps (Ableton, etc.) can grab the LP, switch it out of
+            // DAW/Session mode, and effectively detach our handlers. When the
+            // tab regains focus, re-take the device.
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') this.reconnect();
+            });
+            window.addEventListener('focus', () => this.reconnect());
             this._exitInstalled = true;
         }
 
-        // Re-scan ports on hotplug
-        this.midiAccess.addEventListener('statechange', () => {
-            this._findPorts();
-            if (this.connected) this.refreshLeds();
-        });
+        // Re-scan ports on hotplug / external open-close
+        if (!this._stateChangeInstalled) {
+            this.midiAccess.addEventListener('statechange', (e) => {
+                if (e.port && /Launchpad.*Pro.*MK3.*DAW|LPProMK3 DAW/i.test(e.port.name || '')) {
+                    this.reconnect();
+                } else {
+                    this._findPorts();
+                    if (this.connected) this.refreshLeds();
+                }
+            });
+            this._stateChangeInstalled = true;
+        }
 
         this.refreshLeds();
         console.log(`[Launchpad] Connected to ${this.output.name}`);
         return true;
+    }
+
+    // Idempotent re-grab of the LP after another app (Ableton etc.) takes it.
+    async reconnect() {
+        if (!this.midiAccess) {
+            return this.initialize();
+        }
+        if (this._reconnecting) return;
+        this._reconnecting = true;
+        try {
+            this._findPorts();
+            if (!this.output || !this.input) {
+                this.connected = false;
+                console.warn('[Launchpad] reconnect: DAW port not found');
+                return false;
+            }
+            // Web MIDI auto-opens on access, but an explicit open() helps if
+            // the port was closed by another app.
+            try {
+                if (typeof this.input.open === 'function')  await this.input.open();
+                if (typeof this.output.open === 'function') await this.output.open();
+            } catch (e) {
+                console.warn('[Launchpad] reconnect: open() failed', e);
+            }
+            this.input.onmidimessage = (msg) => this._handleMidiMessage(msg);
+            this.enterDawMode();
+            this.enterSessionLayout();
+            this.connected = true;
+            this.refreshLeds();
+            console.log('[Launchpad] Reconnected');
+            return true;
+        } finally {
+            this._reconnecting = false;
+        }
     }
 
     exit() {

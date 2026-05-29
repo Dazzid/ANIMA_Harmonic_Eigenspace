@@ -357,12 +357,35 @@ const createGridSketch = (p) => {
                 } else if (typeof window.playChord === 'function') {
                     window.playChord(chord.alpha, chord.beta, chord.gamma, chord.root);
                 }
-                
+
                 // Restore original audio mute state
                 if (gridMuted) {
                     window.audioMuted = originalMuteState;
                 }
-                
+
+                // Declare this stored chord as the new reference for x2 transforms.
+                // Without this, currentBaseFreq + lastClickedChord still point at the
+                // last Eigenspace click and x2 would transform that chord instead.
+                if (typeof currentBaseFreq !== 'undefined') {
+                    currentBaseFreq = chord.root;
+                }
+                window.lastClickedChord = {
+                    root: chord.root,
+                    alpha: chord.alpha,
+                    beta: chord.beta,
+                    gamma: chord.gamma,
+                    frequencies: Array.isArray(chord.frequencies) ? [...chord.frequencies] : [
+                        chord.root,
+                        chord.root * chord.alpha,
+                        chord.root * chord.beta,
+                        chord.root * chord.gamma
+                    ],
+                    nodeNumber: chord.nodeNumber ?? null,
+                    chordName: chord.chordName ?? null,
+                    cellColor: chord.cellColor ?? null,
+                    tetSystem: chord.tetSystem ?? null
+                };
+
             } catch (e) {
                 console.warn('recallChord: failed to reproduce stored chord', e);
             }
