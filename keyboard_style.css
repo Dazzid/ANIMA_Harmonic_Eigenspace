@@ -1,3 +1,11 @@
+/* ---- Unified-app scene integration -------------------------------------
+   #keyboard-app is shown only while the Keyboard scene is active; SceneManager
+   toggles body.keyboard-active (the scene's bodyClass). #home hosts the p5
+   canvas full-screen behind the chord panel and navigation menu. */
+#keyboard-app { display: none; }
+body.keyboard-active #keyboard-app { display: block; }
+#keyboard-app #home { position: fixed; inset: 0; z-index: 0; }
+
 #home canvas {
   display: block;
   position: absolute;

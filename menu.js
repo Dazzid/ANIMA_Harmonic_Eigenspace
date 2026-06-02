@@ -102,7 +102,8 @@
             onClick: () => { window.ANIMA.switchScene(S.MODALSTUDIO); render(); }
         }));
         scenes.appendChild(makeItem('Keyboard Layout', {
-            icon: '⌨', badge: 'Soon', disabled: true
+            icon: '⌨', active: scene === S.KEYBOARD,
+            onClick: () => { window.ANIMA.switchScene(S.KEYBOARD); render(); }
         }));
         body.appendChild(scenes);
 
@@ -131,25 +132,38 @@
                 icon: '♪', active: audioShown,
                 onClick: () => { clickLegacy('audio-toggle'); render(); }
             }));
+        } else if (scene === S.KEYBOARD) {
+            // The 53-TET chord selector (incl. the Fixed/Functional toggle) is the
+            // floating #chord-panel; the menu just opens/closes it.
+            const chordsShown = (() => {
+                const cp = document.getElementById('chord-panel');
+                return !!(cp && cp.classList.contains('visible'));
+            })();
+            options.appendChild(makeItem('Chord menu', {
+                icon: '▦', active: chordsShown,
+                onClick: () => { close(); if (window.toggleChordPanel) window.toggleChordPanel(); }
+            }));
         }
         body.appendChild(options);
 
-        // ----- INFO ---------------------------------------------------------
-        const info = makeSection('Info');
-        info.appendChild(makeItem('About this scene', {
-            icon: 'ℹ',
-            onClick: () => {
-                close();
-                if (inModal && window.modalStudioInfoOverlay) {
-                    window.modalStudioInfoOverlay.toggle();
-                } else if (typeof window.toggleInfo === 'function') {
-                    window.toggleInfo();
-                } else {
-                    clickLegacy('info-button');
+        // ----- INFO (scenes that have an info overlay) ----------------------
+        if (inEigen || inModal) {
+            const info = makeSection('Info');
+            info.appendChild(makeItem('About this scene', {
+                icon: 'ℹ',
+                onClick: () => {
+                    close();
+                    if (inModal && window.modalStudioInfoOverlay) {
+                        window.modalStudioInfoOverlay.toggle();
+                    } else if (typeof window.toggleInfo === 'function') {
+                        window.toggleInfo();
+                    } else {
+                        clickLegacy('info-button');
+                    }
                 }
-            }
-        }));
-        body.appendChild(info);
+            }));
+            body.appendChild(info);
+        }
 
         // ----- MIDI ---------------------------------------------------------
         const midi = makeSection('MIDI Settings');

@@ -386,6 +386,12 @@ document.addEventListener('keydown', (event) => {
 
     // console.log(`[key_map] Key pressed: '${key}' (shiftKey: ${event.shiftKey})`);
 
+    // In the Keyboard scene, keyboard.js owns all key input (hex notes via its
+    // own keydown). Bail so we don't also fire a Modal Studio note.
+    if (window.ANIMA && window.ANIMA.getCurrentScene() === window.ANIMA.Scenes.KEYBOARD) {
+        return;
+    }
+
     // EigenSpace-only shortcuts:
     //   Shift+M — toggle the Chord Memory grid
     //   Shift+L — toggle the Layered / Full 3D view

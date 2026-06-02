@@ -3,6 +3,12 @@
 // Hex grid coordinates computed from XML, positions calculated mathematically
 // ============================================================================
 
+// Wrapped in an IIFE so this scene's many module-level names (audioCtx,
+// masterGain, noteData, …) don't collide with the unified app's other scripts,
+// which share the global script scope. Only KeyboardScene (for anima.js) and
+// window.toggleChordPanel (for menu.js) are exposed.
+(function () {
+
 let noteData = [];       // frequency lookup from JSON
 let xmlButtons = [];     // 280 hex buttons parsed from XML (persistent)
 let gridButtons = [];    // all visible hex buttons (XML + generated extras)
@@ -11,6 +17,7 @@ let masterGain = null;
 let dryGain = null;
 let wetGain = null;
 let convolver = null;
+let kbP = null;          // the keyboard scene's p5 instance (set in keyboardSketch)
 
 // Hexagon drawing parameters (from C++ LumaButton.hpp)
 const NUM_STEPS = 6;
@@ -420,14 +427,14 @@ function clearSelection() {
   selected11th = null;
 }
 
-function setup() {
-  let cnv = createCanvas(windowWidth, windowHeight);
+function kbSetup(p) {
+  let cnv = p.createCanvas(p.windowWidth, p.windowHeight);
   cnv.parent('home');
   cnv.style('position', 'absolute');
   cnv.style('top', '0');
   cnv.style('left', '0');
   cnv.style('z-index', '0');
-  textFont('Fira Code');
+  p.textFont('Fira Code');
 
   // Build chord selector panel
   buildChordPanel();
@@ -444,8 +451,8 @@ function setup() {
   });
 }
 
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
+function kbWindowResized(p) {
+  p.resizeCanvas(p.windowWidth, p.windowHeight);
   computeScale();
 }
 
@@ -491,7 +498,10 @@ const NOTE_PER_R = 5;
 const REF_ORIGIN = 62; // reference at q=0, r=0
 
 function computeScale() {
-  if (xmlButtons.length === 0) return;
+  if (!kbP || xmlButtons.length === 0) return;
+  // Aliased from the p5 instance so the geometry below reads unchanged.
+  const width = kbP.width;
+  const height = kbP.height;
 
   const sizeMultiplier = 2.0;
   // Gap scales with viewport: ~2 px on phones, ~10 px on desktop.
@@ -509,9 +519,10 @@ function computeScale() {
   const cosB = Math.cos(HEX_ANGLE - Math.PI / 3);
   const sinB = Math.sin(HEX_ANGLE - Math.PI / 3);
 
-  // Top boundary: below the nav bar
-  var navEl = document.querySelector('nav');
-  var navH = navEl ? navEl.offsetHeight : 55;
+  // Top clip boundary. The standalone page reserved space for its nav bar, but
+  // the unified scene has none (the only <nav> is the floating menu panel), so
+  // the grid uses the full canvas height.
+  var navH = 0;
 
   // Compute grid extent in unit coordinates (from XML buttons only — defines the scale)
   let uxMin = Infinity, uxMax = -Infinity;
@@ -624,8 +635,8 @@ function computeScale() {
 }
 
 // --- Draw ---
-function draw() {
-    background(246);
+function kbDraw(p) {
+    p.background(246);
 
     if (gridButtons.length === 0) {
     return;
@@ -641,7 +652,7 @@ function draw() {
   }
   if (!rootBtn) {
     for (let btn of gridButtons) {
-      const d = dist(mouseX, mouseY, btn.x, btn.y);
+      const d = p.dist(p.mouseX, p.mouseY, btn.x, btn.y);
       if (d <= scaledRadius * 0.88) { rootBtn = btn; break; }
     }
   }
@@ -656,7 +667,7 @@ function draw() {
   }
 
   for (let btn of gridButtons) {
-    drawHexButton(btn, chordToneMap);
+    drawHexButton(p, btn, chordToneMap);
   }
 
   // Update reverb dry/wet from GUI knob
@@ -668,8 +679,8 @@ function draw() {
 }
 
 // --- Draw a single hex button (ported from LumaButton::draw) ---
-function drawHexButton(btn, chordToneMap) {
-  const d = dist(mouseX, mouseY, btn.x, btn.y);
+function drawHexButton(p, btn, chordToneMap) {
+  const d = p.dist(p.mouseX, p.mouseY, btn.x, btn.y);
   btn.hover = d <= scaledRadius * 0.88;
 
   // Size boost: hovered hex and chord tones grow +25%, clicking flattens to normal
@@ -685,24 +696,24 @@ function drawHexButton(btn, chordToneMap) {
   const inScale = functionalMode && functionalScaleSet.has(btn.note53);
   if (btn.keyPressed || (btn.hover && btn.active)) {
     fillRGB = [255, 180, 0];
-    fill(fillRGB[0], fillRGB[1], fillRGB[2]);            // buttonClicked
+    p.fill(fillRGB[0], fillRGB[1], fillRGB[2]);            // buttonClicked
   } else if (isChordTone) {
     const c = CHORD_COLORS[Math.min(chordIdx, CHORD_COLORS.length - 1)];
     fillRGB = [c[0], c[1], c[2]];
-    fill(c[0], c[1], c[2], btn.hover ? 255 : 200);
+    p.fill(c[0], c[1], c[2], btn.hover ? 255 : 200);
   } else if (btn.hover) {
     fillRGB = [220, 220, 220];
-    fill(220, 220, 220, 200);    // hoverColor
+    p.fill(220, 220, 220, 200);    // hoverColor
   } else if (inScale) {
     fillRGB = null;              // keep dark text; tint is subtle
-    fill(255, 200, 120, 30);     // warm scale-tone wash
+    p.fill(255, 200, 120, 30);     // warm scale-tone wash
   } else {
     fillRGB = null;              // transparent — use default dark text
-    fill(255, 255, 255, 0);      // notClicked
+    p.fill(255, 255, 255, 0);      // notClicked
   }
 
-  stroke(200);
-  strokeWeight(Math.max(0.5, r * 0.02));
+  p.stroke(200);
+  p.strokeWeight(Math.max(0.5, r * 0.02));
 
   // Draw hexagon with rounded corners
   const cornerRadius = r * 0.15;
@@ -716,7 +727,7 @@ function drawHexButton(btn, chordToneMap) {
     angle += STEP;
   }
 
-  beginShape();
+  p.beginShape();
   for (let i = 0; i < NUM_STEPS; i++) {
     const prev = verts[(i - 1 + NUM_STEPS) % NUM_STEPS];
     const curr = verts[i];
@@ -737,33 +748,33 @@ function drawHexButton(btn, chordToneMap) {
     const p2x = curr.x + dx2 * cornerRadius;
     const p2y = curr.y + dy2 * cornerRadius;
 
-    vertex(p1x, p1y);
-    quadraticVertex(curr.x, curr.y, p2x, p2y);
+    p.vertex(p1x, p1y);
+    p.quadraticVertex(curr.x, curr.y, p2x, p2y);
   }
-  endShape(CLOSE);
+  p.endShape(p.CLOSE);
 
   // Text: note name — choose color based on fill luminance for readability
-  noStroke();
+  p.noStroke();
   if (fillRGB) {
     // Relative luminance (ITU-R BT.601)
     const lum = 0.299 * fillRGB[0] + 0.587 * fillRGB[1] + 0.114 * fillRGB[2];
-    if (lum < 140) fill(255);          // dark background → white text
-    else fill(30);                     // light background → dark text
+    if (lum < 140) p.fill(255);          // dark background → white text
+    else p.fill(30);                     // light background → dark text
   } else {
-    fill(100);                         // transparent hex → default grey
+    p.fill(100);                         // transparent hex → default grey
   }
-  textAlign(CENTER, CENTER);
+  p.textAlign(p.CENTER, p.CENTER);
   const nameSize = Math.max(8, r * 0.33);
-  textSize(nameSize);
+  p.textSize(nameSize);
   if (functionalMode) {
     // Stack note name above, Roman numeral below.
-    text(btn.noteName, btn.x, btn.y - nameSize * 0.45);
+    p.text(btn.noteName, btn.x, btn.y - nameSize * 0.45);
     const romanSize = Math.max(6, nameSize * 0.6);
-    textSize(romanSize);
+    p.textSize(romanSize);
     const roman = ROMAN_NUMERALS[degreeForNote53(btn.note53)] || '';
-    text(roman, btn.x, btn.y + nameSize * 0.6);
+    p.text(roman, btn.x, btn.y + nameSize * 0.6);
   } else {
-    text(btn.noteName, btn.x, btn.y);
+    p.text(btn.noteName, btn.x, btn.y);
   }
 }
 
@@ -968,9 +979,6 @@ function hitTestAndPlay(cx, cy) {
   if (best) {
     best.active = true;
     playNote(best);
-    // Slide the chord panel back to its origin on the right
-    var cp = document.getElementById('chord-panel');
-    if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
   }
 }
 
@@ -1003,13 +1011,20 @@ function dragTest(cx, cy) {
   }
 }
 
-// Only allow keyboard interaction when on the hero section
+// Gate all keyboard input to the Keyboard scene being active. (Named isOnHero
+// for its origin in the standalone landing page; in the unified app the grid
+// fills its own scene rather than a hero section.)
 function isOnHero() {
-  return window.scrollY < window.innerHeight * 0.5;
+  return !window.ANIMA || window.ANIMA.getCurrentScene() === window.ANIMA.Scenes.KEYBOARD;
 }
 
-// Check if event is inside a UI panel (chord panel or ADSR)
+// Check if a pointer event landed inside a UI panel (chord panel) or the global
+// navigation menu — those clicks must not also trigger a hex note underneath.
 function isInsidePanel(ev) {
+  if (ev.target && ev.target.closest &&
+      ev.target.closest('#chord-panel, #audio-gui, #anima-menu-panel, #anima-menu-toggle, #anima-menu-overlay')) {
+    return true;
+  }
   var t = ev.target;
   while (t) {
     if (t.id === 'chord-panel' || t.id === 'audio-gui' || t.tagName === 'NAV') return true;
@@ -1060,44 +1075,19 @@ var idleTimer = null;
 var keyboardIsActive = false;
 var scrollLocked = false;
 
-function activateKeyboard() {
-  if (scrollLocked) return;
-  // Only crossfade when viewport is near the hero (top of page)
-  if (window.scrollY > window.innerHeight) return;
-
-  if (!keyboardIsActive) {
-    keyboardIsActive = true;
-    document.body.classList.add('keyboard-active');
-  }
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(deactivateKeyboard, timer_interval);
-}
+// In the unified app the SceneManager owns the body.keyboard-active class and
+// the scene's visibility, so the landing page's idle-crossfade/scroll behavior
+// is neutralized: activate is a no-op, deactivate only releases held notes.
+function activateKeyboard() { /* scene-managed; no-op */ }
 
 function deactivateKeyboard() {
-  // When the idle timer fires, always return to hero: close ADSR,
-  // slide chord panel back to its right-side hidden position, and
-  // let the hero content return.
-  var cp = document.getElementById('chord-panel');
-  var ag = document.getElementById('audio-gui');
-  if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
-  if (ag && !ag.classList.contains('hidden')) ag.classList.add('hidden');
   releaseAll();
-  keyboardIsActive = false;
-  document.body.classList.remove('keyboard-active');
 }
 
-// Any scroll deactivates keyboard, hides panels, and brings back the info
+// Scrolling has no meaning inside the full-screen scene — ignore it while the
+// Keyboard scene is active (guarding against stray scroll events bubbling up).
 window.addEventListener('scroll', function() {
-  if (keyboardIsActive) {
-    clearTimeout(idleTimer);
-    deactivateKeyboard();
-  }
-  // Hide chord panel and ADSR on scroll
-  var cp = document.getElementById('chord-panel');
-  var ag = document.getElementById('audio-gui');
-  if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
-  if (ag && !ag.classList.contains('hidden')) ag.classList.add('hidden');
-  scrollLocked = true;
+  if (isOnHero()) return;
 });
 
 // --- Computer keyboard input ---
@@ -1212,9 +1202,6 @@ document.addEventListener('keydown', function(ev) {
   pressedKeys.set(ev.code, rootBtn);
   playNote(rootBtn);
 
-  var cp = document.getElementById('chord-panel');
-  if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
-
   ev.preventDefault();
 });
 
@@ -1243,3 +1230,106 @@ if (logoEl) {
     if (ag) ag.classList.add('hidden');
   });
 }
+
+// ============================================================================
+// KEYBOARD SCENE — instance-mode p5 wrapper + scene contract
+// ----------------------------------------------------------------------------
+// keyboard.js renders through its OWN p5 instance (parented to #home) and its
+// own document-level mouse/touch/key listeners (gated by isOnHero() === the
+// Keyboard scene being active). The shared router only needs to start/stop this
+// instance and toggle container visibility — hence the no-op draw/mouse hooks.
+// ============================================================================
+let keyboardP5 = null;
+
+const keyboardSketch = (p) => {
+  kbP = p;
+  p.setup = () => kbSetup(p);
+  p.draw = () => kbDraw(p);
+  p.windowResized = () => kbWindowResized(p);
+};
+
+// Show/hide the chord menu. Exposed for the navigation menu's "Chord menu" item.
+window.toggleChordPanel = function () {
+  const cp = document.getElementById('chord-panel');
+  if (!cp) return;
+  if (cp.classList.contains('visible')) {
+    cp.classList.remove('visible');
+    cp.classList.add('hidden');
+  } else {
+    cp.classList.remove('hidden');
+    cp.classList.add('visible');
+  }
+};
+
+const KeyboardScene = {
+  // SceneManager.register() assigns .name; bodyClass drives both #keyboard-app
+  // visibility and the canvas opacity (see keyboard_style.css).
+  bodyClass: 'keyboard-active',
+
+  enter() {
+    // Hide the other scenes' containers. #keyboard-app itself is shown via
+    // body.keyboard-active (added by SceneManager) in keyboard_style.css.
+    const eigen = document.getElementById('eigenspace-app');
+    const modal = document.getElementById('modalstudio-app');
+    if (eigen) eigen.style.display = 'none';
+    if (modal) modal.style.display = 'none';
+
+    // Stop Plotly/modebar from intercepting clicks behind the keyboard.
+    const plot = document.getElementById('plot');
+    if (plot) plot.style.pointerEvents = 'none';
+    const modebar = document.querySelector('.modebar');
+    if (modebar) modebar.style.display = 'none';
+
+    // Resume the keyboard sketch and recompute layout (the window may have
+    // resized while the scene was hidden).
+    if (keyboardP5) {
+      keyboardP5.loop();
+      computeScale();
+    }
+    console.log('[ANIMA] Scene: Keyboard');
+  },
+
+  exit() {
+    // Pause the sketch and tuck the chord panel away so neither lingers over
+    // another scene.
+    if (keyboardP5) keyboardP5.noLoop();
+    const cp = document.getElementById('chord-panel');
+    if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
+    releaseAll();
+  },
+
+  // Rendering + input are handled by keyboardP5 and the document listeners above.
+  draw() { /* keyboardP5 draws itself */ },
+  mousePressed() {},
+  mouseDragged() {},
+  mouseReleased() {},
+  resize() { /* keyboardP5 has its own windowResized */ },
+  keyPressed() { /* keyboard.js has its own keydown listener */ },
+};
+
+// Expose to the router (anima.js registers it) — the only global this file leaks.
+window.KeyboardScene = KeyboardScene;
+
+// Create the keyboard p5 instance once #home exists, paused until the scene is
+// entered. Skipped on pages without #home (e.g. standalone modal_studio.html).
+function initKeyboardScene() {
+  if (keyboardP5 || !document.getElementById('home')) return;
+  keyboardP5 = new p5(keyboardSketch);
+  keyboardP5.noLoop();
+
+  // Wire the chord panel's close (×) button.
+  const closeBtn = document.getElementById('chord-panel-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      const cp = document.getElementById('chord-panel');
+      if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
+    });
+  }
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initKeyboardScene);
+} else {
+  initKeyboardScene();
+}
+
+})();

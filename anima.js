@@ -21,7 +21,8 @@
 // ============================================================================
 const Scenes = {
     EIGENSPACE: 0,
-    MODALSTUDIO: 1
+    MODALSTUDIO: 1,
+    KEYBOARD: 2
 };
 
 let currentScene = Scenes.EIGENSPACE;
@@ -64,6 +65,7 @@ const SceneManager = {
 
 SceneManager.register(Scenes.EIGENSPACE, EigenspaceScene);
 SceneManager.register(Scenes.MODALSTUDIO, ModalStudioScene);
+SceneManager.register(Scenes.KEYBOARD, KeyboardScene);
 
 // Thin wrapper kept for existing callers (nav buttons, window.ANIMA, init).
 function switchScene(newScene) {

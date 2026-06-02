@@ -35,6 +35,7 @@ Dissonance Visualization for Microtonal Harmony.MSCA Project 101203318.
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="modal_studio_style.css">
     <link rel="stylesheet" href="menu.css">
+    <link rel="stylesheet" href="keyboard_style.css">
 
     <!-- Load p5.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
@@ -111,9 +112,36 @@ Dissonance Visualization for Microtonal Harmony.MSCA Project 101203318.
         <div id="canvas-container"></div>
     </div>
 
+    <!-- KEYBOARD SCENE (53-TET Lumatone hex grid) -->
+    <div id="keyboard-app">
+        <div id="home"></div>
+        <aside id="chord-panel" class="hidden">
+            <div id="chord-panel-header">
+                <button id="single-note-btn" class="chord-btn">Single note</button>
+                <div id="chord-mode">
+                    <button id="mode-fixed-btn" class="chord-btn selected">Fixed</button>
+                    <button id="mode-functional-btn" class="chord-btn">Functional</button>
+                </div>
+                <button id="chord-panel-close" aria-label="Close chord menu">&times;</button>
+            </div>
+            <div id="chord-fundamental-section" style="display:none;">
+                <div class="ext-section">
+                    <span class="ext-label">Fundamental</span>
+                    <div id="chord-fundamental"></div>
+                </div>
+            </div>
+            <div id="chord-triads"></div>
+            <div id="chord-sus"></div>
+            <table id="chord-grid"><thead><tr></tr></thead><tbody></tbody></table>
+            <div class="ext-section"><span class="ext-label">9ths</span><div id="chord-9ths"></div></div>
+            <div class="ext-section"><span class="ext-label">11ths</span><div id="chord-11ths"></div></div>
+        </aside>
+    </div>
+
     <!-- Scene modules load before the router -->
     <script src="eigenspace.js"></script>
     <script src="modal_studio_app.js"></script>
+    <script src="keyboard.js"></script>
     <!-- Load ANIMA router LAST - after DOM is ready -->
     <script src="anima.js"></script>
     <!-- Navigation menu (reads window.ANIMA, so it loads after the router) -->
