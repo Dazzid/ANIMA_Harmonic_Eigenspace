@@ -68,7 +68,11 @@ body.scene-modalstudio canvas {
 }
 
 /* Standard Button Styling */
-body.scene-modalstudio button {
+/* The ANIMA navigation menu (#anima-menu-toggle + .anima-menu-item) is excluded:
+   it must look identical in every scene (its design is owned by menu.css). Without
+   the :not()s this blanket rule out-specifies menu.css and recolors the menu in
+   Modal Studio. */
+body.scene-modalstudio button:not(#anima-menu-toggle):not(.anima-menu-item) {
     background-color: var(--button-not-clicked);
     color: var(--button-text);
     border: var(--button-border-width) solid var(--button-border);
@@ -82,7 +86,7 @@ body.scene-modalstudio button {
     margin: 2px;
 }
 
-body.scene-modalstudio button:hover {
+body.scene-modalstudio button:not(#anima-menu-toggle):not(.anima-menu-item):hover {
     background-color: var(--button-hover);
 }
 

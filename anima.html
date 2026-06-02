@@ -33,6 +33,7 @@ Dissonance Visualization for Microtonal Harmony.MSCA Project 101203318.
     <!-- Load BOTH CSS files - switch will be handled by showing/hiding containers -->
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="modal_studio_style.css">
+    <link rel="stylesheet" href="menu.css">
     
     <!-- Load p5.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
@@ -71,6 +72,8 @@ Dissonance Visualization for Microtonal Harmony.MSCA Project 101203318.
     <script src="modal_studio_app.js"></script>
     <!-- Load ANIMA router LAST (SceneManager + p5 sketch + DOM wiring) -->
     <script src="anima.js"></script>
+    <!-- Navigation menu (reads window.ANIMA, so it loads after the router) -->
+    <script src="menu.js"></script>
 </head>
 
 <body>

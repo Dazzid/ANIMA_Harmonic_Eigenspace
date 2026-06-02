@@ -73,9 +73,16 @@ const createGridSketch = (p) => {
             // Position within canvas (centered)
             this.x = (canvasWidth - this.totalWidth) / 2;
             this.y = 50; // Below title
-            // Mute button dimensions and position (top-right corner of grid panel)
-            this.muteButtonSize = 24;
-            this.muteButtonX = this.x + this.totalWidth - this.muteButtonSize + 5;
+            // Top-right control buttons (close + mute). Close sits in the corner;
+            // mute sits immediately to its left.
+            this.buttonSize = 24;
+            this.buttonGap = 6;
+            this.closeButtonSize = this.buttonSize;
+            this.closeButtonX = this.x + this.totalWidth - this.closeButtonSize + 5;
+            this.closeButtonY = this.y - 35;
+            this.closeButtonHovered = false;
+            this.muteButtonSize = this.buttonSize;
+            this.muteButtonX = this.closeButtonX - this.buttonGap - this.muteButtonSize;
             this.muteButtonY = this.y - 35;
             this.muteButtonHovered = false;
             // Storage: 8x8 array of chord objects
@@ -109,9 +116,10 @@ const createGridSketch = (p) => {
             p.textFont('Source Code Pro');
             p.text('Chord Memory', this.x + this.totalWidth / 2, this.y - 20);
 
-            // Draw mute button at top-right corner
+            // Draw close + mute buttons at top-right corner
             this.drawMuteButton(p);
-            
+            this.drawCloseButton(p);
+
             // Draw grid cells
             for (let row = 0; row < this.gridSize; row++) {
                 for (let col = 0; col < this.gridSize; col++) {
@@ -139,7 +147,7 @@ const createGridSketch = (p) => {
             
             // Button background
             if (gridMuted) {
-                p.fill(255, 100, 50, this.muteButtonHovered ? 255 : 200);
+                p.fill(0, 0, 50, this.muteButtonHovered ? 255 : 200);
             } else {
                 p.fill(50, 50, 50, this.muteButtonHovered ? 220 : 180);
             }
@@ -154,7 +162,33 @@ const createGridSketch = (p) => {
             p.textSize(12);
             p.text(gridMuted ? '🔇' : '🔊', this.muteButtonX + this.muteButtonSize / 2, this.muteButtonY + this.muteButtonSize / 2);
         }
-        
+
+        drawCloseButton(p) {
+            const cx = this.closeButtonX + this.closeButtonSize / 2;
+            const cy = this.closeButtonY + this.closeButtonSize / 2;
+
+            // Hover hit-test (circular, matching the mute button)
+            const mouseDist = p.dist(p.mouseX, p.mouseY, cx, cy);
+            this.closeButtonHovered = mouseDist < this.closeButtonSize / 2;
+
+            // Button background — reddish on hover so it reads as "close"
+            if (this.closeButtonHovered) {
+                p.fill(229, 57, 53, 230);
+            } else {
+                p.fill(50, 50, 50, 180);
+            }
+            p.stroke(255, 255, 255, this.closeButtonHovered ? 100 : 20);
+            p.strokeWeight(1);
+            p.rect(this.closeButtonX, this.closeButtonY, this.closeButtonSize, this.closeButtonSize, 4);
+
+            // X glyph (drawn with lines — crisper than a text character)
+            const r = 5;
+            p.stroke(255);
+            p.strokeWeight(2);
+            p.line(cx - r, cy - r, cx + r, cy + r);
+            p.line(cx - r, cy + r, cx + r, cy - r);
+        }
+
         drawCell(p, row, col) {
             const x = this.x + col * (this.cellSize + this.cellPadding);
             const y = this.y + row * (this.cellSize + this.cellPadding);
@@ -263,6 +297,12 @@ const createGridSketch = (p) => {
         }
         
         handleClick(p) {
+            // Check if close button was clicked
+            if (this.closeButtonHovered) {
+                hideChordGrid();
+                return true;
+            }
+
             // Check if mute button was clicked
             if (this.muteButtonHovered) {
                 gridMuted = !gridMuted;
@@ -525,13 +565,28 @@ function setupGridToggleButton() {
             gridToggleBtn.textContent = 'Hide Grid';
         } else {
             // Hide grid
-            container.style.display = 'none';
-            gridToggleBtn.textContent = 'Chord Grid';
+            hideChordGrid();
         }
     });
     document.body.appendChild(gridToggleBtn);
     console.log('Grid toggle button created');
 }
+
+// Hide the Chord Memory grid. Shared by the toggle button's hide branch and the
+// in-canvas close (X) button so the toggle label — which the menu reads to show
+// the "Memory: Chord Grid" active state — always stays in sync.
+function hideChordGrid() {
+    const container = document.getElementById('grid-container');
+    if (container) container.style.display = 'none';
+    if (gridToggleBtn) gridToggleBtn.textContent = 'Chord Grid';
+}
+
+// Toggle the Chord Memory grid. Delegates to the toggle button so the full
+// show/hide logic (p5 init, prepare-last-chord, label sync) runs in one place.
+// Exposed for the Shift+M shortcut (key_map.js) and any other caller.
+window.toggleChordGrid = function () {
+    if (gridToggleBtn) gridToggleBtn.click();
+};
 
 function setupGridMuteButton() {
     // Mute button is now drawn directly in the canvas - no HTML element needed

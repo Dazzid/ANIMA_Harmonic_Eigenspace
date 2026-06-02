@@ -19,7 +19,18 @@ Both run on top of p5.js. Audio uses Web Audio + p5.sound. Plotly drives the Eig
 - `anima.html` — alternate entry. **Identical local script list to index.html — keep the two in sync** when adding/removing scripts.
 - `modal_studio.html` — standalone Modal Studio entry (uses `modal_studio_main.js` + `modal_studio_sketch.js` instead of `anima.js`). Independent of the unified app.
 
-Local dev server: `python3 -m http.server 8000` → http://localhost:8000/ (check port: `lsof -i :8000 -sTCP:LISTEN`; stop: `kill <PID>`). See §8 for deploy.
+### Run locally
+
+```bash
+# from the repo root
+python3 -m http.server 8000
+```
+
+Then open:
+- http://localhost:8000/ — main entry (`index.html`)
+- http://localhost:8000/anima.html — alternate entry
+
+Port already in use? Check `lsof -i :8000 -sTCP:LISTEN`, stop with `kill <PID>`, or pick another port (`python3 -m http.server 8080`). A static server is required — opening the HTML via `file://` breaks the `fetch()` dataset loads. See §8 for deploy.
 
 ## 3. File map
 

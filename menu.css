@@ -1,0 +1,215 @@
+/* ============================================================================
+   ANIMA NAVIGATION MENU
+   ----------------------------------------------------------------------------
+   Hamburger toggle (top-right) + slide-in panel from the right. Replaces the
+   scattered per-scene top-right buttons; built scene-aware in menu.js. Styled
+   as a dark glass panel so it reads over both the dark EigenSpace and the light
+   Modal Studio backgrounds.
+   © 2025 David Dalmazzo. All Rights Reserved.
+   ============================================================================ */
+
+/* Hide the legacy scattered controls — the menu replaces them. !important beats
+   the inline display:flex/none that each scene's enter() sets on these. The
+   elements stay in the DOM so menu.js can reuse their handlers via .click(). */
+#viz-mode-toggle,
+#nav-to-modalstudio,
+#grid-toggle,
+#midi-toggle,
+#info-button,
+#scene-controls {
+    display: none !important;
+}
+
+/* ---- Hamburger toggle ---------------------------------------------------- */
+#anima-menu-toggle {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    background: rgba(18, 20, 28, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    cursor: pointer;
+    z-index: 10050;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+#anima-menu-toggle:hover {
+    background: rgba(28, 32, 44, 0.7);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+#anima-menu-toggle span {
+    display: block;
+    flex: 0 0 auto; /* never let flexbox shrink one bar more than another */
+    width: 22px;
+    height: 3px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.92);
+    transition: transform 0.28s ease, opacity 0.2s ease;
+}
+
+/* Morph the three bars into an X while the panel is open.
+   Offset = bar height (3) + gap (5) = 8px, so the outer bars meet in the middle. */
+#anima-menu-toggle.open span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+#anima-menu-toggle.open span:nth-child(2) {
+    opacity: 0;
+}
+#anima-menu-toggle.open span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+}
+
+/* ---- Click-catcher ------------------------------------------------------ */
+/* Transparent on purpose: a menu is just a menu, so the scene behind it is
+   neither dimmed nor blurred. This layer only exists so a click outside the
+   panel closes it. */
+#anima-menu-overlay {
+    position: fixed;
+    inset: 0;
+    background: transparent;
+    visibility: hidden;
+    z-index: 10048;
+}
+
+#anima-menu-overlay.open {
+    visibility: visible;
+}
+
+/* ---- Slide-in panel ------------------------------------------------------ */
+#anima-menu-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 320px;
+    max-width: 86vw;
+    box-sizing: border-box;
+    padding: 22px 20px 32px;
+    /* Matches the Modal Studio scene's actual rendered canvas background
+       (OfApp.darkBackground = [230, 229, 228] in modal_studio_app.js). */
+    background: rgb(230, 229, 228);
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: -12px 0 40px rgba(0, 0, 0, 0.35);
+    transform: translateX(100%);
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    z-index: 10049;
+    overflow-y: auto;
+    font-family: 'Source Code Pro', monospace;
+    color: rgb(40, 40, 40);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+#anima-menu-panel.open {
+    transform: translateX(0);
+}
+
+.anima-menu-title {
+    font-size: 13px;
+    letter-spacing: 3px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: rgba(40, 40, 40, 0.55);
+    margin: 4px 4px 22px;
+}
+
+.anima-menu-section {
+    margin-bottom: 22px;
+}
+
+.anima-menu-section-title {
+    font-size: 11px;
+    letter-spacing: 2px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: rgba(0, 111, 229, 0.95);
+    padding: 0 8px 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    margin-bottom: 8px;
+}
+
+.anima-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    background: rgba(0, 111, 229, 0.8); /* the blue from the original buttons */
+    border: none;
+    border-radius: 5px;
+    color: #fff;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 14px;
+    padding: 11px 12px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.anima-menu-item:hover {
+    background: rgba(0, 111, 229, 1);
+}
+
+.anima-menu-item .anima-menu-icon {
+    width: 18px;
+    text-align: center;
+    opacity: 0.85;
+    flex: 0 0 auto;
+}
+
+.anima-menu-item .anima-menu-label {
+    flex: 1 1 auto;
+}
+
+/* Active scene indicator — full-strength blue + a dot */
+.anima-menu-item.active {
+    background: rgba(0, 111, 229, 1);
+    box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.85);
+}
+.anima-menu-item.active .anima-menu-label::after {
+    content: "●";
+    margin-left: 8px;
+    font-size: 9px;
+    color: rgba(255, 255, 255, 0.95);
+    vertical-align: middle;
+}
+
+/* Disabled / coming-soon items — muted, not blue */
+.anima-menu-item.disabled {
+    cursor: default;
+    background: rgba(0, 0, 0, 0.06);
+    color: rgba(40, 40, 40, 0.45);
+}
+.anima-menu-item.disabled:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+/* Badge on a blue (enabled) item; the disabled-item override follows. */
+.anima-menu-badge {
+    margin-left: auto;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+}
+.anima-menu-item.disabled .anima-menu-badge {
+    background: rgba(0, 0, 0, 0.1);
+    color: rgba(40, 40, 40, 0.55);
+}

@@ -386,6 +386,29 @@ document.addEventListener('keydown', (event) => {
 
     // console.log(`[key_map] Key pressed: '${key}' (shiftKey: ${event.shiftKey})`);
 
+    // EigenSpace-only shortcuts:
+    //   Shift+M — toggle the Chord Memory grid
+    //   Shift+L — toggle the Layered / Full 3D view
+    // Handled before the note-key block below so the letters don't also trigger notes.
+    if (event.shiftKey) {
+        const inEigenspace = !window.ANIMA
+            || window.ANIMA.getCurrentScene() === window.ANIMA.Scenes.EIGENSPACE;
+        const shifted = key.toLowerCase();
+        if (inEigenspace && shifted === 'm' && typeof window.toggleChordGrid === 'function') {
+            event.preventDefault();
+            window.toggleChordGrid();
+            return;
+        }
+        if (inEigenspace && shifted === 'l') {
+            const vizToggle = document.getElementById('viz-mode-toggle');
+            if (vizToggle) {
+                event.preventDefault();
+                vizToggle.click();
+                return;
+            }
+        }
+    }
+
     // Check for octave shift keys
     // < = octave down
     // > = octave up
