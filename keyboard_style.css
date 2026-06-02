@@ -1,0 +1,417 @@
+#home canvas {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+body.keyboard-active #home canvas {
+  opacity: 1;
+}
+
+.keyboard-note {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  max-width: 90vw;
+  text-align: center;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary, #666);
+  background: rgba(246, 246, 246, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 20px;
+  padding: 14px 36px 12px 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  z-index: 105;
+}
+.keyboard-note-close {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  background: rgb(248, 248, 248);
+  color: #1f1f1f;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+.keyboard-note-close:hover {
+  background: #ffbc1f;
+}
+.keyboard-note-title {
+  margin-bottom: 6px;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--text-primary, #1f1f1f);
+}
+.keyboard-note-subtitle {
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #666);
+}
+.keyboard-note-cta {
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #666);
+}
+.keyboard-note-title a,
+.keyboard-note-cta a {
+  display: inline-block;
+  color: var(--accent, #ff7300);
+  background: rgba(246, 246, 246, 0.9);
+  border: 1px solid var(--accent, #ff7300);
+  border-radius: 20px;
+  padding: 3px 12px;
+  margin-left: 4px;
+  font-size: 0.82rem;
+  text-decoration: none;
+  pointer-events: auto;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.keyboard-note-title a:hover,
+.keyboard-note-cta a:hover {
+  background: var(--accent, #ff7300);
+  color: #fff;
+}
+.keyboard-note-hints {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #888);
+}
+.keyboard-note-hints strong {
+  color: var(--text-primary, #1f1f1f);
+  font-weight: 500;
+  margin-right: 4px;
+}
+body.keyboard-active .keyboard-note {
+  opacity: 1;
+  pointer-events: auto;
+}
+body.note-dismissed .keyboard-note {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Info reopen button (bottom-left) shown when note is dismissed */
+.keyboard-note-reopen {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 106;
+  background: rgba(246, 246, 246, 0.9);
+  backdrop-filter: blur(8px);
+  color: var(--text-primary, #1f1f1f);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, background 0.2s ease;
+}
+.keyboard-note-reopen:hover {
+  background: rgba(255, 255, 255, 1);
+}
+body.keyboard-active.note-dismissed .keyboard-note-reopen {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (max-width: 480px) {
+  .keyboard-note {
+    font-size: 0.8rem;
+    bottom: 12px;
+    padding: 12px 30px 10px 14px;
+  }
+  .keyboard-note-title {
+    font-size: 0.9rem;
+  }
+  .keyboard-note-subtitle,
+  .keyboard-note-cta {
+    font-size: 0.78rem;
+  }
+  .keyboard-note-hints {
+    font-size: 0.72rem;
+    gap: 4px 10px;
+  }
+  .keyboard-note-reopen {
+    font-size: 0.75rem;
+    padding: 5px 12px;
+  }
+}
+#audio-gui {
+  position: fixed;
+  top: 75px;
+  left: 10px;
+  z-index: 110;
+  transition: opacity 0.5s ease;
+}
+#audio-gui.hidden {
+  display: none;
+}
+.nav-audio-btn {
+  background: none;
+  color: var(--text-secondary, #666);
+  border: none;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 400;
+  padding: 0;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: color 0.3s;
+}
+.nav-audio-btn:hover {
+  color: var(--accent, #ff7300);
+}
+/* Hide audio buttons when scrolled away from hero */
+.nav-audio-btn.nav-hidden {
+  display: none;
+}
+#chord-panel {
+  /* Master size for chord buttons and grid labels — tweak to test. */
+  --chord-font-size: 16px;
+  position: fixed;
+  top: 55px;
+  right: 0;
+  bottom: 0;
+  width: min(820px, 95vw);
+  z-index: 120;
+  background: rgba(246, 246, 246, 0.97);
+  backdrop-filter: blur(20px);
+  border-left: 1px solid var(--border, #e0e0e0);
+  padding: 20px;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.35s ease;
+}
+#chord-panel.visible {
+  transform: translateX(0);
+}
+#chord-panel.hidden {
+  transform: translateX(100%);
+}
+#chord-panel-header {
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#chord-panel-close {
+  background: rgb(231, 231, 231);
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  color: #1f1f1f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+#chord-panel-close:hover {
+  background: rgb(202, 202, 202);
+}
+#chord-triads {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+  flex: 1;
+}
+#chord-sus {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.ext-section {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ext-label {
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  color: #555;
+  white-space: nowrap;
+  min-width: 52px;
+}
+#chord-9ths, #chord-11ths,
+#chord-mode, #chord-fundamental {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.chord-btn {
+  background: #eaeaea;
+  color: #1f1f1f;
+  border: 1px solid #ffffff;
+  font-family: 'Fira Code', monospace;
+  font-size: var(--chord-font-size, 15px);
+  padding: 8px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  min-width: 52px;
+  text-align: center;
+}
+.chord-btn:hover {
+  background: #ffc853;
+  color: #fff;
+}
+.chord-btn.selected {
+  background: #ffaa00;
+  color: #fff;
+  border-color: #ffffff;
+}
+.chord-btn:disabled,
+.chord-btn.disabled {
+  background: #f3f3f3;
+  color: #b0b0b0;
+  cursor: not-allowed;
+}
+.chord-btn:disabled:hover,
+.chord-btn.disabled:hover {
+  background: #f3f3f3;
+  color: #b0b0b0;
+}
+#chord-grid {
+  border-collapse: separate;
+  border-spacing: 2px;
+  table-layout: fixed;
+  width: 100%;
+}
+#chord-grid th, #chord-grid td {
+  padding: 5;
+}
+#chord-grid th {
+  color: #343434;
+  font-size: var(--chord-font-size, 15px);
+  font-weight: 400;
+  padding: 3px 5px;
+  text-align: center;
+}
+#chord-grid thead th:first-child {
+  width: 36px;
+}
+#chord-grid tbody th {
+  text-align: right;
+  padding-right: 8px;
+  font-size: var(--chord-font-size, 15px);
+}
+#chord-grid td button {
+  width: 100%;
+  background: #eaeaea;
+  color: #1f1f1f;
+  border: 1px solid #ffffff;
+  font-family: 'Fira Code', monospace;
+  font-size: var(--chord-font-size, 15px);
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 8px 4px;
+  text-align: center;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+#chord-grid td button:hover {
+  background: #ffc853;
+  color: #fff;
+}
+#chord-grid td button.selected {
+  background: #ffaa00;
+  color: #fff;
+  border-color: #ffffff;
+}
+
+/* --- Mobile / small screens --- */
+@media (max-width: 768px) {
+  #chord-panel {
+    width: 100%;
+    padding: 16px 12px;
+    font-size: 10px;
+  }
+  #chord-triads {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+  }
+  .chord-btn {
+    font-size: 9px;
+    padding: 3px 4px;
+    min-width: 0;
+  }
+  #chord-grid {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-spacing: 1px;
+  }
+  #chord-grid td button {
+    font-size: 9px;
+    min-width: 44px;
+    padding: 3px 4px;
+  }
+  #chord-grid th {
+    font-size: 9px;
+    padding: 2px 3px;
+  }
+  #chord-grid tbody th {
+    padding-right: 4px;
+    font-size: 9px;
+  }
+  .ext-label {
+    font-size: 9px;
+    min-width: 40px;
+  }
+  #audio-gui {
+    top: 5px;
+    left: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  #chord-triads {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .chord-btn {
+    font-size: 8px;
+    padding: 3px 2px;
+  }
+  #chord-grid td button {
+    font-size: 8px;
+    min-width: 38px;
+    padding: 3px 2px;
+  }
+  #chord-grid th, #chord-grid tbody th {
+    font-size: 8px;
+  }
+}

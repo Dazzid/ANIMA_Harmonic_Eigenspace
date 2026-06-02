@@ -1,0 +1,1245 @@
+// ============================================================================
+// LUMATONE 53-TET WEB — Faithful port from C++ (LumaButton.cpp/.hpp)
+// Hex grid coordinates computed from XML, positions calculated mathematically
+// ============================================================================
+
+let noteData = [];       // frequency lookup from JSON
+let xmlButtons = [];     // 280 hex buttons parsed from XML (persistent)
+let gridButtons = [];    // all visible hex buttons (XML + generated extras)
+let audioCtx = null;
+let masterGain = null;
+let dryGain = null;
+let wetGain = null;
+let convolver = null;
+
+// Hexagon drawing parameters (from C++ LumaButton.hpp)
+const NUM_STEPS = 6;
+const STEP = (2 * Math.PI) / NUM_STEPS;
+const START_ANGLE = 0.23666665; // exact value from C++ code
+
+// Hex grid angle — derived from the original layout's basis vector a ≈ (50, -13)
+const HEX_ANGLE = Math.atan2(-13, 50); // ≈ -0.2545 rad
+
+// Inverse basis matrix for computing grid coords from original XML positions
+// Original basis vectors: a ≈ (50, -13), b ≈ (14, -49)
+// M = [[50, 14], [-13, -49]], det(M) = 50×(-49) - 14×(-13) = -2268
+const GRID_REF_X = 88;   // reference origin X (button ID 2)
+const GRID_REF_Y = 250;  // reference origin Y (button ID 2)
+const GRID_DET = 2268;
+
+// Scaling state
+let scaledRadius = 10;
+const MIN_RADIUS = 32; // minimum hex size for mobile usability
+const MAX_RADIUS = 45; // maximum hex size cap
+
+//Timer
+const timer_interval = 5000; // ms
+
+// Global pitch shift applied to every hex, in 53-TET steps.
+// -53 = one octave down, +53 = one octave up.
+const OCTAVE_SHIFT = -52;
+
+// Chord tone colors: root, third, fifth, seventh, ninth, eleventh
+const CHORD_COLORS = [
+  [255, 170, 0],
+  [110, 200, 0],
+  [0, 200, 255],
+  [255, 72, 0],
+  [255, 172, 56],
+  [165, 201, 56],
+];
+
+// --- 53-TET Chord definitions ---
+// Each chord: { name, intervals: [steps from root in 53-TET] }
+// r(n) = 2^(n/53) frequency ratio — computed at playback time
+const CHORDS_53TET = (function() {
+  const chords = [{ name: 'Single note', intervals: [0] }];
+
+  // Triads: root + third + fifth(31)
+  const thirds = [
+    [20,'SM'],[19,'^M'],[18,'M'],[17,'vM'],[16,'N'],
+    [15,'n'],[14,'^m'],[13,'m'],[12,'vm'],[11,'sm']
+  ];
+  for (const [s3, n3] of thirds) {
+    chords.push({ name: `${n3} triad`, intervals: [0, s3, 31] });
+  }
+
+  // Seventh chords: root + third + fifth(31) + seventh
+  const sevenths = [
+    [51,'SM'],[50,'^M'],[49,'maj'],[48,'vM'],[47,'N'],
+    [46,'n'],[45,'^m'],[44,'m'],[43,'vm'],[42,'sm']
+  ];
+  for (const [s3, n3] of thirds) {
+    for (const [s7, n7] of sevenths) {
+      chords.push({ name: `${n3}${n7}7`, intervals: [0, s3, 31, s7] });
+    }
+  }
+
+  // Sus chords
+  chords.push({ name: '7sus4', intervals: [0, 22, 31, 44], isSus: true });
+  chords.push({ name: 'sus2',  intervals: [0, 9, 22, 31], isSus: true });
+
+  return chords;
+})();
+
+let selectedChord = CHORDS_53TET[0]; // default: single note
+
+// --- Functional Disposition mode ---
+// In Functional mode, a hex's chord quality is derived from its degree in the
+// major scale rooted at functionalFundamental, instead of using fixed
+// intervals. Letter (C,D,E,F,G,A,B) determines degree; sharps stay with their
+// root letter, flats fall to their letter (Bb→B, Eb→E, Ab→A, Db→D, Gb→G).
+let functionalMode = false;
+const LETTER_TO_INDEX = { C:0, D:1, E:2, F:3, G:4, A:5, B:6 };
+const ROMAN_NUMERALS = ['I','II','III','IV','V','VI','VII'];
+// The hex's note53 (XML <note53>, equivalent to (Reference − REF_ORIGIN) mod 53,
+// REF_ORIGIN=62) differs from the JSON's note53 (json.reference mod 53)
+// because each hex displays the JSON note at hex.reference + OCTAVE_SHIFT.
+// Combining: hex.note53 = (json.note53 − REF_ORIGIN − OCTAVE_SHIFT) mod 53
+//          = (json.note53 − 62 − (−52)) mod 53 = (json.note53 − 10) mod 53.
+// (REF_ORIGIN is declared later in the file; we inline 62 here so this can
+// run at module-init time.)
+function jsonNote53ToHex(n) {
+  return (((n - 62 - OCTAVE_SHIFT) % 53) + 53) % 53;
+}
+// note53 anchors for natural pitches (hex-side), used by the fundamental
+// selector. JSON note53: A=0,B=9,C=13,D=22,E=31,F=35,G=44.
+const NATURAL_NOTE53 = [
+  { name:'C', note53: jsonNote53ToHex(13) },
+  { name:'D', note53: jsonNote53ToHex(22) },
+  { name:'E', note53: jsonNote53ToHex(31) },
+  { name:'F', note53: jsonNote53ToHex(35) },
+  { name:'G', note53: jsonNote53ToHex(44) },
+  { name:'A', note53: jsonNote53ToHex(0)  },
+  { name:'B', note53: jsonNote53ToHex(9)  }
+];
+let functionalFundamental = jsonNote53ToHex(13); // C
+let functionalDegreeMap = new Array(53);   // hex note53 → letter index 0..6
+let functionalDegreeChords = [];           // 7 entries: { triad, seventh, ninth, eleventh }
+let functionalScaleSet = new Set();        // hex note53 values in the active scale
+
+// Chord name lookup tables
+const THIRD_NAMES = ['SM','^M','M','vM','N','n','^m','m','vm','sm'];
+const THIRD_STEPS = [20, 19, 18, 17, 16, 15, 14, 13, 12, 11];
+const SEVENTH_NAMES = ['SM','^M','maj','vM','N','n','^m','m','vm','sm'];
+const SEVENTH_STEPS = [51, 50, 49, 48, 47, 46, 45, 44, 43, 42];
+
+// 9ths = compound 2nds (octave + 2nd). M = Pythagorean major 9th (53 + 9 = 62, e.g. D above C).
+const NINTH_NAMES = ['SM','^M','M','vM','N','n','^m','m','vm','sm'];
+const NINTH_STEPS  = [64, 63, 62, 61, 60, 59, 58, 57, 56, 55];
+
+// 11ths = compound 4ths (octave + 4th). M = Pythagorean/Lydian major 11th
+// (+6 fifths − 2 oct, 53 + 27 = 80, e.g. F# above C, the #11).
+// m (= 75) is the perfect 11th (53 + 22, e.g. F above C).
+const ELEVENTH_NAMES = ['SM','^M','M','vM','N','n','^m','m','vm','sm'];
+const ELEVENTH_STEPS  = [82, 81, 80, 79, 78, 77, 76, 75, 74, 73];
+
+// Extension state: null = off, otherwise a step value
+let selected9th = null;
+let selected11th = null;
+
+// Strip octave digits and v/^ accidental modifiers, return the bare letter (C..B).
+function letterOf(noteName) {
+  if (!noteName) return null;
+  let i = 0;
+  while (i < noteName.length && (noteName[i] === '^' || noteName[i] === 'v')) i++;
+  return noteName[i] || null;
+}
+
+// Build functionalDegreeMap[hexNote53] = letter index 0..6, derived from
+// noteData. The hex's note53 is shifted from the JSON's by -OCTAVE_SHIFT, so
+// the letter we read off the JSON entry must be assigned to the corresponding
+// hex-side note53 (otherwise "C" would be off by one column on the grid).
+function buildDegreeMap() {
+  if (!noteData || !noteData.length) return;
+  const seen = new Array(53);
+  for (const n of noteData) {
+    const hexNote53 = jsonNote53ToHex(((n.reference % 53) + 53) % 53);
+    if (seen[hexNote53]) continue;
+    const L = letterOf(n.noteName);
+    if (L != null && LETTER_TO_INDEX[L] !== undefined) {
+      functionalDegreeMap[hexNote53] = LETTER_TO_INDEX[L];
+      seen[hexNote53] = true;
+    }
+  }
+}
+
+// Default major scale intervals from the fundamental, used when no modal
+// chord is selected (single-note, sus).
+const DEFAULT_SCALE_INTERVALS = [0, 9, 18, 22, 31, 40, 49];
+
+// Derive a 7-tone modal scale (intervals from root) from a chord that defines
+// a clear mode. Returns null for chords that do not (sus, single note).
+//
+// Rule (consistent with the user's examples 9 9 4 9 9 9 4, 9 7 6 9 7 9 6,
+// 9 10 3 9 10 9 3): scale = [0, 9, third, 22, 31, seventh-9, seventh].
+// For a triad (no explicit 7th), pair the 3rd with its symmetric 7th = 3rd+31
+// — a perfect fifth stacked on top of the third — which yields the standard
+// major/minor/etc. mode for each triad quality.
+function getModalScaleFromChord(chord) {
+  if (!chord || chord.isSus) return null;
+  let third, seventh;
+  if (chord.intervals.length === 4) {
+    third = chord.intervals[1];
+    seventh = chord.intervals[3];
+  } else if (chord.intervals.length === 3) {
+    third = chord.intervals[1];
+    seventh = third + 31;
+  } else {
+    return null; // single note
+  }
+  return [0, 9, third, 22, 31, seventh - 9, seventh];
+}
+
+// Build functionalDegreeChords for the given fundamental, using the scale
+// implied by the currently-selected chord (or the major default if the chord
+// does not define a mode).
+function buildFunctionalChords(fundamental) {
+  const intervals = getModalScaleFromChord(selectedChord) || DEFAULT_SCALE_INTERVALS;
+  const scale = intervals.map(iv => ((fundamental + iv) % 53 + 53) % 53);
+  functionalScaleSet = new Set(scale);
+  functionalDegreeChords = [];
+  for (let d = 0; d < 7; d++) {
+    const root = scale[d];
+    const third    = ((scale[(d+2)%7] - root) % 53 + 53) % 53;
+    const fifth    = ((scale[(d+4)%7] - root) % 53 + 53) % 53;
+    const seventh  = ((scale[(d+6)%7] - root) % 53 + 53) % 53;
+    const ninth    = (((scale[(d+1)%7] - root) % 53 + 53) % 53) + 53;
+    const eleventh = (((scale[(d+3)%7] - root) % 53 + 53) % 53) + 53;
+    functionalDegreeChords.push({
+      triad:    [0, third, fifth],
+      seventh:  [0, third, fifth, seventh],
+      ninth, eleventh
+    });
+  }
+}
+
+// Degree of a note relative to the current fundamental's letter (0..6).
+function degreeForNote53(note53) {
+  const noteLetterIdx = functionalDegreeMap[note53];
+  const fundLetterIdx = functionalDegreeMap[functionalFundamental];
+  if (noteLetterIdx == null || fundLetterIdx == null) return 0;
+  return (noteLetterIdx - fundLetterIdx + 7) % 7;
+}
+
+// Set the selected chord and (in functional mode) refresh the derived scale
+// only when the chord actually defines a mode — single-note and sus
+// preserve the previous functional scale.
+function setSelectedChord(chord) {
+  selectedChord = chord;
+  if (functionalMode && getModalScaleFromChord(chord)) {
+    buildFunctionalChords(functionalFundamental);
+  }
+}
+
+function getActiveIntervals(btn) {
+  if (functionalMode && btn && functionalDegreeChords.length === 7) {
+    const dc = functionalDegreeChords[degreeForNote53(btn.note53)];
+    let intervals;
+    if (selectedChord.intervals.length === 1) {
+      intervals = [0];
+    } else if (selectedChord.isSus || selectedChord.intervals.length === 3) {
+      intervals = [...dc.triad];
+    } else {
+      intervals = [...dc.seventh];
+    }
+    if (selected9th !== null) intervals.push(dc.ninth);
+    if (selected11th !== null) intervals.push(dc.eleventh);
+    return intervals;
+  }
+  const intervals = [...selectedChord.intervals];
+  if (selected9th !== null) intervals.push(selected9th);
+  if (selected11th !== null) intervals.push(selected11th);
+  return intervals;
+}
+
+function buildChordPanel() {
+  const panel = document.getElementById('chord-panel');
+
+  // Single note button
+  document.getElementById('single-note-btn').addEventListener('click', function() {
+    clearSelection();
+    this.classList.add('selected');
+    setSelectedChord(CHORDS_53TET[0]);
+  });
+
+  // --- Mode toggle (Fixed / Functional) ---
+  const modeFixedBtn = document.getElementById('mode-fixed-btn');
+  const modeFunctionalBtn = document.getElementById('mode-functional-btn');
+  const fundSection = document.getElementById('chord-fundamental-section');
+  function setMode(useFunctional) {
+    functionalMode = !!useFunctional;
+    modeFixedBtn.classList.toggle('selected', !functionalMode);
+    modeFunctionalBtn.classList.toggle('selected', functionalMode);
+    fundSection.style.display = functionalMode ? '' : 'none';
+    // Sus chords don't define a clear mode, so they're disallowed in
+    // Functional mode — disable their buttons (re-enable when leaving).
+    document.querySelectorAll('#chord-sus .sus-btn').forEach(b => {
+      b.disabled = functionalMode;
+      b.classList.toggle('disabled', functionalMode);
+    });
+    // If sus is currently selected and we entered Functional, fall back to
+    // the major scale until the user picks a modal chord.
+    if (functionalMode && selectedChord && selectedChord.isSus) {
+      // Don't change selectedChord (depth still applies as triad), but the
+      // scale will be the default major until a modal chord is chosen.
+    }
+    if (functionalMode) buildFunctionalChords(functionalFundamental);
+  }
+  modeFixedBtn.addEventListener('click', function() { setMode(false); });
+  modeFunctionalBtn.addEventListener('click', function() { setMode(true); });
+
+  // --- Fundamental selector (C D E F G A B) ---
+  const fundDiv = document.getElementById('chord-fundamental');
+  NATURAL_NOTE53.forEach(({ name, note53 }) => {
+    const btn = document.createElement('button');
+    btn.className = 'chord-btn' + (note53 === functionalFundamental ? ' selected' : '');
+    btn.textContent = name;
+    btn.addEventListener('click', function() {
+      fundDiv.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+      this.classList.add('selected');
+      functionalFundamental = note53;
+      buildFunctionalChords(functionalFundamental);
+    });
+    fundDiv.appendChild(btn);
+  });
+
+  // --- Triads (2 rows of 5) ---
+  const triadsDiv = document.getElementById('chord-triads');
+  THIRD_NAMES.forEach((n3, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'chord-btn';
+    btn.textContent = n3;
+    btn.title = `${n3} triad`;
+    btn.addEventListener('click', function() {
+      clearSelection();
+      this.classList.add('selected');
+      setSelectedChord({ name: `${n3} triad`, intervals: [0, THIRD_STEPS[i], 31] });
+    });
+    triadsDiv.appendChild(btn);
+  });
+
+  // --- Sus ---
+  const susDiv = document.getElementById('chord-sus');
+  const susChords = [
+    { name: '7sus4', intervals: [0, 22, 31, 44], isSus: true },
+    { name: 'sus2', intervals: [0, 9, 22, 31], isSus: true }
+  ];
+  susChords.forEach(ch => {
+    const btn = document.createElement('button');
+    btn.className = 'chord-btn sus-btn';
+    btn.textContent = ch.name;
+    btn.addEventListener('click', function() {
+      if (this.disabled) return;
+      clearSelection();
+      this.classList.add('selected');
+      setSelectedChord(ch);
+    });
+    susDiv.appendChild(btn);
+  });
+
+  // --- 7th chord grid ---
+  const thead = document.querySelector('#chord-grid thead tr');
+  SEVENTH_NAMES.forEach(n7 => {
+    const th = document.createElement('th');
+    th.textContent = n7;
+    thead.appendChild(th);
+  });
+
+  const tbody = document.querySelector('#chord-grid tbody');
+  THIRD_NAMES.forEach((n3, i) => {
+    const tr = document.createElement('tr');
+    const th = document.createElement('th');
+    th.textContent = n3;
+    tr.appendChild(th);
+
+    SEVENTH_NAMES.forEach((n7, j) => {
+      const td = document.createElement('td');
+      const btn = document.createElement('button');
+      const fullName = `${n3}${n7}7`;
+      btn.textContent = fullName;
+      btn.title = fullName;
+      btn.addEventListener('click', function() {
+        clearSelection();
+        this.classList.add('selected');
+        setSelectedChord({
+          name: fullName,
+          intervals: [0, THIRD_STEPS[i], 31, SEVENTH_STEPS[j]]
+        });
+      });
+      td.appendChild(btn);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  // --- 9th extension (toggle row) ---
+  const ninthsDiv = document.getElementById('chord-9ths');
+  NINTH_NAMES.forEach((n9, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'chord-btn ext-btn';
+    btn.textContent = `${n9} 9`;
+    btn.addEventListener('click', function() {
+      if (this.classList.contains('selected')) {
+        this.classList.remove('selected');
+        selected9th = null;
+      } else {
+        ninthsDiv.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+        this.classList.add('selected');
+        selected9th = NINTH_STEPS[i];
+      }
+    });
+    ninthsDiv.appendChild(btn);
+  });
+
+  // --- 11th extension (toggle row) ---
+  const eleventhsDiv = document.getElementById('chord-11ths');
+  ELEVENTH_NAMES.forEach((n11, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'chord-btn ext-btn';
+    btn.textContent = `${n11} 11`;
+    btn.addEventListener('click', function() {
+      if (this.classList.contains('selected')) {
+        this.classList.remove('selected');
+        selected11th = null;
+      } else {
+        eleventhsDiv.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+        this.classList.add('selected');
+        selected11th = ELEVENTH_STEPS[i];
+      }
+    });
+    eleventhsDiv.appendChild(btn);
+  });
+}
+
+function clearSelection() {
+  document.querySelectorAll('#chord-panel-header .selected, #chord-triads .selected, #chord-sus .selected, #chord-grid .selected, #chord-9ths .selected, #chord-11ths .selected').forEach(
+    el => el.classList.remove('selected')
+  );
+  selected9th = null;
+  selected11th = null;
+}
+
+function setup() {
+  let cnv = createCanvas(windowWidth, windowHeight);
+  cnv.parent('home');
+  cnv.style('position', 'absolute');
+  cnv.style('top', '0');
+  cnv.style('left', '0');
+  cnv.style('z-index', '0');
+  textFont('Fira Code');
+
+  // Build chord selector panel
+  buildChordPanel();
+
+  Promise.all([
+    fetch('Edo53_settings_new.xml').then(r => r.text()),
+    fetch('53_reference_notes.json').then(r => r.json())
+  ]).then(([xmlText, jsonData]) => {
+    noteData = jsonData.notes;
+    parseXML(xmlText);
+    buildDegreeMap();
+    buildFunctionalChords(functionalFundamental);
+    computeScale();
+  });
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  computeScale();
+}
+
+// --- Parse XML and compute hex grid coordinates for each button ---
+function parseXML(xmlText) {
+  xmlButtons = [];
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, 'text/xml');
+  const pts = doc.querySelectorAll('PT');
+
+  pts.forEach(pt => {
+    const id = parseInt(pt.querySelector('ID').textContent);
+    const note53 = parseInt(pt.querySelector('note53').textContent);
+    const reference = parseInt(pt.querySelector('Reference').textContent);
+    const origX = parseFloat(pt.querySelector('X').textContent);
+    const origY = parseFloat(pt.querySelector('Y').textContent);
+
+    // Compute hex grid coordinates from original XML positions
+    // [q, r] = M^(-1) × [dx, dy]
+    const dx = origX - GRID_REF_X;
+    const dy = origY - GRID_REF_Y;
+    const q = Math.round((49 * dx + 14 * dy) / GRID_DET);
+    const r = Math.round((-13 * dx - 50 * dy) / GRID_DET);
+
+    const noteInfo = noteData.find(n => n.reference === reference + OCTAVE_SHIFT);
+
+    xmlButtons.push({
+      id, note53, reference,
+      q, r,
+      x: 0, y: 0,
+      frequency: noteInfo ? noteInfo.frequency : 440,
+      noteName: noteInfo ? noteInfo.noteName : '?',
+      hover: false,
+      active: false
+    });
+  });
+}
+
+// --- Position buttons on a mathematically perfect hex grid ---
+// Grid note mapping: note53 = (9*q + 5*r) mod 53, reference = 62 + 9*q + 5*r
+const NOTE_PER_Q = 9;
+const NOTE_PER_R = 5;
+const REF_ORIGIN = 62; // reference at q=0, r=0
+
+function computeScale() {
+  if (xmlButtons.length === 0) return;
+
+  const sizeMultiplier = 2.0;
+  // Gap scales with viewport: ~2 px on phones, ~10 px on desktop.
+  // Linearly interpolated between 400 px and 1200 px of viewport width.
+  const HEX_GAP = Math.round(
+    Math.max(2, Math.min(10, 2 + (width - 400) * (5 - 1) / (1200 - 400)))
+  );
+  const margin = 10;
+  const availW = width - margin * 2;
+  const availH = height - margin * 2;
+
+  // Hex grid basis vectors (unit distance = 1)
+  const cosA = Math.cos(HEX_ANGLE);
+  const sinA = Math.sin(HEX_ANGLE);
+  const cosB = Math.cos(HEX_ANGLE - Math.PI / 3);
+  const sinB = Math.sin(HEX_ANGLE - Math.PI / 3);
+
+  // Top boundary: below the nav bar
+  var navEl = document.querySelector('nav');
+  var navH = navEl ? navEl.offsetHeight : 55;
+
+  // Compute grid extent in unit coordinates (from XML buttons only — defines the scale)
+  let uxMin = Infinity, uxMax = -Infinity;
+  let uyMin = Infinity, uyMax = -Infinity;
+  for (let btn of xmlButtons) {
+    const ux = btn.q * cosA + btn.r * cosB;
+    const uy = btn.q * sinA + btn.r * sinB;
+    uxMin = Math.min(uxMin, ux);
+    uxMax = Math.max(uxMax, ux);
+    uyMin = Math.min(uyMin, uy);
+    uyMax = Math.max(uyMax, uy);
+  }
+
+  const unitW = (uxMax - uxMin) + 2;
+  const unitH = (uyMax - uyMin) + 2;
+
+  let d = Math.min(availW / unitW, availH / unitH) * sizeMultiplier;
+  // Hex radius fills the spacing minus the gap: center-to-center = d, so radius = (d - gap) / 2 * 2/sqrt(3)
+  scaledRadius = (d - HEX_GAP) / Math.sqrt(3);
+
+  // Enforce minimum hex size — scale up d proportionally so spacing is preserved
+  if (scaledRadius < MIN_RADIUS) {
+    d = d * (MIN_RADIUS / scaledRadius);
+    scaledRadius = MIN_RADIUS;
+  }
+  // Cap maximum hex size
+  if (scaledRadius > MAX_RADIUS) {
+    d = d * (MAX_RADIUS / scaledRadius);
+    scaledRadius = MAX_RADIUS;
+  }
+
+  const gridCenterUX = (uxMin + uxMax) / 2;
+  const gridCenterUY = (uyMin + uyMax) / 2;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  // Position XML buttons
+  for (let btn of xmlButtons) {
+    const ux = btn.q * cosA + btn.r * cosB;
+    const uy = btn.q * sinA + btn.r * sinB;
+    btn.x = centerX + (ux - gridCenterUX) * d;
+    btn.y = centerY + (uy - gridCenterUY) * d;
+  }
+
+  // --- Generate extra buttons for all visible grid positions ---
+  const existing = new Set();
+  for (let btn of xmlButtons) {
+    existing.add(btn.q + ',' + btn.r);
+  }
+
+  // Build noteData lookup by reference for fast access
+  const noteByRef = {};
+  for (let n of noteData) {
+    noteByRef[n.reference] = n;
+  }
+
+  // Find q,r range covering the screen
+  const det = cosA * sinB - cosB * sinA;
+  const screenCorners = [[0, 0], [width, 0], [0, height], [width, height]];
+  let qMin = Infinity, qMax = -Infinity;
+  let rMin = Infinity, rMax = -Infinity;
+
+  for (const [px, py] of screenCorners) {
+    const ux = (px - centerX) / d + gridCenterUX;
+    const uy = (py - centerY) / d + gridCenterUY;
+    const qf = (sinB * ux - cosB * uy) / det;
+    const rf = (-sinA * ux + cosA * uy) / det;
+    qMin = Math.min(qMin, Math.floor(qf));
+    qMax = Math.max(qMax, Math.ceil(qf));
+    rMin = Math.min(rMin, Math.floor(rf));
+    rMax = Math.max(rMax, Math.ceil(rf));
+  }
+
+  qMin -= 2;  qMax += 2;
+  rMin -= 2;  rMax += 2;
+
+  const extraButtons = [];
+  for (let q = qMin; q <= qMax; q++) {
+    for (let r = rMin; r <= rMax; r++) {
+      if (existing.has(q + ',' + r)) continue;
+      const ux = q * cosA + r * cosB;
+      const uy = q * sinA + r * sinB;
+      const px = centerX + (ux - gridCenterUX) * d;
+      const py = centerY + (uy - gridCenterUY) * d;
+      if (px - scaledRadius < 0 || px + scaledRadius > width ||
+          py - scaledRadius < navH || py + scaledRadius > height) continue;
+
+      const reference = REF_ORIGIN + NOTE_PER_Q * q + NOTE_PER_R * r;
+      const note53 = ((NOTE_PER_Q * q + NOTE_PER_R * r) % 53 + 53) % 53;
+      const noteInfo = noteByRef[reference + OCTAVE_SHIFT];
+
+      extraButtons.push({
+        id: -1, note53, reference,
+        q, r,
+        x: px, y: py,
+        frequency: noteInfo ? noteInfo.frequency : 440 * Math.pow(2, (reference + OCTAVE_SHIFT - 62) / 53),
+        noteName: noteInfo ? noteInfo.noteName : '?',
+        hover: false,
+        active: false
+      });
+    }
+  }
+
+  // Filter out any XML buttons clipped by the border
+  var visibleXml = xmlButtons.filter(function(btn) {
+    return btn.x - scaledRadius >= 0 && btn.x + scaledRadius <= width &&
+           btn.y - scaledRadius >= navH && btn.y + scaledRadius <= height;
+  });
+  gridButtons = visibleXml.concat(extraButtons);
+}
+
+// --- Draw ---
+function draw() {
+    background(246);
+
+    if (gridButtons.length === 0) {
+    return;
+  }
+
+  // Find chord root: a held keyboard key takes priority over mouse hover
+  // (the grid fills the viewport, so the cursor is almost always over some
+  // hex — without this, the chord rainbow would track the mouse instead
+  // of the actually-triggered keyboard root).
+  let rootBtn = null;
+  for (let btn of gridButtons) {
+    if (btn.keyPressed) { rootBtn = btn; break; }
+  }
+  if (!rootBtn) {
+    for (let btn of gridButtons) {
+      const d = dist(mouseX, mouseY, btn.x, btn.y);
+      if (d <= scaledRadius * 0.88) { rootBtn = btn; break; }
+    }
+  }
+
+  let chordToneMap = null;
+  if (rootBtn) {
+    chordToneMap = new Map();
+    const activeIntervals = getActiveIntervals(rootBtn);
+    for (let i = 0; i < activeIntervals.length; i++) {
+      chordToneMap.set(rootBtn.reference + activeIntervals[i], i);
+    }
+  }
+
+  for (let btn of gridButtons) {
+    drawHexButton(btn, chordToneMap);
+  }
+
+  // Update reverb dry/wet from GUI knob
+  if (dryGain && wetGain && window.audioParams) {
+    var dw = window.audioParams.dryWet;
+    dryGain.gain.value = 1 - dw;
+    wetGain.gain.value = dw;
+  }
+}
+
+// --- Draw a single hex button (ported from LumaButton::draw) ---
+function drawHexButton(btn, chordToneMap) {
+  const d = dist(mouseX, mouseY, btn.x, btn.y);
+  btn.hover = d <= scaledRadius * 0.88;
+
+  // Size boost: hovered hex and chord tones grow +25%, clicking flattens to normal
+  const isChordTone = chordToneMap && chordToneMap.has(btn.reference);
+  const isActive = btn.hover || isChordTone || btn.keyPressed;
+  const sizeBoost = (isActive && !mouseIsPressed && !btn.keyPressed) ? 1.05 : 1.0;
+  const r = scaledRadius * sizeBoost;
+
+  // Determine fill color
+  let chordIdx = isChordTone ? chordToneMap.get(btn.reference) : -1;
+
+  let fillRGB; // track the actual fill for text contrast
+  const inScale = functionalMode && functionalScaleSet.has(btn.note53);
+  if (btn.keyPressed || (btn.hover && btn.active)) {
+    fillRGB = [255, 180, 0];
+    fill(fillRGB[0], fillRGB[1], fillRGB[2]);            // buttonClicked
+  } else if (isChordTone) {
+    const c = CHORD_COLORS[Math.min(chordIdx, CHORD_COLORS.length - 1)];
+    fillRGB = [c[0], c[1], c[2]];
+    fill(c[0], c[1], c[2], btn.hover ? 255 : 200);
+  } else if (btn.hover) {
+    fillRGB = [220, 220, 220];
+    fill(220, 220, 220, 200);    // hoverColor
+  } else if (inScale) {
+    fillRGB = null;              // keep dark text; tint is subtle
+    fill(255, 200, 120, 30);     // warm scale-tone wash
+  } else {
+    fillRGB = null;              // transparent — use default dark text
+    fill(255, 255, 255, 0);      // notClicked
+  }
+
+  stroke(200);
+  strokeWeight(Math.max(0.5, r * 0.02));
+
+  // Draw hexagon with rounded corners
+  const cornerRadius = r * 0.15;
+  let verts = [];
+  let angle = START_ANGLE;
+  for (let i = 0; i < NUM_STEPS; i++) {
+    verts.push({
+      x: btn.x + Math.cos(angle) * r,
+      y: btn.y + Math.sin(angle) * r
+    });
+    angle += STEP;
+  }
+
+  beginShape();
+  for (let i = 0; i < NUM_STEPS; i++) {
+    const prev = verts[(i - 1 + NUM_STEPS) % NUM_STEPS];
+    const curr = verts[i];
+    const next = verts[(i + 1) % NUM_STEPS];
+
+    // Direction vectors from current vertex toward neighbors
+    let dx1 = prev.x - curr.x, dy1 = prev.y - curr.y;
+    let len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+    dx1 /= len1; dy1 /= len1;
+
+    let dx2 = next.x - curr.x, dy2 = next.y - curr.y;
+    let len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+    dx2 /= len2; dy2 /= len2;
+
+    // Points inset from the corner by cornerRadius
+    const p1x = curr.x + dx1 * cornerRadius;
+    const p1y = curr.y + dy1 * cornerRadius;
+    const p2x = curr.x + dx2 * cornerRadius;
+    const p2y = curr.y + dy2 * cornerRadius;
+
+    vertex(p1x, p1y);
+    quadraticVertex(curr.x, curr.y, p2x, p2y);
+  }
+  endShape(CLOSE);
+
+  // Text: note name — choose color based on fill luminance for readability
+  noStroke();
+  if (fillRGB) {
+    // Relative luminance (ITU-R BT.601)
+    const lum = 0.299 * fillRGB[0] + 0.587 * fillRGB[1] + 0.114 * fillRGB[2];
+    if (lum < 140) fill(255);          // dark background → white text
+    else fill(30);                     // light background → dark text
+  } else {
+    fill(100);                         // transparent hex → default grey
+  }
+  textAlign(CENTER, CENTER);
+  const nameSize = Math.max(8, r * 0.33);
+  textSize(nameSize);
+  if (functionalMode) {
+    // Stack note name above, Roman numeral below.
+    text(btn.noteName, btn.x, btn.y - nameSize * 0.45);
+    const romanSize = Math.max(6, nameSize * 0.6);
+    textSize(romanSize);
+    const roman = ROMAN_NUMERALS[degreeForNote53(btn.note53)] || '';
+    text(roman, btn.x, btn.y + nameSize * 0.6);
+  } else {
+    text(btn.noteName, btn.x, btn.y);
+  }
+}
+
+// --- Audio ---
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    var limiter = audioCtx.createDynamicsCompressor();
+    limiter.threshold.value = -3;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.001;
+    limiter.release.value = 0.01;
+
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.25;
+
+    // Reverb: convolver with synthesized impulse response
+    convolver = audioCtx.createConvolver();
+    convolver.buffer = createReverbIR(audioCtx, 2.0, 0.6);
+
+    // Dry/wet split — both feed into masterGain
+    dryGain = audioCtx.createGain();
+    wetGain = audioCtx.createGain();
+    var dw = (window.audioParams && window.audioParams.dryWet) || 0.25;
+    dryGain.gain.value = 1 - dw;
+    wetGain.gain.value = dw;
+
+    convolver.connect(wetGain);
+    dryGain.connect(masterGain);
+    wetGain.connect(masterGain);
+
+    masterGain.connect(limiter);
+    limiter.connect(audioCtx.destination);
+  }
+  if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+    audioCtx.resume();
+  }
+  // Force Safari to actually start the audio engine by playing a silent buffer
+  // (must happen every resume, not just when suspended — Safari can silently stall)
+  if (audioCtx.state !== 'closed') {
+    var silent = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+    var src = audioCtx.createBufferSource();
+    src.buffer = silent;
+    src.connect(audioCtx.destination);
+    src.start(0);
+  }
+}
+
+// Eagerly unlock AudioContext on first user interaction (Safari requirement)
+function unlockAudio() {
+  initAudio();
+  document.removeEventListener('click', unlockAudio, true);
+  document.removeEventListener('touchstart', unlockAudio, true);
+  document.removeEventListener('keydown', unlockAudio, true);
+}
+document.addEventListener('click', unlockAudio, true);
+document.addEventListener('touchstart', unlockAudio, true);
+document.addEventListener('keydown', unlockAudio, true);
+
+// Safari/WebKit can suspend or "interrupt" the AudioContext when the tab
+// loses focus (switching apps, changing space, returning from another
+// window). Resuming from a visibility/focus event alone is often not
+// enough — WebKit requires the resume to happen inside a user gesture.
+// Re-arm the one-shot unlock listeners whenever we come back.
+function rearmUnlockIfNeeded() {
+  if (!audioCtx) return;
+  if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+    // Try a direct resume first (works in Chrome/Firefox)
+    audioCtx.resume().catch(function() {});
+    // Re-attach one-shot unlockers so the next click/touch/key forces a
+    // full restart inside a user gesture (required by Safari).
+    document.addEventListener('click', unlockAudio, true);
+    document.addEventListener('touchstart', unlockAudio, true);
+    document.addEventListener('keydown', unlockAudio, true);
+  }
+}
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden) rearmUnlockIfNeeded();
+});
+window.addEventListener('focus', rearmUnlockIfNeeded);
+window.addEventListener('pageshow', rearmUnlockIfNeeded);
+
+// Synthesize a reverb impulse response: exponentially decaying noise
+function createReverbIR(ctx, duration, decay) {
+  const rate = ctx.sampleRate;
+  const length = rate * duration;
+  const ir = ctx.createBuffer(2, length, rate);
+  for (var ch = 0; ch < 2; ch++) {
+    var data = ir.getChannelData(ch);
+    for (var i = 0; i < length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay * 3);
+    }
+  }
+  return ir;
+}
+
+// Each click = independent fire-and-forget sound event.
+// The ADSR defines the note's entire lifespan: attack → peak → decay → sustain → release → silence.
+// A FIFO voice pool caps simultaneous oscillators so dragging across the grid
+// cannot saturate the output. When the pool is full, the oldest voice is
+// quickly faded out and replaced.
+const MAX_VOICES = 8;
+const STEAL_FADE = 0.04; // seconds — fast fade applied to stolen voice
+let activeVoices = []; // { osc, gainNode, endTime }
+
+function stealOldestVoice() {
+  const v = activeVoices.shift();
+  if (!v) return;
+  try {
+    const now = audioCtx.currentTime;
+    v.gainNode.gain.cancelScheduledValues(now);
+    v.gainNode.gain.setValueAtTime(v.gainNode.gain.value, now);
+    v.gainNode.gain.linearRampToValueAtTime(0, now + STEAL_FADE);
+    v.osc.stop(now + STEAL_FADE + 0.01);
+  } catch (e) {}
+}
+
+function playNote(btn) {
+  if (window.audioMuted) return;
+  initAudio();
+
+  // Play each interval in the selected chord (+ extensions)
+  const rootFreq = btn.frequency;
+  const intervals = getActiveIntervals(btn);
+  for (const steps of intervals) {
+    const freq = rootFreq * Math.pow(2, steps / 53);
+    playSingleTone(freq);
+  }
+}
+
+function playSingleTone(frequency) {
+  const params = window.audioParams || {
+    attack: 0.2, sustain: 1.0, release: 0.7,
+    attackLevel: 0.76, sustainLevel: 0.001,
+    waveType: 'sine', dryWet: 0.33
+  };
+
+  const now = audioCtx.currentTime;
+  const attackTime  = Math.max(params.attack, 0.005);
+  const decayTime   = Math.max(params.sustain, 0.005);
+  const releaseTime = Math.max(params.release, 0.005);
+  const peakGain    = params.attackLevel;
+  const sustainGain = params.sustainLevel;
+  const totalTime   = attackTime + decayTime + releaseTime;
+
+  const osc = audioCtx.createOscillator();
+  osc.type = params.waveType;
+  osc.frequency.setValueAtTime(frequency, now);
+
+  const gainNode = audioCtx.createGain();
+  gainNode.gain.setValueAtTime(0, now);
+  // Attack: 0 → peak
+  gainNode.gain.linearRampToValueAtTime(peakGain, now + attackTime);
+  // Decay: peak → sustain
+  gainNode.gain.linearRampToValueAtTime(sustainGain, now + attackTime + decayTime);
+  // Release: sustain → 0
+  gainNode.gain.linearRampToValueAtTime(0, now + totalTime);
+
+  osc.connect(gainNode);
+  // Dry path: gainNode → dryGain → masterGain
+  gainNode.connect(dryGain);
+  // Wet path: gainNode → convolver → wetGain → masterGain
+  gainNode.connect(convolver);
+
+  osc.start(now);
+  osc.stop(now + totalTime + 0.05);
+
+  // Track this voice in the FIFO pool, stealing the oldest when full
+  const voice = { osc, gainNode, endTime: now + totalTime };
+  while (activeVoices.length >= MAX_VOICES) stealOldestVoice();
+  activeVoices.push(voice);
+
+  // Self-cleanup after the note finishes
+  osc.onended = function() {
+    const idx = activeVoices.indexOf(voice);
+    if (idx !== -1) activeVoices.splice(idx, 1);
+    try { osc.disconnect(); } catch (e) {}
+    try { gainNode.disconnect(); } catch (e) {}
+  };
+}
+
+// --- Mouse/touch interaction via document-level listeners ---
+// p5's built-in events only fire on canvas clicks, but the canvas is behind page content.
+// We use document listeners and map clientX/clientY to canvas coords (canvas is fixed at 0,0).
+
+function hitTestAndPlay(cx, cy) {
+  // Find the single closest hex within hit radius (hex inscribed circles
+  // slightly overlap, so iterating all buttons could trigger two notes).
+  const rLimit = scaledRadius * 0.88;
+  let best = null;
+  let bestD = Infinity;
+  for (let btn of gridButtons) {
+    const dx = cx - btn.x, dy = cy - btn.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d <= rLimit && d < bestD) {
+      bestD = d;
+      best = btn;
+    }
+  }
+  if (best) {
+    best.active = true;
+    playNote(best);
+    // Slide the chord panel back to its origin on the right
+    var cp = document.getElementById('chord-panel');
+    if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
+  }
+}
+
+function releaseAll() {
+  for (let btn of gridButtons) {
+    btn.active = false;
+  }
+}
+
+function dragTest(cx, cy) {
+  // Find closest hex under the cursor
+  const rLimit = scaledRadius * 0.88;
+  let best = null;
+  let bestD = Infinity;
+  for (let btn of gridButtons) {
+    const dx = cx - btn.x, dy = cy - btn.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d <= rLimit && d < bestD) {
+      bestD = d;
+      best = btn;
+    }
+  }
+  // Deactivate any previously active hex that is no longer the target
+  for (let btn of gridButtons) {
+    if (btn.active && btn !== best) btn.active = false;
+  }
+  if (best && !best.active) {
+    best.active = true;
+    playNote(best);
+  }
+}
+
+// Only allow keyboard interaction when on the hero section
+function isOnHero() {
+  return window.scrollY < window.innerHeight * 0.5;
+}
+
+// Check if event is inside a UI panel (chord panel or ADSR)
+function isInsidePanel(ev) {
+  var t = ev.target;
+  while (t) {
+    if (t.id === 'chord-panel' || t.id === 'audio-gui' || t.tagName === 'NAV') return true;
+    t = t.parentElement;
+  }
+  return false;
+}
+
+document.addEventListener('mousedown', function(ev) {
+  if (!isOnHero()) return;
+  if (isInsidePanel(ev)) { activateKeyboard(); return; }
+  initAudio();
+  scrollLocked = false;
+  activateKeyboard();
+  hitTestAndPlay(ev.clientX, ev.clientY);
+});
+document.addEventListener('mouseup', function() {
+  releaseAll();
+});
+document.addEventListener('mousemove', function(ev) {
+  if (!isOnHero()) return;
+  if (isInsidePanel(ev)) { activateKeyboard(); return; }
+  activateKeyboard();
+  if (ev.buttons === 1) dragTest(ev.clientX, ev.clientY);
+});
+document.addEventListener('touchstart', function(ev) {
+  if (!isOnHero()) return;
+  if (isInsidePanel(ev)) { activateKeyboard(); return; }
+  initAudio();
+  scrollLocked = false;
+  activateKeyboard();
+  for (let t of ev.changedTouches) {
+    hitTestAndPlay(t.clientX, t.clientY);
+  }
+}, { passive: false });
+document.addEventListener('touchend', function() {
+  releaseAll();
+}, { passive: true });
+document.addEventListener('touchmove', function(ev) {
+  if (isInsidePanel(ev)) return;
+  for (let t of ev.changedTouches) {
+    dragTest(t.clientX, t.clientY);
+  }
+}, { passive: true });
+
+// --- Keyboard / hero crossfade based on mouse activity ---
+var idleTimer = null;
+var keyboardIsActive = false;
+var scrollLocked = false;
+
+function activateKeyboard() {
+  if (scrollLocked) return;
+  // Only crossfade when viewport is near the hero (top of page)
+  if (window.scrollY > window.innerHeight) return;
+
+  if (!keyboardIsActive) {
+    keyboardIsActive = true;
+    document.body.classList.add('keyboard-active');
+  }
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(deactivateKeyboard, timer_interval);
+}
+
+function deactivateKeyboard() {
+  // When the idle timer fires, always return to hero: close ADSR,
+  // slide chord panel back to its right-side hidden position, and
+  // let the hero content return.
+  var cp = document.getElementById('chord-panel');
+  var ag = document.getElementById('audio-gui');
+  if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
+  if (ag && !ag.classList.contains('hidden')) ag.classList.add('hidden');
+  releaseAll();
+  keyboardIsActive = false;
+  document.body.classList.remove('keyboard-active');
+}
+
+// Any scroll deactivates keyboard, hides panels, and brings back the info
+window.addEventListener('scroll', function() {
+  if (keyboardIsActive) {
+    clearTimeout(idleTimer);
+    deactivateKeyboard();
+  }
+  // Hide chord panel and ADSR on scroll
+  var cp = document.getElementById('chord-panel');
+  var ag = document.getElementById('audio-gui');
+  if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
+  if (ag && !ag.classList.contains('hidden')) ag.classList.add('hidden');
+  scrollLocked = true;
+});
+
+// --- Computer keyboard input ---
+// QWERTY rows map to 4 stacked hex grid rows. Uses ev.code so the physical
+// key position is honored regardless of the OS keyboard layout.
+//
+// Physical keys are staggered to the right as you move down rows:
+//
+//   1 2 3 4 5 6 7 8 9 0       r = +2
+//     Q W E R T Y U I O P     r = +1
+//       A S D F G H J K L     r =  0
+//         Z X C V B N M       r = -1
+//
+// To match this stagger on the Lumatone, each row shifts q by +1 going down,
+// so the column under '1, Q, A, Z' runs diagonally down-right on the hex grid
+// (matching the physical column on the keyboard) instead of down-left.
+//
+// '1' is anchored at grid (KB_HOME_Q, KB_HOME_R+2). Up/Down arrows shift
+// playback by ±53 steps (one full octave).
+const KEY_TO_HEX = {
+  Digit1:{q:0,r:2}, Digit2:{q:1,r:2}, Digit3:{q:2,r:2}, Digit4:{q:3,r:2},
+  Digit5:{q:4,r:2}, Digit6:{q:5,r:2}, Digit7:{q:6,r:2}, Digit8:{q:7,r:2},
+  Digit9:{q:8,r:2}, Digit0:{q:9,r:2},
+  KeyQ:{q:1,r:1}, KeyW:{q:2,r:1}, KeyE:{q:3,r:1}, KeyR:{q:4,r:1},
+  KeyT:{q:5,r:1}, KeyY:{q:6,r:1}, KeyU:{q:7,r:1}, KeyI:{q:8,r:1},
+  KeyO:{q:9,r:1}, KeyP:{q:10,r:1},
+  KeyA:{q:2,r:0}, KeyS:{q:3,r:0}, KeyD:{q:4,r:0}, KeyF:{q:5,r:0},
+  KeyG:{q:6,r:0}, KeyH:{q:7,r:0}, KeyJ:{q:8,r:0}, KeyK:{q:9,r:0},
+  KeyL:{q:10,r:0},
+  KeyZ:{q:3,r:-1}, KeyX:{q:4,r:-1}, KeyC:{q:5,r:-1}, KeyV:{q:6,r:-1},
+  KeyB:{q:7,r:-1}, KeyN:{q:8,r:-1}, KeyM:{q:9,r:-1}
+};
+// Home anchor for 'A'. The XML grid spans q∈[-2,36], r∈[-14,4] with its
+// densest band at r=-5; this anchor centers the 4×10 keyboard region inside
+// that band so every key lands on a visible hex.
+//   '1' row → r = -3       'Q' row → r = -4
+//   'A' row → r = -5       'Z' row → r = -6
+//   q across each row → KB_HOME_Q .. KB_HOME_Q+9
+const KB_HOME_Q = 13;
+const KB_HOME_R = -5;
+
+// Octave shift moves the (q, r) anchor itself so a different set of hexes is
+// targeted — and visually highlighted. One octave (+53 steps) = 9·dq + 5·dr;
+// (dq=+7, dr=-2) stays inside the long axis of the grid (q spans ~38 cells,
+// r only ~18), so the anchor remains on the Lumatone across several octaves.
+let kbAnchorOffsetQ = 0;
+let kbAnchorOffsetR = 0;
+const OCTAVE_DQ = 7;
+const OCTAVE_DR = -2;
+const pressedKeys = new Map(); // ev.code → btn (the hex actually targeted)
+const KEY_PRESS_MIN_MS = 120; // minimum on-screen highlight duration for a tap
+
+function findHexByCoord(q, r) {
+  for (let btn of gridButtons) {
+    if (btn.q === q && btn.r === r) return btn;
+  }
+  return null;
+}
+
+function buttonForKey(off) {
+  const q = KB_HOME_Q + kbAnchorOffsetQ + off.q;
+  const r = KB_HOME_R + kbAnchorOffsetR + off.r;
+  let btn = findHexByCoord(q, r);
+  if (btn) return btn;
+  // Off-screen position — synthesize a virtual button so playback still works
+  const reference = REF_ORIGIN + NOTE_PER_Q * q + NOTE_PER_R * r;
+  const noteInfo = noteData.find(n => n.reference === reference + OCTAVE_SHIFT);
+  return {
+    id: -1, q, r, reference,
+    note53: ((NOTE_PER_Q * q + NOTE_PER_R * r) % 53 + 53) % 53,
+    frequency: noteInfo ? noteInfo.frequency : 440 * Math.pow(2, (reference + OCTAVE_SHIFT - 62) / 53),
+    noteName: noteInfo ? noteInfo.noteName : '?',
+    x: 0, y: 0, hover: false, active: false
+  };
+}
+
+document.addEventListener('keydown', function(ev) {
+  if (ev.repeat) return;
+  if (!isOnHero()) return;
+  var ae = document.activeElement;
+  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+
+  if (ev.code === 'ArrowUp') {
+    kbAnchorOffsetQ += OCTAVE_DQ;
+    kbAnchorOffsetR += OCTAVE_DR;
+    activateKeyboard();
+    ev.preventDefault();
+    return;
+  }
+  if (ev.code === 'ArrowDown') {
+    kbAnchorOffsetQ -= OCTAVE_DQ;
+    kbAnchorOffsetR -= OCTAVE_DR;
+    activateKeyboard();
+    ev.preventDefault();
+    return;
+  }
+
+  const off = KEY_TO_HEX[ev.code];
+  if (!off) return;
+  if (pressedKeys.has(ev.code)) return;
+
+  initAudio();
+  scrollLocked = false;
+  activateKeyboard();
+
+  // Mark only the root as keyPressed; chord tones color themselves via
+  // chordToneMap + CHORD_COLORS in drawHexButton.
+  const rootBtn = buttonForKey(off);
+  rootBtn.active = true;
+  rootBtn.keyPressed = true;
+  rootBtn._keyPressedAt = performance.now();
+  pressedKeys.set(ev.code, rootBtn);
+  playNote(rootBtn);
+
+  var cp = document.getElementById('chord-panel');
+  if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
+
+  ev.preventDefault();
+});
+
+document.addEventListener('keyup', function(ev) {
+  const btn = pressedKeys.get(ev.code);
+  pressedKeys.delete(ev.code);
+  if (!btn) return;
+  const elapsed = performance.now() - (btn._keyPressedAt || 0);
+  const remaining = Math.max(0, KEY_PRESS_MIN_MS - elapsed);
+  setTimeout(function() {
+    btn.active = false;
+    btn.keyPressed = false;
+  }, remaining);
+});
+
+// ANIMA logo click: deactivate keyboard, show hero content, hide panels
+var logoEl = document.querySelector('.nav-logo');
+if (logoEl) {
+  logoEl.addEventListener('click', function() {
+    clearTimeout(idleTimer);
+    deactivateKeyboard();
+    releaseAll();
+    var cp = document.getElementById('chord-panel');
+    var ag = document.getElementById('audio-gui');
+    if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
+    if (ag) ag.classList.add('hidden');
+  });
+}
