@@ -124,7 +124,8 @@ class ChordVisualization {
 
         // Position is controlled by #chord-visualization-container in style.css
         // (no dynamic top here, so the panel sits where the CSS places it).
-
+        
+        // p.textMode(p.CENTER);
         p.textFont('Source Code Pro');
     }
     //----------------------------------------------------------------------------------------
@@ -140,7 +141,7 @@ class ChordVisualization {
         p.fill(this.textColor);
         p.textAlign(p.LEFT);
         p.textSize(12);
-        p.text('Frequency Spectrum', this.padding, 25);
+        p.text('Frequency Spectrum', 90, 25);
 
         // Draw background spectrum area
         this.drawSpectrumBackground(p);

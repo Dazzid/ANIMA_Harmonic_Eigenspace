@@ -137,7 +137,7 @@ function isAudioGuiVisible() {
 function setup() {
 
     textFont('Source Code Pro');
-    //smooth();
+    smooth();
 
     let canvas = createCanvas(W, H);
     canvas.parent('eigenspace-audio-gui'); // Start in EigenSpace container
@@ -369,10 +369,11 @@ function drawKnob() {
 //--------------------------------------------------------------------
 function drawControlButtons() {
     // Close (×) — never "active"; Mute (m) — active fill when muted.
-    drawControlButton(closeButton, '×', false);
+    drawControlButton(closeButton, 'x', false);
     drawControlButton(muteButton, 'm', muteButton.muted);
 }
 
+//--------------------------------------------------------------------
 function drawControlButton(btn, glyph, active) {
     const isHover = dist(mouseX, mouseY, btn.x, btn.y) < btn.size / 2;
 
@@ -381,19 +382,19 @@ function drawControlButton(btn, glyph, active) {
         noStroke();
     } else if (isHover) {
         fill(buttonHoverColor);
-        stroke(120);
+        stroke(255);
     } else {
         fill(buttonColor);
-        stroke(150);
+        stroke(180, 150);
     }
-    strokeWeight(1);
-    circle(btn.x, btn.y, btn.size);
+    strokeWeight(2);
+    ellipse(btn.x, btn.y, btn.size, btn.size);
 
     // Glyph
     noStroke();
     fill(255);
     textAlign(CENTER, CENTER);
-    textSize(glyph === '×' ? 14 : 11);
+    textSize(11);
     text(glyph, btn.x, btn.y);
 }
 
