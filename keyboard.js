@@ -237,6 +237,9 @@ function setSelectedChord(chord) {
   if (functionalMode && getModalScaleFromChord(chord)) {
     buildFunctionalChords(functionalFundamental);
   }
+  // The panel stays open after a chord pick so the user can audition several
+  // options. It only closes on an explicit close (× / menu toggle) or when a
+  // hex on the layout is played (see hitTestAndPlay).
 }
 
 function getActiveIntervals(btn) {
@@ -979,6 +982,9 @@ function hitTestAndPlay(cx, cy) {
   if (best) {
     best.active = true;
     playNote(best);
+    // Playing a hex tucks the chord menu away so it's out of the way.
+    const cp = document.getElementById('chord-panel');
+    if (cp) cp.classList.remove('visible');
   }
 }
 
@@ -1022,12 +1028,12 @@ function isOnHero() {
 // navigation menu — those clicks must not also trigger a hex note underneath.
 function isInsidePanel(ev) {
   if (ev.target && ev.target.closest &&
-      ev.target.closest('#chord-panel, #audio-gui, #anima-menu-panel, #anima-menu-toggle, #anima-menu-overlay')) {
+      ev.target.closest('#chord-panel, #audio-gui, #keyboard-audio-gui, #anima-menu-panel, #anima-menu-toggle, #anima-menu-overlay')) {
     return true;
   }
   var t = ev.target;
   while (t) {
-    if (t.id === 'chord-panel' || t.id === 'audio-gui' || t.tagName === 'NAV') return true;
+    if (t.id === 'chord-panel' || t.id === 'audio-gui' || t.id === 'keyboard-audio-gui' || t.tagName === 'NAV') return true;
     t = t.parentElement;
   }
   return false;
@@ -1226,7 +1232,7 @@ if (logoEl) {
     releaseAll();
     var cp = document.getElementById('chord-panel');
     var ag = document.getElementById('audio-gui');
-    if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
+    if (cp) cp.classList.remove('visible');
     if (ag) ag.classList.add('hidden');
   });
 }
@@ -1249,15 +1255,28 @@ const keyboardSketch = (p) => {
 };
 
 // Show/hide the chord menu. Exposed for the navigation menu's "Chord menu" item.
+// Driven purely by the `.visible` class: the panel's base state is translateX(100%)
+// (off-screen right), and `.visible` slides it to 0. We deliberately avoid the
+// generic `.hidden` class — modal_studio_style.css has a global
+// `.hidden { display:none !important }`, which would kill the slide transition.
 window.toggleChordPanel = function () {
   const cp = document.getElementById('chord-panel');
-  if (!cp) return;
-  if (cp.classList.contains('visible')) {
-    cp.classList.remove('visible');
-    cp.classList.add('hidden');
+  if (cp) cp.classList.toggle('visible');
+};
+
+// Show/hide the shared ADSR (adsr.js) inside the Keyboard scene. The 53-TET
+// synth reads window.audioParams, which the ADSR edits live. Mirrors the Modal
+// Studio audio toggle: reparent the single shared canvas + use the light theme.
+window.toggleKeyboardAudio = function () {
+  const gui = document.getElementById('keyboard-audio-gui');
+  if (!gui) return;
+  if (gui.style.display === 'none' || !gui.style.display) {
+    gui.style.display = 'block';
+    if (window.adsrCanvas) window.adsrCanvas.parent('keyboard-audio-gui');
+    if (typeof setDark === 'function') setDark(false);
+    window.adsrCurrentScene = 'keyboard';
   } else {
-    cp.classList.remove('hidden');
-    cp.classList.add('visible');
+    gui.style.display = 'none';
   }
 };
 
@@ -1280,6 +1299,9 @@ const KeyboardScene = {
     const modebar = document.querySelector('.modebar');
     if (modebar) modebar.style.display = 'none';
 
+    // Dismiss the EigenSpace intro overlay if it auto-opened over us.
+    if (window.infoOverlay && window.infoOverlay.isVisible) window.infoOverlay.hide();
+
     // Resume the keyboard sketch and recompute layout (the window may have
     // resized while the scene was hidden).
     if (keyboardP5) {
@@ -1294,7 +1316,11 @@ const KeyboardScene = {
     // another scene.
     if (keyboardP5) keyboardP5.noLoop();
     const cp = document.getElementById('chord-panel');
-    if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
+    if (cp) cp.classList.remove('visible');
+    // Reset the audio toggle. The shared ADSR canvas is re-homed by whichever
+    // scene we enter next (e.g. EigenspaceScene.enter reparents it back).
+    const ag = document.getElementById('keyboard-audio-gui');
+    if (ag) ag.style.display = 'none';
     releaseAll();
   },
 
@@ -1322,7 +1348,7 @@ function initKeyboardScene() {
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
       const cp = document.getElementById('chord-panel');
-      if (cp) { cp.classList.remove('visible'); cp.classList.add('hidden'); }
+      if (cp) cp.classList.remove('visible');
     });
   }
 }

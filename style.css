@@ -168,7 +168,7 @@ body.scene-modalstudio #eigenspace-app * {
 #audio-gui-container,
 #eigenspace-audio-gui {
     position: fixed;
-    top: 5px;
+    top: 660px;
     left: 10px;
     width: 350px;
     height: 320px;
@@ -185,7 +185,7 @@ body.scene-modalstudio #eigenspace-app * {
     height: 640px;
     background: rgba(0, 0, 0, 0.0);
     position: fixed;
-    top: 300px;
+    top: 10px;
     left: 10px;
     z-index: 100;
     border-radius: 20px;

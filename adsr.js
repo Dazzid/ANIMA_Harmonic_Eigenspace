@@ -52,13 +52,11 @@ const textTitleSize = 12;
 
 let darkMode = true;
 
-// Audio mute button
-let audioMuteButton = {
-    x: W - 20,
-    y: 20,
-    size: 20,
-    muted: false
-};
+// Top-right control buttons: close (×) hides the panel, mute (m) toggles audio.
+// Close sits in the corner; mute immediately to its left.
+const ctrlSize = 20;
+let closeButton = { x: W - 20, y: 20, size: ctrlSize };
+let muteButton  = { x: W - 20 - ctrlSize - 6, y: 20, size: ctrlSize, muted: false };
 
 // Wave type buttons
 const waveTypes = ['sine', 'triangle', 'sawtooth', 'square'];
@@ -115,17 +113,23 @@ function isAudioGuiVisible() {
     // Check which scene we're in and verify the corresponding container is visible
     const eigenContainer = document.getElementById('eigenspace-audio-gui');
     const modalContainer = document.getElementById('modalstudio-audio-gui');
-    
+    const keyboardContainer = document.getElementById('keyboard-audio-gui');
+
     // Check EigenSpace container
     if (eigenContainer && eigenContainer.style.display !== 'none') {
         return true;
     }
-    
+
     // Check Modal Studio container
     if (modalContainer && modalContainer.style.display !== 'none') {
         return true;
     }
-    
+
+    // Check Keyboard container
+    if (keyboardContainer && keyboardContainer.style.display !== 'none') {
+        return true;
+    }
+
     return false;
 }
 
@@ -172,7 +176,7 @@ function draw() {
     drawWaveTypeButtons();
     drawADSR();
     drawKnob();
-    drawMuteButton();
+    drawControlButtons();
     updateAudioParams();
 }
 
@@ -363,14 +367,16 @@ function drawKnob() {
 }
 
 //--------------------------------------------------------------------
-function drawMuteButton() {
-    const btn = audioMuteButton;
+function drawControlButtons() {
+    // Close (×) — never "active"; Mute (m) — active fill when muted.
+    drawControlButton(closeButton, '×', false);
+    drawControlButton(muteButton, 'm', muteButton.muted);
+}
+
+function drawControlButton(btn, glyph, active) {
     const isHover = dist(mouseX, mouseY, btn.x, btn.y) < btn.size / 2;
 
-    strokeWeight(1);
-
-    // Button background - circular
-    if (btn.muted) {
+    if (active) {
         fill(buttonActiveColor);
         noStroke();
     } else if (isHover) {
@@ -383,17 +389,12 @@ function drawMuteButton() {
     strokeWeight(1);
     circle(btn.x, btn.y, btn.size);
 
-    // Text - simple ON/OFF indicator
+    // Glyph
     noStroke();
     fill(255);
     textAlign(CENTER, CENTER);
-    textSize(10);
-    
-    if (btn.muted) {
-        text('-', btn.x, btn.y);
-    } else {
-        text('x', btn.x, btn.y);
-    }
+    textSize(glyph === '×' ? 14 : 11);
+    text(glyph, btn.x, btn.y);
 }
 
 //--------------------------------------------------------------------
@@ -432,12 +433,19 @@ function mousePressed() {
     // Ignore mouse events if audio GUI is hidden
     if (!isAudioGuiVisible()) return;
     
-    // Check mute button click
-    const muteBtnDist = dist(mouseX, mouseY, audioMuteButton.x, audioMuteButton.y);
-    if (muteBtnDist < audioMuteButton.size / 2) {
-        audioMuteButton.muted = !audioMuteButton.muted;
-        // Expose mute state globally
-        window.audioMuted = audioMuteButton.muted;
+    // Close (×) — hide whichever container currently hosts the ADSR canvas
+    // (EigenSpace / Modal Studio / Keyboard). Reopen from that scene's menu.
+    if (dist(mouseX, mouseY, closeButton.x, closeButton.y) < closeButton.size / 2) {
+        const host = window.adsrCanvas && window.adsrCanvas.elt
+            ? window.adsrCanvas.elt.parentElement : null;
+        if (host) host.style.display = 'none';
+        return;
+    }
+
+    // Mute (m) — toggle global audio mute.
+    if (dist(mouseX, mouseY, muteButton.x, muteButton.y) < muteButton.size / 2) {
+        muteButton.muted = !muteButton.muted;
+        window.audioMuted = muteButton.muted;
         return;
     }
 

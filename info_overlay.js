@@ -227,10 +227,13 @@ class InfoOverlay {
 
     // Show for the first time after data is loaded
     showWhenReady() {
-        if (!this.hasShownOnLoad) {
-            this.show();
-            this.hasShownOnLoad = true;
-        }
+        if (this.hasShownOnLoad) return;
+        // This is the EigenSpace intro — don't pop it over the Keyboard scene
+        // (the viz finishes computing asynchronously, so this can fire after the
+        // user has already switched scenes).
+        if (window.ANIMA && window.ANIMA.getCurrentScene() === window.ANIMA.Scenes.KEYBOARD) return;
+        this.show();
+        this.hasShownOnLoad = true;
     }
 
     toggle() {

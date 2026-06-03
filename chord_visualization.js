@@ -121,13 +121,10 @@ class ChordVisualization {
         this.p5Instance = p;
         this.canvas = p.createCanvas(this.W, this.H);
         this.canvas.parent('chord-visualization-container');
-        
-        // Set the container position dynamically
-        const container = document.getElementById('chord-visualization-container');
-        if (container) {
-            container.style.top = this.topPosition + 'px';
-        }
-        
+
+        // Position is controlled by #chord-visualization-container in style.css
+        // (no dynamic top here, so the panel sits where the CSS places it).
+
         p.textFont('Source Code Pro');
     }
     //----------------------------------------------------------------------------------------

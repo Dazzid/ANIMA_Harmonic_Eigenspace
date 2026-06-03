@@ -216,3 +216,17 @@
     background: rgba(0, 0, 0, 0.1);
     color: rgba(40, 40, 40, 0.55);
 }
+
+/* Keyboard-shortcut hint keycap (right-aligned on the item). */
+.anima-menu-kbd {
+    margin-left: auto;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 10px;
+    line-height: 1;
+    padding: 3px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: #fff;
+    white-space: nowrap;
+}

@@ -5,6 +5,8 @@
 #keyboard-app { display: none; }
 body.keyboard-active #keyboard-app { display: block; }
 #keyboard-app #home { position: fixed; inset: 0; z-index: 0; }
+/* Shared ADSR (adsr.js) host, toggled from the menu's "Audio Settings" item. */
+#keyboard-audio-gui { position: fixed; top: 10px; left: 10px; z-index: 130; }
 
 #home canvas {
   display: block;
@@ -173,7 +175,7 @@ body.keyboard-active.note-dismissed .keyboard-note-reopen {
 }
 #audio-gui {
   position: fixed;
-  top: 75px;
+  top: 10px;
   left: 10px;
   z-index: 110;
   transition: opacity 0.5s ease;
@@ -222,9 +224,6 @@ body.keyboard-active.note-dismissed .keyboard-note-reopen {
 }
 #chord-panel.visible {
   transform: translateX(0);
-}
-#chord-panel.hidden {
-  transform: translateX(100%);
 }
 #chord-panel-header {
   margin-bottom: 8px;

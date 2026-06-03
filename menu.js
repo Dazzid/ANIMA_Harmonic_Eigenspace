@@ -67,8 +67,17 @@
             btn.appendChild(bd);
         }
 
+        // Keyboard-shortcut hint, rendered as a keycap on the right.
+        if (opts.shortcut) {
+            const kbd = document.createElement('span');
+            kbd.className = 'anima-menu-kbd';
+            kbd.textContent = opts.shortcut;
+            btn.appendChild(kbd);
+        }
+
         if (!opts.disabled && typeof opts.onClick === 'function') {
-            btn.addEventListener('click', opts.onClick);
+            // Launcher pattern: run the item's action, then close the menu.
+            btn.addEventListener('click', () => { opts.onClick(); close(); });
         }
         return btn;
     }
@@ -95,15 +104,15 @@
         const scenes = makeSection('Scenes');
         scenes.appendChild(makeItem('Eigenspace', {
             icon: '◉', active: inEigen,
-            onClick: () => { window.ANIMA.switchScene(S.EIGENSPACE); render(); }
+            onClick: () => window.ANIMA.switchScene(S.EIGENSPACE)
         }));
         scenes.appendChild(makeItem('Modal Studio', {
             icon: '▦', active: inModal,
-            onClick: () => { window.ANIMA.switchScene(S.MODALSTUDIO); render(); }
+            onClick: () => window.ANIMA.switchScene(S.MODALSTUDIO)
         }));
         scenes.appendChild(makeItem('Keyboard Layout', {
             icon: '⌨', active: scene === S.KEYBOARD,
-            onClick: () => { window.ANIMA.switchScene(S.KEYBOARD); render(); }
+            onClick: () => window.ANIMA.switchScene(S.KEYBOARD)
         }));
         body.appendChild(scenes);
 
@@ -112,25 +121,35 @@
         if (inEigen) {
             // viz-mode-toggle's own text is the source of truth for the label.
             options.appendChild(makeItem(legacyText('viz-mode-toggle', 'Switch to Layered View'), {
-                icon: '◧',
-                onClick: () => { clickLegacy('viz-mode-toggle'); render(); }
+                icon: '◧', shortcut: '⇧L',
+                onClick: () => clickLegacy('viz-mode-toggle')
             }));
             // grid-toggle text: "Chord Grid" (show) / "Hide Grid" (hide).
             const gridShown = legacyText('grid-toggle', 'Chord Grid') === 'Hide Grid';
             options.appendChild(makeItem('Memory: Chord Grid', {
-                icon: '▤', active: gridShown,
-                onClick: () => { clickLegacy('grid-toggle'); render(); }
+                icon: '▤', active: gridShown, shortcut: '⇧M',
+                onClick: () => clickLegacy('grid-toggle')
+            }));
+            // Audio Settings (ADSR) — can be closed via its ✕ button, reopened here.
+            const eigenAudio = document.getElementById('eigenspace-audio-gui');
+            const eigenAudioShown = !!(eigenAudio && eigenAudio.style.display !== 'none');
+            options.appendChild(makeItem(eigenAudioShown ? 'Audio Settings: Hide' : 'Audio Settings: Show', {
+                icon: '♪', active: eigenAudioShown,
+                onClick: () => {
+                    const ag = document.getElementById('eigenspace-audio-gui');
+                    if (ag) ag.style.display = ag.style.display === 'none' ? 'block' : 'none';
+                }
             }));
         } else if (inModal) {
             // Modal Studio's own controls, surfaced here since #scene-controls is hidden.
             options.appendChild(makeItem(legacyText('scene-label', 'Modal Interchange'), {
                 icon: '⇄',
-                onClick: () => { clickLegacy('scene-toggle'); render(); }
+                onClick: () => clickLegacy('scene-toggle')
             }));
             const audioShown = legacyText('audio-label', '').indexOf('Hide') !== -1;
             options.appendChild(makeItem(legacyText('audio-label', 'Audio Settings: Show'), {
                 icon: '♪', active: audioShown,
-                onClick: () => { clickLegacy('audio-toggle'); render(); }
+                onClick: () => clickLegacy('audio-toggle')
             }));
         } else if (scene === S.KEYBOARD) {
             // The 53-TET chord selector (incl. the Fixed/Functional toggle) is the
@@ -141,7 +160,16 @@
             })();
             options.appendChild(makeItem('Chord menu', {
                 icon: '▦', active: chordsShown,
-                onClick: () => { close(); if (window.toggleChordPanel) window.toggleChordPanel(); }
+                onClick: () => { if (window.toggleChordPanel) window.toggleChordPanel(); }
+            }));
+            // Shared ADSR (drives the 53-TET synth's envelope/waveform).
+            const kbAudioShown = (() => {
+                const ag = document.getElementById('keyboard-audio-gui');
+                return !!(ag && ag.style.display !== 'none' && ag.style.display !== '');
+            })();
+            options.appendChild(makeItem(kbAudioShown ? 'Audio Settings: Hide' : 'Audio Settings: Show', {
+                icon: '♪', active: kbAudioShown,
+                onClick: () => { if (window.toggleKeyboardAudio) window.toggleKeyboardAudio(); }
             }));
         }
         body.appendChild(options);
@@ -152,7 +180,6 @@
             info.appendChild(makeItem('About this scene', {
                 icon: 'ℹ',
                 onClick: () => {
-                    close();
                     if (inModal && window.modalStudioInfoOverlay) {
                         window.modalStudioInfoOverlay.toggle();
                     } else if (typeof window.toggleInfo === 'function') {
@@ -172,7 +199,7 @@
             icon: '🎹',
             badge: midiReady ? null : 'N/A',
             disabled: !midiReady,
-            onClick: () => { close(); window.midiController.toggleUI(); }
+            onClick: () => { window.midiController.toggleUI(); }
         }));
         body.appendChild(midi);
     }

@@ -53,7 +53,8 @@ class OfApp {
 
         this.MODE_NAMES = ['Ionian', 'Dorian', 'Phrygian', 'Lydian', 'Mixolydian', 'Aeolian', 'Locrian'];
 
-        this.scaleEditorY = 35;
+        this.scaleEditorY = 10;
+        this.scaleEditorX = 0;
 
         // Audio engine
         this.audioEngine = new AudioEngine();
@@ -183,16 +184,18 @@ class OfApp {
             // Frame width = 2 * (radius * scaleEditor.factorSize)
             const frameWidth = 2 * (radius * this.scaleEditor.factorSize);
             const canvasWidth = this.p.width; // Use canvas width instead of window width
-            const scaleEditorX = Math.max(10, canvasWidth - frameWidth - 10);
+            this.scaleEditorX = Math.max(10, canvasWidth - frameWidth - 24);
 
-            const topLeft = { x: scaleEditorX, y: this.scaleEditorY };
-            console.log('🔧 Scale Editor Initial Calc:', {
-                canvasWidth,
-                frameWidth,
-                scaleEditorX,
-                topLeft,
-                'p.windowWidth': this.p.windowWidth
-            });
+            const topLeft = { x: this.scaleEditorX, y: this.scaleEditorY };
+
+            // console.log('🔧 Scale Editor Initial Calc:', {
+            //     canvasWidth,
+            //     frameWidth,
+            //     this.scaleEditorX,
+            //     topLeft,
+            //     'p.windowWidth': this.p.windowWidth
+            // });
+
             this.scaleEditor.setup(radius, initialNodes, topLeft, this.fiftyThree);
             this.scaleEditor.setIntervals(this.interModel);
 
@@ -217,7 +220,7 @@ class OfApp {
                 const voicingRadius = this.scaleEditor.outerRingSize; // Match ScaleEditor size
                 // Position VoicingEditor 10px below ScaleEditor
                 // ScaleEditor frame height = 2 * (radius * factorSize)
-                const voicingEditorX = scaleEditorX;
+                const voicingEditorX = this.scaleEditorX;
                 const voicingEditorY = this.scaleEditorY + (2 * radius * this.scaleEditor.factorSize) + 1;
                 const voicingTopLeft = { x: voicingEditorX, y: voicingEditorY };
                 console.log('Initializing Voicing Editor at', voicingTopLeft);
@@ -458,12 +461,12 @@ class OfApp {
             const radius = this.scaleEditor.outerRingSize;
             const frameWidth = 2 * (radius * this.scaleEditor.factorSize);
             const canvasWidth = p.width;
-            const scaleEditorX = Math.max(10, canvasWidth - frameWidth - 10);
+            this.scaleEditorX = Math.max(10, canvasWidth - frameWidth - 24);
 
             // Update Scale Editor center position
             const outerRadius = radius * this.scaleEditor.factorSize;
             this.scaleEditor.center = {
-                x: scaleEditorX + outerRadius,
+                x: this.scaleEditorX + outerRadius,
                 y: this.scaleEditorY + outerRadius
             };
             this.scaleEditor.drawCenterY = this.scaleEditor.center.y + 15;
@@ -474,7 +477,7 @@ class OfApp {
 
             // Update Voicing Editor position
             if (this.voicingEditorInitialized) {
-                const voicingEditorX = scaleEditorX;
+                const voicingEditorX = this.scaleEditorX;
                 const voicingEditorY = this.scaleEditorY + (2 * radius * this.scaleEditor.factorSize) + 10;
                 const voicingOuterRadius = this.voicingEditor.radius * this.voicingEditor.factorSize;
                 this.voicingEditor.center = {

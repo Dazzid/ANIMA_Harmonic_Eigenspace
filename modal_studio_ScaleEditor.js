@@ -610,17 +610,13 @@ class ScaleEditor {
     
     // C++ ScaleEditor.cpp lines 1015-1029 - draw method  
     draw(p) {
-        try {
-            this.drawMainCircle(p);
-            this.drawTitleBar(p);
-            this.drawIntervalMarkers(p);
-            this.drawNodes(p);
-            this.drawChromaticNodes(p);  // Draw chromatic nodes after modal nodes
-            this.drawRootSelector(p);
-            this.drawInversionWheel(p);
-        } catch (error) {
-            // console.error('ScaleEditor draw error:', error);
-        }
+        this.drawMainCircle(p);
+        this.drawTitleBar(p);
+        this.drawIntervalMarkers(p);
+        this.drawNodes(p);
+        this.drawChromaticNodes(p);  // Draw chromatic nodes after modal nodes
+        this.drawRootSelector(p);
+        this.drawInversionWheel(p);
     }
     
     // C++ ScaleEditor.cpp lines 600-630 - Draw main circle --------------------------------------------------------------------

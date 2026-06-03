@@ -2375,8 +2375,9 @@ const EigenspaceScene = {
         let modebarEigen = document.querySelector('.modebar');
         if (modebarEigen) modebarEigen.style.display = 'flex';
 
-        // ADSR: Always visible in EigenSpace, dark mode
-        if (eigenAudioGui) eigenAudioGui.style.display = 'block';
+        // ADSR: hidden by default for a clean entrance — opened on demand from
+        // the menu ("Audio Settings: Show") or closed via its ✕ button. Dark mode.
+        if (eigenAudioGui) eigenAudioGui.style.display = 'none';
         if (modalAudioGui) modalAudioGui.style.display = 'none';
         if (window.adsrCanvas) window.adsrCanvas.parent('eigenspace-audio-gui');
         if (typeof setDark === 'function') setDark(true);
