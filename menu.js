@@ -205,6 +205,19 @@
             onClick: () => { window.midiController.toggleUI(); }
         }));
         body.appendChild(midi);
+
+        // ----- SESSION (all scenes) -----------------------------------------
+        const session = makeSection('Session');
+        const sessionReady = !!window.AnimaSession;
+        session.appendChild(makeItem('Save Session', {
+            icon: '💾', disabled: !sessionReady,
+            onClick: () => { if (window.AnimaSession) window.AnimaSession.save(); }
+        }));
+        session.appendChild(makeItem('Load Session', {
+            icon: '📂', disabled: !sessionReady,
+            onClick: () => { if (window.AnimaSession) window.AnimaSession.openLoadDialog(); }
+        }));
+        body.appendChild(session);
     }
 
     // ---- open / close ------------------------------------------------------

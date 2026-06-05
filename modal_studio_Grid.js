@@ -1194,5 +1194,90 @@ class Grid {
         this.printGrid();
     }
 
-    
+    // ========================================================================
+    // SESSION SAVE / LOAD (see STRATEGY §6)
+    // The Modal Interchange grid is saved/restored as all 64 cells DIRECTLY.
+    // We never re-run calculateModalInterchange() on restore — that would wipe
+    // per-cell voicing edits in rows 1–7. Each cell carries its own notes +
+    // voicing (absolute 53-TET refs) + color, so it renders and plays on its own.
+    // ========================================================================
+
+    // Serialize all 64 cells to plain, JSON-safe descriptors. Empty cells → null.
+    serializeAll() {
+        return this.cells.map(cell => {
+            const c = cell.chord;
+            const notes = c.getNotes();
+            if (!notes || notes.length < 3) return null; // empty cell
+            const cq = c.getChordQuality();
+            return {
+                notes: notes.map(n => ({
+                    ft_note: n.ft_note, name: n.name,
+                    interval: n.interval, localInterval: n.localInterval
+                })),
+                noteVoicing: [...(c.getNoteVoicing() || [])],
+                voicingType: c.voicingType,
+                globalInversion: c.getGlobalInversion(),
+                chordFunction: c.chordFunction,
+                quality: c.quality,
+                finalInfo: c.finalInfo,
+                info: c.info,
+                root_53: c.root_53,
+                note_53: c.note_53,
+                chordQuality: cq ? {
+                    note: cq.note, quality: cq.quality, function: cq.function,
+                    inversion: cq.inversion, id: cq.id, name: cq.name
+                } : null,
+                color: c.getColor()
+            };
+        });
+    }
+
+    // Restore all 64 cells in place (mirrors dropChordIntoCell's field copy, but
+    // WITHOUT the column-clear and WITHOUT calculateModalInterchange). `null`
+    // entries reset that cell to empty. Structure-only input; tolerant of nulls.
+    restoreAll(descriptors) {
+        if (!Array.isArray(descriptors)) return;
+        for (let i = 0; i < this.cells.length && i < descriptors.length; i++) {
+            const cell = this.cells[i];
+            const c = cell.chord;
+            const d = descriptors[i];
+
+            if (!d || !Array.isArray(d.notes) || d.notes.length < 3) {
+                // Empty cell — mirror the column-clear "cleared" look.
+                c.setNotes([]);
+                if (typeof c.setChordQuality === 'function') c.setChordQuality();
+                c.setInfo("");
+                c.noteVoicing = [];
+                c.numVoicing = 0;
+                c.setColor(this.cellColor);
+                cell.colorCode = this.cellColor;
+                continue;
+            }
+
+            const notesCopy = d.notes.map(n => ({
+                ft_note: n.ft_note, name: n.name,
+                interval: n.interval, localInterval: n.localInterval
+            }));
+            c.notes = notesCopy;
+            c.chordQuality = d.chordQuality ? { ...d.chordQuality, notes: notesCopy } : c.chordQuality;
+            c.noteVoicing = Array.isArray(d.noteVoicing) ? [...d.noteVoicing] : [];
+            c.numVoicing = c.noteVoicing.length;
+            c.voicingType = d.voicingType;
+            c.root = notesCopy.length > 0 ? notesCopy[0] : null;
+            c.root_53 = d.root_53;
+            c.note_53 = d.note_53;
+            if (typeof c.setGlobalInversion === 'function') c.setGlobalInversion(d.globalInversion || 0);
+            c.chordFunction = d.chordFunction;
+            c.quality = d.quality;
+            c.finalInfo = d.finalInfo;
+            c.info = d.info;
+            if (d.color) { c.setColor(d.color); cell.colorCode = d.color; }
+        }
+
+        // Rebuild the row-0 progression references; mirror colors on the Launchpad.
+        for (let col = 0; col < this.cols; col++) {
+            this.chordProgression[col] = this.cells[col];
+        }
+        if (window.launchpadHandler) window.launchpadHandler.refreshLeds();
+    }
 }

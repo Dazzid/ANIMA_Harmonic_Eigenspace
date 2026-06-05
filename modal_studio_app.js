@@ -161,6 +161,20 @@ class OfApp {
         });
     }
 
+    // ---- Session save/load (Modal Interchange grid; see STRATEGY §6) --------
+    // Save/restore the entire 8×8 grid directly — no Scale Editor, no recalc.
+    getSession() {
+        if (!this.gridInitialized || !this.grid) return { grid: [] };
+        return { grid: this.grid.serializeAll() };
+    }
+
+    applySession(ms) {
+        if (!ms || !Array.isArray(ms.grid)) return false;
+        if (!this.gridInitialized || !this.grid) return false; // caller may stash + retry
+        this.grid.restoreAll(ms.grid);
+        return true;
+    }
+
     // C++: vector<string> ofApp::getNames(const vector<int> &references)
     getNames(references) {
         const names = [];
