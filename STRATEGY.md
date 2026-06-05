@@ -133,7 +133,4 @@ Note: `OfApp.this.currentScene` ('chord'/'grid', Modal Studio's *internal* sub-s
 - **Rollback:** `git revert <sha>`, or reset to a known-good `checkpoint:` commit, then push. Pre-split rollback point: `29e25ad` (*checkpoint: launchpad added*).
 - **Before pushing:** preview locally (§2) and sanity-check the scene toggle + audio.
 
-## 9. References
 
-- Project: ANIMA MSCA Postdoctoral Fellowship (Project ID 101203318), Horizon Europe.
-- Citation: Dalmazzo, D. (2025). *ANIMA Harmonic Eigenspace: 4D Psychoacoustic Dissonance Visualization for Microtonal Harmony.* MSCA Project 101203318.

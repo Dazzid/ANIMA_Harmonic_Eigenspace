@@ -212,6 +212,69 @@ window.ANIMA = {
 window.playNote = (freq) => (window.app ? window.app.playNote(freq) : undefined);
 
 // ============================================================================
+// APP-WIDE CHORD MEMORY GLUE
+// ----------------------------------------------------------------------------
+// The Chord Memory grid (grid.js) is a global, scene-independent component. A
+// stored cell holds the chord as absolute frequencies (Hz), so ANY scene can
+// replay it. These two routers make capture + recall work in every scene:
+//
+//   window.playChordFrequencies(freqs) — play an absolute-Hz chord through the
+//       ACTIVE scene's own synth (EigenSpace / Modal Studio / Keyboard).
+//   window.captureChord(descriptor)    — record a just-played chord as the
+//       "last chord" and, if the grid panel is open, arm it for storage. This
+//       is the generalization of EigenSpace's inline lastClickedChord block.
+// ============================================================================
+window.playChordFrequencies = function (freqs) {
+    if (!Array.isArray(freqs) || freqs.length === 0) return;
+    if (typeof gridMuted !== 'undefined' && gridMuted) return; // grid's mute toggle
+    switch (currentScene) {
+        case Scenes.EIGENSPACE:
+            if (typeof window.eigenspacePlayFrequencies === 'function') {
+                window.eigenspacePlayFrequencies(freqs);
+            }
+            break;
+        case Scenes.MODALSTUDIO:
+            if (window.app && window.app.audioEngine) {
+                window.app.audioEngine.playChord(freqs);
+            }
+            break;
+        case Scenes.KEYBOARD:
+            if (typeof window.keyboardPlayChord === 'function') {
+                window.keyboardPlayChord(freqs);
+            }
+            break;
+    }
+};
+
+window.captureChord = function (descriptor) {
+    if (!descriptor || !Array.isArray(descriptor.frequencies) || descriptor.frequencies.length === 0) {
+        return;
+    }
+    // Normalize the scene-agnostic fields; scene-specific extras (alpha/beta/...)
+    // ride along untouched for EigenSpace reconstruction.
+    descriptor.root = descriptor.root ?? descriptor.frequencies[0];
+    descriptor.sourceScene = descriptor.sourceScene ?? currentScene;
+    descriptor.chordName = descriptor.chordName ?? null;
+    descriptor.cellColor = descriptor.cellColor ?? null;
+
+    window.lastClickedChord = descriptor;
+
+    // If the grid panel is open, arm it so the user can click a cell to store now.
+    try {
+        const container = document.getElementById('grid-container');
+        if (container && container.style.display !== 'none' &&
+            typeof gridSketch !== 'undefined' && gridSketch && gridSketch.getGrid) {
+            const grid = gridSketch.getGrid();
+            if (grid && typeof grid.prepareToStore === 'function') {
+                grid.prepareToStore(descriptor);
+            }
+        }
+    } catch (e) {
+        // Non-fatal: grid may not be initialized yet
+    }
+};
+
+// ============================================================================
 // P5.JS SKETCH INITIALIZATION (from modal_studio_sketch.js)
 // ============================================================================
 
@@ -335,15 +398,30 @@ const sketch = (p) => {
         if (SceneManager.active) SceneManager.active.draw(p);
     };
 
+    // The Chord Memory grid (grid.js) is an app-wide overlay with its own p5
+    // instance handling its clicks. p5's main-sketch mouse callbacks fire on ANY
+    // window press, so without this guard a click on the grid panel would ALSO
+    // reach the active scene underneath (e.g. play a stray Modal Studio chord).
+    const pointerOverChordGrid = () => {
+        const c = document.getElementById('grid-container');
+        if (!c || c.style.display === 'none') return false;
+        const r = c.getBoundingClientRect();
+        return p.mouseX >= r.left && p.mouseX <= r.right &&
+               p.mouseY >= r.top && p.mouseY <= r.bottom;
+    };
+
     p.mousePressed = () => {
+        if (pointerOverChordGrid()) return;
         if (SceneManager.active) SceneManager.active.mousePressed(p.mouseX, p.mouseY);
     };
 
     p.mouseDragged = () => {
+        if (pointerOverChordGrid()) return;
         if (SceneManager.active) SceneManager.active.mouseDragged(p.mouseX, p.mouseY);
     };
 
     p.mouseReleased = () => {
+        if (pointerOverChordGrid()) return;
         if (SceneManager.active) SceneManager.active.mouseReleased(p.mouseX, p.mouseY);
     };
 

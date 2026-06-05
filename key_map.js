@@ -392,15 +392,15 @@ document.addEventListener('keydown', (event) => {
         return;
     }
 
-    // EigenSpace-only shortcuts:
-    //   Shift+M — toggle the Chord Memory grid
-    //   Shift+L — toggle the Layered / Full 3D view
-    // Handled before the note-key block below so the letters don't also trigger notes.
+    // Shortcuts (handled before the note-key block so the letters don't also
+    // trigger notes). The Keyboard scene already bailed above.
+    //   Shift+M — toggle the Chord Memory grid (app-wide: EigenSpace + Modal Studio)
+    //   Shift+L — toggle the Layered / Full 3D view (EigenSpace only)
     if (event.shiftKey) {
         const inEigenspace = !window.ANIMA
             || window.ANIMA.getCurrentScene() === window.ANIMA.Scenes.EIGENSPACE;
         const shifted = key.toLowerCase();
-        if (inEigenspace && shifted === 'm' && typeof window.toggleChordGrid === 'function') {
+        if (shifted === 'm' && typeof window.toggleChordGrid === 'function') {
             event.preventDefault();
             window.toggleChordGrid();
             return;

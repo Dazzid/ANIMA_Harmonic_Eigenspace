@@ -25,6 +25,9 @@ let gridToggleBtn;
 let gridMuteBtn;
 let selectedChordForStorage = null;
 let gridMuted = false; // Grid mute state
+// Panel drag state (dragging the Chord Memory by its header — see setupGridDrag)
+let gridDragging = false;
+let gridDragOffset = { x: 0, y: 0 };
 // p5.js sketch in instance mode
 const createGridSketch = (p) => {
     let chordGrid;
@@ -138,8 +141,11 @@ const createGridSketch = (p) => {
             }
             p.text(p.message, this.x + this.totalWidth / 2, this.y + this.totalHeight + 20);
             p.pop();
+
+            // Cursor affordance: show a move cursor over the draggable header.
+            p.cursor(this.isTitleBarHit(p.mouseX, p.mouseY) ? 'move' : p.ARROW);
         }
-        
+
         drawMuteButton(p) {
             // Check if mouse is over mute button
             const mouseDist = p.dist(p.mouseX, p.mouseY, this.muteButtonX + this.muteButtonSize / 2, this.muteButtonY + this.muteButtonSize / 2);
@@ -296,6 +302,22 @@ const createGridSketch = (p) => {
             return `${note}${octave}`;
         }
         
+        // Hit-test the draggable header strip (where the "Chord Memory" title
+        // sits, above the cells). Coords are canvas-local = container-local since
+        // the canvas fills the container. The close + mute buttons live in this
+        // strip, so they are excluded to stay clickable. Used by the panel-drag
+        // listeners in setupGridDrag().
+        isTitleBarHit(mx, my) {
+            const inHeaderY = my >= (this.y - 40) && my <= (this.y - 2);
+            const inHeaderX = mx >= (this.x - 10) && mx <= (this.x + this.totalWidth + 10);
+            if (!inHeaderY || !inHeaderX) return false;
+            const pad = 3;
+            const overClose = mx >= this.closeButtonX - pad && mx <= this.closeButtonX + this.closeButtonSize + pad &&
+                              my >= this.closeButtonY - pad && my <= this.closeButtonY + this.closeButtonSize + pad;
+            const overMute = mx >= this.muteButtonX - pad && mx <= this.muteButtonX + this.muteButtonSize + pad &&
+                             my >= this.muteButtonY - pad && my <= this.muteButtonY + this.muteButtonSize + pad;
+            return !(overClose || overMute);
+        }
         handleClick(p) {
             // Check if close button was clicked
             if (this.closeButtonHovered) {
@@ -361,6 +383,12 @@ const createGridSketch = (p) => {
                 cellColor: chordData.cellColor || null,
                 tetSystem: chordData.tetSystem || null,
                 doublingFlags: { ...doublingFlags },
+                // Which scene this chord was captured from. Recall plays it through
+                // the ACTIVE scene's synth regardless; this is for provenance and
+                // future scene-specific reconstruction.
+                sourceScene: (chordData.sourceScene !== undefined && chordData.sourceScene !== null)
+                    ? chordData.sourceScene
+                    : (typeof currentScene !== 'undefined' ? currentScene : null),
                 timestamp: Date.now()
             };
             console.log(`Stored chord at [${row}][${col}] with doubling:`, this.storage[row][col]);
@@ -371,6 +399,35 @@ const createGridSketch = (p) => {
             if (!chord) return;
             if (window.launchpadHandler) window.launchpadHandler.refreshLeds();
             console.log(`Recalling chord from [${row}][${col}]:`, chord);
+
+            // Scene-aware recall. Chord Memory is app-wide, but EigenSpace is the
+            // only scene that can reconstruct the full visualization (it needs the
+            // alpha/beta/gamma ratios). In any other scene — or for a chord that
+            // lacks EigenSpace ratios — we just play the stored absolute
+            // frequencies through the active scene's synth ("play here, stay put").
+            const activeScene = (window.ANIMA && typeof window.ANIMA.getCurrentScene === 'function')
+                ? window.ANIMA.getCurrentScene()
+                : (typeof currentScene !== 'undefined' ? currentScene : null);
+            const eigenScene = (window.ANIMA && window.ANIMA.Scenes)
+                ? window.ANIMA.Scenes.EIGENSPACE : 0;
+            const canReconstructEigen = (activeScene === eigenScene) && (chord.alpha != null);
+
+            if (!canReconstructEigen) {
+                // Generic path: audition the frequencies in the current scene.
+                if (typeof window.playChordFrequencies === 'function') {
+                    window.playChordFrequencies(chord.frequencies);
+                }
+                // Make this the working chord so it can be re-stored / transformed.
+                window.lastClickedChord = {
+                    root: chord.root,
+                    frequencies: Array.isArray(chord.frequencies) ? [...chord.frequencies] : [],
+                    chordName: chord.chordName ?? null,
+                    cellColor: chord.cellColor ?? null,
+                    sourceScene: chord.sourceScene ?? null
+                };
+                return;
+            }
+
             // Reproduce the chord using existing project APIs (visualization + audio + mappings)
             try {
                 // Update visualization root and chord ratios
@@ -523,7 +580,10 @@ function setupGridContainer() {
         top: 50%;
         right: 220px;
         transform: translateY(-50%);
-        z-index: 100;
+        /* Above Modal Studio's surface (#modalstudio-app z-index:1000) so the
+           panel floats in every scene, but below the menu (~10048) so the menu
+           stays clickable. The grid is an app-wide overlay, not scene-scoped. */
+        z-index: 9000;
         display: none;
         transition: right 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     `;
@@ -532,6 +592,10 @@ function setupGridContainer() {
     // storage/state before the user has opened the panel.
     if (!gridSketch) {
         gridSketch = new p5(createGridSketch, 'grid-container');
+        // Panel starts hidden: pause the draw loop and ignore mouse events until
+        // it is shown. Lifecycle is governed by panel visibility (scene-independent).
+        if (typeof gridSketch.noLoop === 'function') gridSketch.noLoop();
+        if (typeof gridSketch.disableEvents === 'function') gridSketch.disableEvents();
     }
     console.log('Grid container created');
 }
@@ -549,6 +613,9 @@ function setupGridToggleButton() {
             if (!gridSketch) {
                 gridSketch = new p5(createGridSketch, 'grid-container');
             }
+            // Resume the draw loop + accept mouse events now that the panel is shown.
+            if (typeof gridSketch.loop === 'function') gridSketch.loop();
+            if (typeof gridSketch.enableEvents === 'function') gridSketch.enableEvents();
             // If a chord was clicked previously, prepare it for storage now that the grid is visible.
             // This allows the workflow: click node -> open grid (toggle) -> x2 adjustments -> click cell to store.
             setTimeout(() => {
@@ -579,6 +646,11 @@ function hideChordGrid() {
     const container = document.getElementById('grid-container');
     if (container) container.style.display = 'none';
     if (gridToggleBtn) gridToggleBtn.textContent = 'Chord Grid';
+    // Pause the draw loop + ignore mouse events while hidden (scene-independent).
+    if (gridSketch) {
+        if (typeof gridSketch.noLoop === 'function') gridSketch.noLoop();
+        if (typeof gridSketch.disableEvents === 'function') gridSketch.disableEvents();
+    }
 }
 
 // Toggle the Chord Memory grid. Delegates to the toggle button so the full
@@ -593,12 +665,64 @@ function setupGridMuteButton() {
     console.log('Grid mute button (canvas-based) ready');
 }
 
+// Make the Chord Memory panel draggable by its header — mirrors the Scale
+// Editor's title-bar drag, but moves the fixed #grid-container div (the panel is
+// its own p5 instance, not part of the main canvas). Position is clamped to the
+// viewport so the panel can't be dragged off-screen.
+function setupGridDrag() {
+    const getContainer = () => document.getElementById('grid-container');
+
+    document.addEventListener('mousedown', (e) => {
+        const container = getContainer();
+        if (!container || container.style.display === 'none') return;
+        if (!gridSketch || !gridSketch.getGrid) return;
+        const rect = container.getBoundingClientRect();
+        const localX = e.clientX - rect.left;
+        const localY = e.clientY - rect.top;
+        if (localX < 0 || localY < 0 || localX > rect.width || localY > rect.height) return;
+        const grid = gridSketch.getGrid();
+        if (!grid || typeof grid.isTitleBarHit !== 'function' || !grid.isTitleBarHit(localX, localY)) return;
+
+        // Begin dragging. Switch the CSS-centered panel to explicit left/top so we
+        // can move it freely (drop the right/transform centering used at rest).
+        gridDragging = true;
+        container.style.left = rect.left + 'px';
+        container.style.top = rect.top + 'px';
+        container.style.right = 'auto';
+        container.style.transform = 'none';
+        gridDragOffset.x = localX;
+        gridDragOffset.y = localY;
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!gridDragging) return;
+        const container = getContainer();
+        if (!container) return;
+        const w = container.offsetWidth;
+        const h = container.offsetHeight;
+        let left = e.clientX - gridDragOffset.x;
+        let top = e.clientY - gridDragOffset.y;
+        // Clamp within the viewport so the panel never overpasses the canvas limits.
+        left = Math.max(0, Math.min(left, window.innerWidth - w));
+        top = Math.max(0, Math.min(top, window.innerHeight - h));
+        container.style.left = left + 'px';
+        container.style.top = top + 'px';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mouseup', () => { gridDragging = false; });
+
+    console.log('Grid drag (header) ready');
+}
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         setupGridContainer();
         setupGridToggleButton();
         setupGridMuteButton();
+        setupGridDrag();
     });
 } else {
     setupGridContainer();
@@ -616,6 +740,8 @@ window.prepareChordForStorage = function (nodeData) {
         if (!gridSketch) {
             gridSketch = new p5(createGridSketch, 'grid-container');
         }
+        if (typeof gridSketch.loop === 'function') gridSketch.loop();
+        if (typeof gridSketch.enableEvents === 'function') gridSketch.enableEvents();
         gridToggleBtn.textContent = 'Hide Grid';
     }
     // Wait for sketch to initialize

@@ -878,22 +878,26 @@ function createReverbIR(ctx, duration, decay) {
 
 // Each click = independent fire-and-forget sound event.
 // The ADSR defines the note's entire lifespan: attack → peak → decay → sustain → release → silence.
-// A FIFO voice pool caps simultaneous oscillators so dragging across the grid
+// A FIFO voice pool caps simultaneous notes so dragging across the grid
 // cannot saturate the output. When the pool is full, the oldest voice is
 // quickly faded out and replaced.
+// Additive timbre: each note is 6 harmonics (matches EigenSpace's createNote) so
+// chords sound consistent across scenes — see playSingleTone.
+const KL_HARMONICS  = [1, 2, 3, 4, 5, 6];
+const KL_AMPLITUDES = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
 const MAX_VOICES = 8;
 const STEAL_FADE = 0.04; // seconds — fast fade applied to stolen voice
-let activeVoices = []; // { osc, gainNode, endTime }
+let activeVoices = []; // { oscs:[osc...], noteGain, endTime }
 
 function stealOldestVoice() {
   const v = activeVoices.shift();
   if (!v) return;
   try {
     const now = audioCtx.currentTime;
-    v.gainNode.gain.cancelScheduledValues(now);
-    v.gainNode.gain.setValueAtTime(v.gainNode.gain.value, now);
-    v.gainNode.gain.linearRampToValueAtTime(0, now + STEAL_FADE);
-    v.osc.stop(now + STEAL_FADE + 0.01);
+    v.noteGain.gain.cancelScheduledValues(now);
+    v.noteGain.gain.setValueAtTime(v.noteGain.gain.value, now);
+    v.noteGain.gain.linearRampToValueAtTime(0, now + STEAL_FADE);
+    v.oscs.forEach(o => { try { o.stop(now + STEAL_FADE + 0.01); } catch (e) {} });
   } catch (e) {}
 }
 
@@ -904,12 +908,41 @@ function playNote(btn) {
   // Play each interval in the selected chord (+ extensions)
   const rootFreq = btn.frequency;
   const intervals = getActiveIntervals(btn);
+  const freqs = [];
   for (const steps of intervals) {
     const freq = rootFreq * Math.pow(2, steps / 53);
+    freqs.push(freq);
     playSingleTone(freq);
+  }
+
+  // Record into the app-wide Chord Memory (grid.js) as absolute frequencies.
+  if (typeof window.captureChord === 'function' && freqs.length > 0) {
+    window.captureChord({
+      frequencies: freqs,
+      root: rootFreq,
+      chordName: (selectedChord && selectedChord.name) ? selectedChord.name : null,
+      cellColor: null,
+      sourceScene: (window.ANIMA && window.ANIMA.Scenes) ? window.ANIMA.Scenes.KEYBOARD : 2
+    });
   }
 }
 
+// Play an arbitrary set of absolute frequencies through the 53-TET synth. Used
+// by the app-wide Chord Memory (window.playChordFrequencies in anima.js) to
+// audition chords recalled while the Keyboard scene is active.
+window.keyboardPlayChord = function (freqs) {
+  if (window.audioMuted) return;
+  if (!Array.isArray(freqs) || freqs.length === 0) return;
+  initAudio();
+  for (const freq of freqs) {
+    if (typeof freq === 'number' && freq > 0) playSingleTone(freq);
+  }
+};
+
+// Play one note as an additive stack of 6 harmonics with an exponential ADSR —
+// the same recipe EigenSpace uses (createNote), so a chord recalled from Chord
+// Memory sounds the same here as it does in EigenSpace. Envelope/waveType come
+// from window.audioParams (kept in sync with EigenSpace by the shared ADSR GUI).
 function playSingleTone(frequency) {
   const params = window.audioParams || {
     attack: 0.2, sustain: 1.0, release: 0.7,
@@ -921,43 +954,52 @@ function playSingleTone(frequency) {
   const attackTime  = Math.max(params.attack, 0.005);
   const decayTime   = Math.max(params.sustain, 0.005);
   const releaseTime = Math.max(params.release, 0.005);
-  const peakGain    = params.attackLevel;
-  const sustainGain = params.sustainLevel;
   const totalTime   = attackTime + decayTime + releaseTime;
 
-  const osc = audioCtx.createOscillator();
-  osc.type = params.waveType;
-  osc.frequency.setValueAtTime(frequency, now);
+  // Per-note mixer for the harmonic stack; feeds the global dry + reverb buses.
+  // baseGain tames the summed harmonics before masterGain (0.25) + the limiter.
+  const noteGain = audioCtx.createGain();
+  noteGain.gain.value = 0.7;
+  noteGain.connect(dryGain);   // dry path → masterGain
+  noteGain.connect(convolver); // wet path → convolver → wetGain → masterGain
 
-  const gainNode = audioCtx.createGain();
-  gainNode.gain.setValueAtTime(0, now);
-  // Attack: 0 → peak
-  gainNode.gain.linearRampToValueAtTime(peakGain, now + attackTime);
-  // Decay: peak → sustain
-  gainNode.gain.linearRampToValueAtTime(sustainGain, now + attackTime + decayTime);
-  // Release: sustain → 0
-  gainNode.gain.linearRampToValueAtTime(0, now + totalTime);
+  const oscs = [];
+  for (let i = 0; i < KL_HARMONICS.length; i++) {
+    const osc = audioCtx.createOscillator();
+    osc.type = params.waveType;
+    osc.frequency.setValueAtTime(frequency * KL_HARMONICS[i], now);
 
-  osc.connect(gainNode);
-  // Dry path: gainNode → dryGain → masterGain
-  gainNode.connect(dryGain);
-  // Wet path: gainNode → convolver → wetGain → masterGain
-  gainNode.connect(convolver);
+    const g = audioCtx.createGain();
+    const peak    = Math.max(KL_AMPLITUDES[i] * params.attackLevel, 0.0001);
+    const sustain = Math.max(KL_AMPLITUDES[i] * params.sustainLevel, 0.0001);
+    // Exponential envelope (matches EigenSpace) — needs non-zero endpoints.
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(peak, now + attackTime);
+    g.gain.exponentialRampToValueAtTime(sustain, now + attackTime + decayTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + totalTime);
 
-  osc.start(now);
-  osc.stop(now + totalTime + 0.05);
+    osc.connect(g);
+    g.connect(noteGain);
+    osc.start(now);
+    osc.stop(now + totalTime + 0.05);
+    oscs.push(osc);
+    osc._gain = g;
+  }
 
-  // Track this voice in the FIFO pool, stealing the oldest when full
-  const voice = { osc, gainNode, endTime: now + totalTime };
+  // Track this note as ONE voice in the FIFO pool, stealing the oldest when full.
+  const voice = { oscs, noteGain, endTime: now + totalTime };
   while (activeVoices.length >= MAX_VOICES) stealOldestVoice();
   activeVoices.push(voice);
 
-  // Self-cleanup after the note finishes
-  osc.onended = function() {
+  // Self-cleanup when the note finishes (last oscillator to end).
+  oscs[oscs.length - 1].onended = function () {
     const idx = activeVoices.indexOf(voice);
     if (idx !== -1) activeVoices.splice(idx, 1);
-    try { osc.disconnect(); } catch (e) {}
-    try { gainNode.disconnect(); } catch (e) {}
+    oscs.forEach(o => {
+      try { o.disconnect(); } catch (e) {}
+      try { o._gain.disconnect(); } catch (e) {}
+    });
+    try { noteGain.disconnect(); } catch (e) {}
   };
 }
 
@@ -1024,16 +1066,18 @@ function isOnHero() {
   return !window.ANIMA || window.ANIMA.getCurrentScene() === window.ANIMA.Scenes.KEYBOARD;
 }
 
-// Check if a pointer event landed inside a UI panel (chord panel) or the global
-// navigation menu — those clicks must not also trigger a hex note underneath.
+// Check if a pointer event landed inside a UI panel (chord panel, app-wide Chord
+// Memory grid) or the global navigation menu — those clicks must not also trigger
+// a hex note underneath. (#grid-container holds the Chord Memory grid's own p5
+// canvas, which sits above the keyboard at z-index 9000, so it is the event target.)
 function isInsidePanel(ev) {
   if (ev.target && ev.target.closest &&
-      ev.target.closest('#chord-panel, #audio-gui, #keyboard-audio-gui, #anima-menu-panel, #anima-menu-toggle, #anima-menu-overlay')) {
+      ev.target.closest('#chord-panel, #grid-container, #audio-gui, #keyboard-audio-gui, #anima-menu-panel, #anima-menu-toggle, #anima-menu-overlay')) {
     return true;
   }
   var t = ev.target;
   while (t) {
-    if (t.id === 'chord-panel' || t.id === 'audio-gui' || t.id === 'keyboard-audio-gui' || t.tagName === 'NAV') return true;
+    if (t.id === 'chord-panel' || t.id === 'grid-container' || t.id === 'audio-gui' || t.id === 'keyboard-audio-gui' || t.tagName === 'NAV') return true;
     t = t.parentElement;
   }
   return false;

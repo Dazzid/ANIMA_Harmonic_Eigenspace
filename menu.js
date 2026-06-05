@@ -118,17 +118,20 @@
 
         // ----- OPTIONS (scene-dependent) ------------------------------------
         const options = makeSection('Options');
+
+        // Chord Memory is app-wide — surfaced in every scene. grid-toggle text is
+        // the source of truth: "Chord Grid" (show) / "Hide Grid" (hide).
+        const gridShown = legacyText('grid-toggle', 'Chord Grid') === 'Hide Grid';
+        options.appendChild(makeItem('Memory: Chord Grid', {
+            icon: '▤', active: gridShown, shortcut: '⇧M',
+            onClick: () => clickLegacy('grid-toggle')
+        }));
+
         if (inEigen) {
             // viz-mode-toggle's own text is the source of truth for the label.
             options.appendChild(makeItem(legacyText('viz-mode-toggle', 'Switch to Layered View'), {
                 icon: '◧', shortcut: '⇧L',
                 onClick: () => clickLegacy('viz-mode-toggle')
-            }));
-            // grid-toggle text: "Chord Grid" (show) / "Hide Grid" (hide).
-            const gridShown = legacyText('grid-toggle', 'Chord Grid') === 'Hide Grid';
-            options.appendChild(makeItem('Memory: Chord Grid', {
-                icon: '▤', active: gridShown, shortcut: '⇧M',
-                onClick: () => clickLegacy('grid-toggle')
             }));
             // Audio Settings (ADSR) — can be closed via its ✕ button, reopened here.
             const eigenAudio = document.getElementById('eigenspace-audio-gui');

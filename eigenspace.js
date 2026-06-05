@@ -363,6 +363,28 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
     }
 }
 
+// Play an arbitrary set of absolute frequencies through EigenSpace's synth.
+// Used by the app-wide Chord Memory (window.playChordFrequencies in anima.js) to
+// audition chords that were captured in OTHER scenes while EigenSpace is active —
+// there's no Plotly node to highlight, so this is audio-only (no visualization).
+// Reuses createNote() with the same harmonic recipe as playChord().
+window.eigenspacePlayFrequencies = async function (freqs) {
+    if (!Array.isArray(freqs) || freqs.length === 0) return;
+    if (!audioInitialized) {
+        await initAudio();
+        if (!audioInitialized) return;
+    }
+    if (!audioCtx || !reverbNode || window.audioMuted) return;
+    const t = audioCtx.currentTime + 0.06;
+    const harmonics = [1, 2, 3, 4, 5, 6];
+    const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
+    for (const freq of freqs) {
+        if (typeof freq === 'number' && freq > 0) {
+            createNote(freq, harmonics, amplitudes, t);
+        }
+    }
+};
+
 // Stop currently playing MIDI chord (note-off) -------------------------------------------------------------
 function stopMIDIChord() {
     if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
@@ -1901,7 +1923,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     nodeNumber: (tetSystem === null && point.pointNumber !== undefined) ? point.pointNumber : (point.pointIndex !== undefined ? point.pointIndex : null),
                     chordName: chordName,
                     cellColor: cellColor,
-                    tetSystem: tetSystem
+                    tetSystem: tetSystem,
+                    sourceScene: Scenes.EIGENSPACE
                 };
                 //console.log('lastClickedChord:', window.lastClickedChord);
 
@@ -2400,9 +2423,11 @@ const EigenspaceScene = {
     // every frame while another scene is shown. Any instance not yet created is
     // skipped. (On re-activation, loop() resumes drawing from current state.)
     activateComponents(active) {
+        // NOTE: gridSketch (Chord Memory) is intentionally NOT here. It is now an
+        // app-wide, scene-independent component governed by its own panel
+        // visibility (grid.js show/hide), so it stays interactive in every scene.
         const components = [
             typeof colorbarP5 !== 'undefined' ? colorbarP5 : null,
-            typeof gridSketch !== 'undefined' ? gridSketch : null,
             typeof chordVizP5 !== 'undefined' ? chordVizP5 : null,
         ];
         for (const c of components) {

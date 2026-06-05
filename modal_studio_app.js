@@ -129,6 +129,38 @@ class OfApp {
         return noteId;
     }
 
+    // Record a just-played chord into the app-wide Chord Memory (grid.js). The
+    // chord is stored as absolute frequencies so it can be recalled in any scene;
+    // `color` (the chord's own MS color) tints the CM cell. Accepts an [r,g,b]
+    // array or a p5 color and normalizes to [r,g,b].
+    captureChordToMemory(frequencies, name, color) {
+        if (typeof window.captureChord !== 'function') return;
+        if (!Array.isArray(frequencies) || frequencies.length === 0) return;
+        let cellColor = null;
+        if (color) {
+            if (Array.isArray(color) && color.length >= 3) {
+                cellColor = [color[0], color[1], color[2]];
+            } else if (color.levels && color.levels.length >= 3) {
+                cellColor = [color.levels[0], color.levels[1], color.levels[2]];
+            }
+        }
+        // getChordQuality() returns a {note, quality, ...} object, not a string;
+        // CM draws chordName as text, so reduce it to a readable label (e.g. "maj7").
+        let chordName = null;
+        if (typeof name === 'string') {
+            chordName = name;
+        } else if (name && typeof name === 'object') {
+            chordName = name.quality || (name.note ? (name.note + (name.quality || '')) : null);
+        }
+        window.captureChord({
+            frequencies: [...frequencies],
+            root: frequencies[0],
+            chordName: chordName,
+            cellColor: cellColor,
+            sourceScene: (window.ANIMA && window.ANIMA.Scenes) ? window.ANIMA.Scenes.MODALSTUDIO : 1
+        });
+    }
+
     // C++: vector<string> ofApp::getNames(const vector<int> &references)
     getNames(references) {
         const names = [];
@@ -339,6 +371,7 @@ class OfApp {
                     }
 
                     this.audioEngine.playChord(frequencies);
+                    this.captureChordToMemory(frequencies, chord.getChordQuality ? chord.getChordQuality() : null, chord.getColor ? chord.getColor() : null);
                     //console.log('▶ Playing grid chord:', frequencies.length, 'notes');
                 };
 
@@ -608,6 +641,7 @@ class OfApp {
 
                                 // Play chord
                                 this.audioEngine.playChord(frequencies);
+                                this.captureChordToMemory(frequencies, chord.getChordQuality ? chord.getChordQuality() : null, chord.getColor ? chord.getColor() : null);
 
                                 // C++ ofApp.cpp lines 34-35: Send chord to VoicingEditor
                                 // C++ Grid.cpp lines 635-656: Store selection state and trigger callback
@@ -710,6 +744,7 @@ class OfApp {
 
                         // Play chord
                         this.audioEngine.playChord(frequencies);
+                        this.captureChordToMemory(frequencies, chord.getChordQuality ? chord.getChordQuality() : null, chord.getColor ? chord.getColor() : null);
 
                         // C++ ofApp.cpp lines 34-35: Send chord to VoicingEditor
                         // C++ Grid.cpp lines 635-656: Store selection state and trigger callback
