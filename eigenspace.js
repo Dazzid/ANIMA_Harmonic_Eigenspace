@@ -2134,6 +2134,11 @@ window.updateGlobalRoot = function (freq, name) {
     if (typeof clearChordVisualization === 'function') {
         clearChordVisualization();
     }
+
+    // Sound the selected root as a single reference tone (spectrum click / arrows).
+    if (typeof window.eigenspacePlayFrequencies === 'function') {
+        window.eigenspacePlayFrequencies([freq]);
+    }
 };
 
 // ============================================================================
