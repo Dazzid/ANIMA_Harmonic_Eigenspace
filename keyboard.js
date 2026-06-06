@@ -1276,6 +1276,24 @@ function buttonForKey(off) {
   };
 }
 
+// Map a computer-key code → its 53-TET note at the FIXED default octave (ignores
+// the live ↑/↓ anchor used inside KL). Exposed so EigenSpace can reuse the exact
+// same keyboard mapping (every key → a 53-TET root). Returns { frequency,
+// noteName } or null. Octave is fixed for now; can be expanded later.
+window.klNoteForKeyCode = function (code) {
+  const off = KEY_TO_HEX[code];
+  if (!off || !noteData || noteData.length === 0) return null;
+  // ES anchor: offset from KB_HOME so key '1' (Digit1) = the spectrum's low C
+  // (C2, 130.81 Hz, JSON reference 66). Shift of (-4,-2) lowers the whole layout
+  // by 46 steps so the keyboard starts at that low C; the rest follow isomorphically.
+  const q = (KB_HOME_Q - 4) + off.q;
+  const r = (KB_HOME_R - 2) + off.r;
+  const reference = REF_ORIGIN + NOTE_PER_Q * q + NOTE_PER_R * r;
+  const info = noteData.find(n => n.reference === reference + OCTAVE_SHIFT);
+  if (!info) return null;
+  return { frequency: info.frequency, noteName: info.noteName };
+};
+
 document.addEventListener('keydown', function(ev) {
   if (ev.repeat) return;
   if (!isOnHero()) return;

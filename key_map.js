@@ -415,6 +415,14 @@ document.addEventListener('keydown', (event) => {
         }
     }
 
+    // In EigenSpace, note keys are handled by EigenspaceScene.keyPressed (53-TET
+    // root selection using the Keyboard scene's map), played through ES's own
+    // synth. So key_map only provides the Shift shortcuts above here — bail before
+    // the Modal Studio note playback below. (key_map's note playback is for MS.)
+    if (window.ANIMA && window.ANIMA.getCurrentScene() === window.ANIMA.Scenes.EIGENSPACE) {
+        return;
+    }
+
     // Check for octave shift keys
     // < = octave down
     // > = octave up

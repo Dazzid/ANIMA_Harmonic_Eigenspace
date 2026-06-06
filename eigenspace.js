@@ -2569,27 +2569,21 @@ const EigenspaceScene = {
             return;
         }
 
-        // EigenSpace keyboard shortcuts (root note selection)
-        const freq = keyToFreq[e.key.toLowerCase()];
-        if (freq) {
-            currentBaseFreq = freq;
-            const clickOutput = document.getElementById('click-output');
-            if (clickOutput) {
-                clickOutput.textContent =
-                    `Root: ${freqToName[freq]} (${freq.toFixed(2)} Hz) - Click any point to hear`;
-            }
-            if (typeof setRootVisualization === 'function') {
-                setRootVisualization(freq);
-            }
-            if (typeof clearChordVisualization === 'function') {
-                clearChordVisualization();
-            }
-        }
-        // MIDI toggle
+        // MIDI panel toggle ('p') — kept as a reserved key (checked before the
+        // note mapping so 'p' doesn't also pick a root).
         if (e.key === 'p' || e.key === 'P') {
-            if (window.midiController) {
-                window.midiController.toggleUI();
-            }
+            if (window.midiController) window.midiController.toggleUI();
+            return;
+        }
+
+        // Root selection via the SAME computer-keyboard map as the Keyboard scene
+        // (fixed default octave). Every mapped key sets the root to its 53-TET note
+        // — which plays it as a reference, names it, and moves the spectrum (see
+        // updateGlobalRoot). Unifies ES with KL; replaces the old 12-TET subset.
+        const klNote = (typeof window.klNoteForKeyCode === 'function') ? window.klNoteForKeyCode(e.code) : null;
+        if (klNote && typeof window.updateGlobalRoot === 'function') {
+            e.preventDefault();
+            window.updateGlobalRoot(klNote.frequency, klNote.noteName);
         }
     },
 };
