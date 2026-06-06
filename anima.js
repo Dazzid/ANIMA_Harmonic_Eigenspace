@@ -130,6 +130,22 @@ document.addEventListener('mouseup', function(e) {
 // KEYBOARD HANDLER (C++ pattern with switch statements)
 // ============================================================================
 
+// Global scene shortcuts: Shift+1 / Shift+2 / Shift+3 → EigenSpace / Modal Studio
+// / Keyboard. Capture phase + stopImmediatePropagation so it fires BEFORE the
+// scenes' own keydown listeners (notably KL, where 1/2/3 are hex keys). Plain
+// digits still reach the scenes.
+const SCENE_HOTKEYS = { Digit1: Scenes.EIGENSPACE, Digit2: Scenes.MODALSTUDIO, Digit3: Scenes.KEYBOARD };
+window.addEventListener('keydown', function(e) {
+    if (!e.shiftKey) return;
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+    const target = SCENE_HOTKEYS[e.code];
+    if (target === undefined) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    switchScene(target);
+}, true); // capture phase — beats the scenes' bubble-phase handlers
+
 window.addEventListener('keydown', function(e) {
     // Delegate to the active scene only.
     if (SceneManager.active && SceneManager.active.keyPressed) {
