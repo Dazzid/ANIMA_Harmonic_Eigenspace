@@ -225,14 +225,10 @@ class InfoOverlay {
         }, 300);
     }
 
-    // Show for the first time after data is loaded
+    // Intentionally does NOT auto-open on load — the intro overlay only appears
+    // when the user clicks the info button (wired in the constructor). Kept as a
+    // no-op so existing callers (eigenspace.js) stay valid.
     showWhenReady() {
-        if (this.hasShownOnLoad) return;
-        // This is the EigenSpace intro — don't pop it over the Keyboard scene
-        // (the viz finishes computing asynchronously, so this can fire after the
-        // user has already switched scenes).
-        if (window.ANIMA && window.ANIMA.getCurrentScene() === window.ANIMA.Scenes.KEYBOARD) return;
-        this.show();
         this.hasShownOnLoad = true;
     }
 
