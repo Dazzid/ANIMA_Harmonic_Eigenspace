@@ -155,6 +155,12 @@ class ChordVisualization {
         // Draw note markers
         this.drawNoteMarkers(p);
 
+        // Draw the 53-TET step ticks (clickable root steps)
+        this.draw53TetTicks(p);
+
+        // Thin hover highlight over the 53-TET step under the cursor
+        this.draw53TetHover(p);
+
         // Draw keyboard mapped scale markers
         this.drawKeyboardMappedScale(p);
 
@@ -323,14 +329,11 @@ class ChordVisualization {
 
     //----------------------------------------------------------------------------------------
     drawNoteMarkers(p) {
-        // Check for hovered note
-        const hoveredNote = this.getHoveredNote(p.mouseX, p.mouseY);
-        
-        // Draw small markers for all notes with keyboard shortcuts
+        // Draw small markers + key labels for the 12-TET reference notes. Hover
+        // feedback is handled by draw53TetHover (any 53-TET step), not these 12.
         for (let note of this.noteFreqs) {
             if (note.key) {
                 const y = this.freqToY(note.freq);
-                const isHovered = hoveredNote && hoveredNote.freq === note.freq;
 
                 // Highlight if this is the current root
                 if (Math.abs(note.freq - this.rootFreq) < 0.1) {
@@ -338,40 +341,17 @@ class ChordVisualization {
                     p.noStroke();
                     p.rect(this.positionKeys - 20, y - 9, this.spectrumWidth + 45, 18, 4);
                 }
-                // Show hover feedback for clickable notes
-                else if (isHovered) {
-                    p.fill(255, 255, 255, 40);
-                    p.noStroke();
-                    p.rect(this.positionKeys - 20, y - 10, this.spectrumWidth + 45, 20, 4);
-                }
-
-                // // Note marker - precise horizontal line
-                // p.stroke(80);
-                // p.strokeWeight(1);
-                // p.line(this.positionKeys - 8, y, this.positionKeys + 8, y);
 
                 // Tiny tick on the main axis
                 p.stroke(100);
                 p.line(this.positionKeys - 15, y, this.positionKeys, y);
 
-                // Key label - highlight if hovered
-                if (isHovered) {
-                    p.fill(255, 255, 255); // Brighter when hovered
-                } else {
-                    p.fill(this.textColor);
-                }
+                // Key label
+                p.fill(this.textColor);
                 p.noStroke();
                 p.textAlign(p.CENTER);
                 p.textSize(10);
                 p.text(note.key.toUpperCase(), this.positionKeys - 36, y + 4);
-                
-                // Show note name on hover
-                if (isHovered) {
-                    p.fill(255, 200, 100);
-                    p.textSize(9);
-                    p.text(note.name, this.positionKeys, y + 4);
-                }
-               
             }
         }
     }
@@ -584,6 +564,63 @@ class ChordVisualization {
     }
 
     //----------------------------------------------------------------------------------------
+    // Short ticks for every 53-TET step on the left edge of the spectrum — the
+    // clickable root steps. The 12-TET lines (drawNoteMarkers) stay the prominent
+    // labeled anchors; these are subtle. The current root's step is highlighted.
+    draw53TetTicks(p) {
+        const steps = window.tet53Steps;
+        if (!steps || steps.length === 0) return;
+        const x0 = this.spectrumX + 2;
+        for (const s of steps) {
+            const y = this.freqToY(s.frequency);
+            const isRoot = Math.abs(s.frequency - this.rootFreq) < 0.5;
+            if (isRoot) {
+                p.stroke(0, 200, 255, 230); // cyan highlight for the current root step
+                p.strokeWeight(2);
+                p.line(x0, y, x0 + 14, y);
+            } else {
+                p.stroke(170, 170, 170, 130); // faint but visible
+                p.strokeWeight(1);
+                p.line(x0, y, x0 + 8, y);
+            }
+        }
+    }
+
+    // Thin hover highlight that tracks the 53-TET step under the cursor and shows
+    // its name — so the whole spectrum reads as clickable (not just the 12 notes).
+    draw53TetHover(p) {
+        const steps = window.tet53Steps;
+        if (!steps || steps.length === 0) return;
+        const mx = p.mouseX, my = p.mouseY;
+        const left = this.positionKeys - 35;
+        const right = this.positionKeys + this.spectrumWidth + 25;
+        if (mx < left || mx > right) return;
+        if (my < this.spectrumY - 6 || my > this.spectrumY + this.spectrumHeight + 6) return;
+
+        let best = null, bestD = Infinity;
+        for (const s of steps) {
+            const d = Math.abs(this.freqToY(s.frequency) - my);
+            if (d < bestD) { bestD = d; best = s; }
+        }
+        if (!best) return;
+        const y = this.freqToY(best.frequency);
+
+        // Thin band + line (much thinner than the old 12-TET block)
+        p.noStroke();
+        p.fill(255, 255, 255, 26);
+        p.rect(this.positionKeys - 20, y - 3, this.spectrumWidth + 45, 6, 6);
+        // p.stroke(255, 255, 255, 150);
+        // p.strokeWeight(1);
+        // p.rect(this.positionKeys - 20, y, this.positionKeys + this.spectrumWidth + 25, y);
+
+        // 53-TET note name of the hovered step
+        p.noStroke();
+        p.fill(255, 220, 120);
+        p.textAlign(p.RIGHT);
+        p.textSize(10);
+        p.text(best.noteName, this.positionKeys + this.spectrumWidth + 22, y - 4);
+    }
+
     freqToY(freq) {
         // Convert frequency to Y position (logarithmic scale)
         const logMin = Math.log(this.minFreq);
@@ -728,22 +765,37 @@ class ChordVisualization {
         const clickAreaRight = this.positionKeys + this.spectrumWidth + 25;
         
         if (mouseX >= clickAreaLeft && mouseX <= clickAreaRight) {
-            // Check each clickable note (only notes with keyboard shortcuts)
+            // 53-TET root selection: snap the click to the nearest 53-TET step on
+            // the spectrum (the 12-TET notes stay as visual reference). Names come
+            // from the reference data (window.tet53Steps).
+            const steps = window.tet53Steps;
+            if (steps && steps.length &&
+                mouseY >= this.spectrumY - 10 && mouseY <= this.spectrumY + this.spectrumHeight + 10) {
+                let best = null, bestD = Infinity;
+                for (const s of steps) {
+                    const d = Math.abs(this.freqToY(s.frequency) - mouseY);
+                    if (d < bestD) { bestD = d; best = s; }
+                }
+                if (best) {
+                    this.setRootFrequency(best.frequency);
+                    if (typeof window.updateGlobalRoot === 'function') {
+                        window.updateGlobalRoot(best.frequency, best.noteName);
+                    }
+                    return true;
+                }
+            }
+
+            // Fallback (before the 53-TET data loads): original 12-TET note hit-test.
             for (let note of this.noteFreqs) {
                 if (note.key) {
                     const y = this.freqToY(note.freq);
                     const noteHeight = 20; // Height of clickable area around each note
-                    
                     if (mouseY >= y - noteHeight/2 && mouseY <= y + noteHeight/2) {
-                        // Note was clicked! Update root frequency
                         this.setRootFrequency(note.freq);
-                        
-                        // Call the global root update function
                         if (typeof window.updateGlobalRoot === 'function') {
                             window.updateGlobalRoot(note.freq);
                         }
-                        
-                        return true; // Click was handled
+                        return true;
                     }
                 }
             }

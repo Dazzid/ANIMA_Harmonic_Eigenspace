@@ -2117,10 +2117,13 @@ window.addEventListener('keydown', function (e) {
 });
 
 // Function to update root from chord visualization clicks
-window.updateGlobalRoot = function (freq) {
+window.updateGlobalRoot = function (freq, name) {
     currentBaseFreq = freq;
+    // `name` is supplied for 53-TET steps (from the reference data); 12-TET note
+    // clicks fall back to freqToName, and anything else to the bare frequency.
+    const label = name || freqToName[freq] || `${freq.toFixed(2)} Hz`;
     document.getElementById('click-output').textContent =
-        `Root: ${freqToName[freq]} (${freq.toFixed(2)} Hz) - Click any point to hear`;
+        `Root: ${label} (${freq.toFixed(2)} Hz) - Click any point to hear`;
 
     // Update chord visualization root
     if (typeof setRootVisualization === 'function') {
@@ -2131,6 +2134,57 @@ window.updateGlobalRoot = function (freq) {
     if (typeof clearChordVisualization === 'function') {
         clearChordVisualization();
     }
+};
+
+// ============================================================================
+// 53-TET ROOT STEPS (Frequency Spectrum click + Up/Down comma stepping)
+// ----------------------------------------------------------------------------
+// The Frequency Spectrum (chord_visualization.js) shows the 12-TET notes as
+// reference; these steps let the user pick ANY 53-TET pitch as root. Loaded once
+// from 53_reference_notes.json, filtered to the spectrum range (C3–C5), sorted
+// ascending. Each step: { reference, frequency, noteName }. reference ±1 = one
+// Holdrian comma (1/53 octave).
+// ============================================================================
+window.tet53Steps = [];
+(async function loadTet53Steps() {
+    try {
+        const res = await fetch('53_reference_notes.json');
+        const data = await res.json();
+        const arr = Array.isArray(data) ? data : (data.notes || []);
+        const MIN = 130.81, MAX = 523.25; // spectrum range (C3–C5)
+        window.tet53Steps = arr
+            .filter(n => n && typeof n.frequency === 'number' &&
+                         n.frequency >= MIN - 0.01 && n.frequency <= MAX + 0.01)
+            .map(n => ({ reference: n.reference, frequency: n.frequency, noteName: n.noteName }))
+            .sort((a, b) => a.frequency - b.frequency);
+        console.log(`[ES] Loaded ${window.tet53Steps.length} 53-TET root steps (C3–C5)`);
+    } catch (e) {
+        console.warn('[ES] Failed to load 53-TET steps', e);
+    }
+})();
+
+// Index of the 53-TET step nearest a frequency (log-distance); -1 if none loaded.
+window.tet53NearestIndex = function (freq) {
+    const steps = window.tet53Steps;
+    if (!steps || steps.length === 0) return -1;
+    let best = 0, bestD = Infinity;
+    const lf = Math.log(freq);
+    for (let i = 0; i < steps.length; i++) {
+        const d = Math.abs(Math.log(steps[i].frequency) - lf);
+        if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+};
+
+// Move the root by ±1 Holdrian comma (one 53-TET step), snapping to the grid.
+window.stepRoot53 = function (dir) {
+    const steps = window.tet53Steps;
+    if (!steps || steps.length === 0) return;
+    let idx = window.tet53NearestIndex(currentBaseFreq);
+    if (idx < 0) return;
+    idx = Math.max(0, Math.min(steps.length - 1, idx + (dir > 0 ? 1 : -1)));
+    const s = steps[idx];
+    window.updateGlobalRoot(s.frequency, s.noteName);
 };
 
 // Function to update chord with current doubling settings
@@ -2447,6 +2501,16 @@ const EigenspaceScene = {
     resize(p) { /* Plotly responds to its own resize */ },
 
     keyPressed(e) {
+        // Up/Down arrows nudge the root by one Holdrian comma (one 53-TET step),
+        // snapping onto the 53-TET grid. preventDefault so the page doesn't scroll.
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            if (typeof window.stepRoot53 === 'function') {
+                e.preventDefault();
+                window.stepRoot53(e.key === 'ArrowUp' ? +1 : -1);
+            }
+            return;
+        }
+
         // EigenSpace keyboard shortcuts (root note selection)
         const freq = keyToFreq[e.key.toLowerCase()];
         if (freq) {

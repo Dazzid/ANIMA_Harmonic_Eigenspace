@@ -74,7 +74,9 @@ Each scene implements the contract: `enter / exit / draw / mousePressed / mouseD
 | `window.keyboardPlayChord` | keyboard.js | CM recall in KL |
 | MS grid session API: `OfApp.getSession/applySession`, `Grid.serializeAll/restoreAll` | modal_studio_app.js, modal_studio_Grid.js | session |
 
-## 6. Current direction: Save / Load Session (JSON)
+## 6. Roadmap
+
+### 6.1 Save / Load Session (JSON) — ✅ DONE (verified end-to-end)
 
 **Goal.** Persist a working session to a local JSON file and reload it later. Two menu actions in **all** scenes: **Save Session** (downloads a file) and **Load Session** (drop area → validate header → **replace** current state).
 
@@ -162,6 +164,58 @@ Tick as we go. Don't start a phase before the one above is green.
 - [x] Foreign/invalid JSON rejected with message, state untouched
 - [x] Works from ES / MS / KL menus
 - [x] `index.html` + `anima.html` script lists in sync
+
+### 6.2 ES 53-TET root selection — ✅ DONE (verified)
+
+**Goal.** In EigenSpace the root is chosen from 12 chromatic keys today. The system is 53-TET–centric, so let the user reach **any 53-TET step** as the root: click intermediate steps on the **Frequency Spectrum**, and nudge the root by **one Holdrian comma** (1/53 octave) with the **Up/Down arrows**. The 12-TET keys stay as labeled reference; the 53-TET grid is what the ticks/arrows move along.
+
+**What's already there**
+- Root = `currentBaseFreq` (eigenspace.js); 12 keys via `keyToFreq` (12-TET, C3–C4); `setRootVisualization(freq)` redraws.
+- **Frequency Spectrum** = `chord_visualization.js` (the `chordVizP5` instance, scene-gated): a vertical **log**-frequency bar **C3 (130.81 Hz) → C5 (523.25 Hz)** with `freqToY(freq)`, already drawing the 12-TET notes as reference lines + names.
+- **`53_reference_notes.json`** (423 rows): each step = `{ reference, frequency, noteName }`. `reference` is the 53-TET step index (**±1 = one Holdrian comma**); `frequency` is exact Hz; `noteName` is the name (e.g. `^A0`). So steps + names are read straight from here — nothing computed.
+- Arrow keys are **currently unused in ES** — free to use (just `preventDefault` so the page doesn't scroll).
+
+**Design**
+- Load `53_reference_notes.json` once in ES; keep the steps within the spectrum range (C3–C5, ~106 steps over 2 octaves).
+- Draw each 53-TET step as a small **clickable tick** at `freqToY(step.frequency)`; the 12-TET lines stay the prominent labeled anchors. Highlight the current root's step.
+- **Click** a tick → nearest-step hit-test by y → set `currentBaseFreq = step.frequency`, `setRootVisualization(...)`, show `step.noteName` in the root readout, redraw.
+- **Arrows** in `EigenspaceScene.keyPressed`: snap to the nearest 53-TET `reference`, then ±1 → set root to that step (frequency + name). `preventDefault`.
+- Display the **53-TET `noteName`** (from the JSON) for off-12-TET roots — every step has one.
+- Keep the 12 keyboard keys as the 12-TET reference roots (unchanged).
+
+**Files to touch**
+- **`eigenspace.js`** — load + cache the 53-TET steps (fetch `53_reference_notes.json`); a `setRootToFrequency(freq, name)` helper that updates `currentBaseFreq` + readout + `setRootVisualization`; arrow handling in `EigenspaceScene.keyPressed` (nearest-ref → ±1). Reuse the existing root-readout (`#click-output`).
+- **`chord_visualization.js`** — draw the 53-TET ticks + current-root highlight; add `mousePressed` on `chordVizP5` (already events-gated via `enable/disableEvents`) that hit-tests the nearest step and sets the root.
+
+**Defaults (unless changed):** ticks are subtle short marks (12-TET lines stay prominent); click snaps to nearest tick; arrows step continuously (no octave clamp).
+
+**Build checklist**
+
+**Phase 0 — Decisions**
+- [x] Root selectable across all 53-TET steps; 12-TET keys stay as reference
+- [x] Mouse target = the **Frequency Spectrum** (`chord_visualization.js`), add intermediate clickable steps
+- [x] Up/Down arrows = ±1 Holdrian comma (1/53 octave), snapping to canonical 53-TET steps
+- [x] Names come from `53_reference_notes.json` `noteName`
+
+**Phase 1 — 53-TET data + root helper (`eigenspace.js`)** ✅
+- [x] Fetch + cache `53_reference_notes.json` steps within C3–C5 → `window.tet53Steps` (sorted)
+- [x] Root setter: extended `window.updateGlobalRoot(freq, name)` (name from 53-TET data) + `window.stepRoot53(dir)`
+- [x] `window.tet53NearestIndex(freq)` helper (log-nearest 53-TET step)
+
+**Phase 2 — Arrow stepping** ✅
+- [x] `EigenspaceScene.keyPressed`: ArrowUp/Down → `stepRoot53(±1)` (nearest-ref ±1); `preventDefault`
+- [x] No conflict with global Shift+digit hotkeys (those gate on `shiftKey`; arrows have no Shift)
+
+**Phase 3 — Spectrum ticks + click (`chord_visualization.js`)** ✅
+- [x] `draw53TetTicks(p)` — short ticks per 53-TET step at `freqToY`; current root highlighted (cyan)
+- [x] `handleMouseClick` snaps the click to the nearest 53-TET step → `updateGlobalRoot(freq, noteName)` (12-TET hit-test kept as pre-load fallback)
+- [x] Events honor the scene gate — `chordVizP5` is in `activateComponents` (events + `noLoop` off-scene)
+
+**Phase 4 — Verify** ✅
+- [x] Click intermediate ticks → root snaps to 53-TET step, name (e.g. `^^F4`, `vC#4`) + viz update — verified
+- [x] Up/Down arrows move the root by one comma; names track (`A3`→`^A3`→`vA3`); no page scroll
+- [x] 12-TET keyboard keys still set their reference roots (unchanged `keyToFreq` path)
+- [x] Ticks inert + not drawn when not in ES (scene gate)
 
 ## 7. Conventions
 
