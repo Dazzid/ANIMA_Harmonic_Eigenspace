@@ -936,7 +936,8 @@ function clusterChordName(rootBtns) {
       if (!tmpl.intervals || tmpl.intervals.length !== rel.length) continue;
       const tset = tmpl.intervals.map(x => ((x % 53) + 53) % 53).sort((a, b) => a - b);
       if (tset.every((v, i) => v === rel[i])) {
-        return tmpl.name;
+        // Just the quality label for CM (e.g. "M", "sm") — drop the " triad" suffix.
+        return tmpl.name.replace(/\s*triad$/i, '');
       }
     }
   }
@@ -1275,6 +1276,14 @@ document.addEventListener('keydown', function(ev) {
   if (!isOnHero()) return;
   var ae = document.activeElement;
   if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+
+  // Shift+M toggles the Chord Memory grid. 'M' is also a hex key and key_map.js
+  // bails in this scene, so intercept the shortcut here (before the hex lookup).
+  if (ev.shiftKey && ev.code === 'KeyM' && typeof window.toggleChordGrid === 'function') {
+    window.toggleChordGrid();
+    ev.preventDefault();
+    return;
+  }
 
   if (ev.code === 'ArrowUp') {
     kbAnchorOffsetQ += OCTAVE_DQ;
