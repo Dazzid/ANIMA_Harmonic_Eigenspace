@@ -79,19 +79,19 @@ class ChordVisualization {
 
         // Note names for reference
         this.noteFreqs = [
-            { freq: 130.81, name: 'C3', key: 'q' },
-            { freq: 138.59, name: 'C#3', key: '2' },
-            { freq: 146.83, name: 'D3', key: 'w' },
-            { freq: 155.56, name: 'D#3', key: '3' },
-            { freq: 164.81, name: 'E3', key: 'e' },
-            { freq: 174.61, name: 'F3', key: 'r' },
-            { freq: 185.00, name: 'F#3', key: '5' },
-            { freq: 196.00, name: 'G3', key: 't' },
-            { freq: 207.65, name: 'G#3', key: '6' },
-            { freq: 220.00, name: 'A3', key: 'y' },
-            { freq: 233.08, name: 'A#3', key: '7' },
-            { freq: 246.94, name: 'B3', key: 'u' },
-            { freq: 261.63, name: 'C4', key: 'i' },
+            { freq: 130.81, name: 'C3' },
+            { freq: 138.59, name: 'C#3' },
+            { freq: 146.83, name: 'D3' },
+            { freq: 155.56, name: 'D#3' },
+            { freq: 164.81, name: 'E3' },
+            { freq: 174.61, name: 'F3' },
+            { freq: 185.00, name: 'F#3' },
+            { freq: 196.00, name: 'G3' },
+            { freq: 207.65, name: 'G#3' },
+            { freq: 220.00, name: 'A3' },
+            { freq: 233.08, name: 'A#3' },
+            { freq: 246.94, name: 'B3' },
+            { freq: 261.63, name: 'C4' },
             { freq: 277.18, name: 'C#4' },
             { freq: 293.66, name: 'D4' },
             { freq: 311.13, name: 'D#4' },
@@ -329,29 +329,14 @@ class ChordVisualization {
 
     //----------------------------------------------------------------------------------------
     drawNoteMarkers(p) {
-        // Draw small markers + key labels for the 12-TET reference notes. Hover
-        // feedback is handled by draw53TetHover (any 53-TET step), not these 12.
+        // Tiny ticks at the 12-TET reference positions. (The old q/w/e key letters
+        // were removed — the keyboard no longer maps to those specific keys; root
+        // selection + names are handled by the 53-TET ticks/hover.)
         for (let note of this.noteFreqs) {
             if (note.key) {
                 const y = this.freqToY(note.freq);
-
-                // Highlight if this is the current root
-                if (Math.abs(note.freq - this.rootFreq) < 0.1) {
-                    p.fill(0, 200, 255, 80);
-                    p.noStroke();
-                    p.rect(this.positionKeys - 20, y - 9, this.spectrumWidth + 45, 18, 4);
-                }
-
-                // Tiny tick on the main axis
                 p.stroke(100);
                 p.line(this.positionKeys - 15, y, this.positionKeys, y);
-
-                // Key label
-                p.fill(this.textColor);
-                p.noStroke();
-                p.textAlign(p.CENTER);
-                p.textSize(10);
-                p.text(note.key.toUpperCase(), this.positionKeys - 36, y + 4);
             }
         }
     }
