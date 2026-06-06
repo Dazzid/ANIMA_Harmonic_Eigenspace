@@ -2151,17 +2151,35 @@ window.tet53Steps = [];
         const res = await fetch('53_reference_notes.json');
         const data = await res.json();
         const arr = Array.isArray(data) ? data : (data.notes || []);
-        const MIN = 130.81, MAX = 523.25; // spectrum range (C3–C5)
-        window.tet53Steps = arr
-            .filter(n => n && typeof n.frequency === 'number' &&
-                         n.frequency >= MIN - 0.01 && n.frequency <= MAX + 0.01)
+        // Full set (all octaves), sorted — used to NAME any frequency in 53-TET.
+        window.tet53All = arr
+            .filter(n => n && typeof n.frequency === 'number' && n.noteName)
             .map(n => ({ reference: n.reference, frequency: n.frequency, noteName: n.noteName }))
             .sort((a, b) => a.frequency - b.frequency);
-        console.log(`[ES] Loaded ${window.tet53Steps.length} 53-TET root steps (C3–C5)`);
+        // Subset within the spectrum range (C3–C5) — used for the clickable root
+        // ticks + arrow stepping.
+        const MIN = 130.81, MAX = 523.25;
+        window.tet53Steps = window.tet53All.filter(n => n.frequency >= MIN - 0.01 && n.frequency <= MAX + 0.01);
+        console.log(`[ES] Loaded ${window.tet53All.length} 53-TET notes (${window.tet53Steps.length} in C3–C5)`);
     } catch (e) {
         console.warn('[ES] Failed to load 53-TET steps', e);
     }
 })();
+
+// Nearest 53-TET note name for any frequency (full range). Used by Chord Memory
+// so saved chords show their real 53-TET root name, not a 12-TET approximation.
+// Returns null if the reference data hasn't loaded.
+window.freqToNoteName53 = function (freq) {
+    const all = window.tet53All;
+    if (!all || all.length === 0 || !(freq > 0)) return null;
+    let best = null, bestD = Infinity;
+    const lf = Math.log(freq);
+    for (let i = 0; i < all.length; i++) {
+        const d = Math.abs(Math.log(all[i].frequency) - lf);
+        if (d < bestD) { bestD = d; best = all[i]; }
+    }
+    return best ? best.noteName : null;
+};
 
 // Index of the 53-TET step nearest a frequency (log-distance); -1 if none loaded.
 window.tet53NearestIndex = function (freq) {

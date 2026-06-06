@@ -240,9 +240,11 @@ const createGridSketch = (p) => {
                 p.textAlign(p.CENTER, p.CENTER);
                 p.textFont('Source Code Pro');
                 
-                // Display root note on top
+                // Display root note on top. Prefer the real 53-TET name (resolver
+                // loaded by eigenspace.js); fall back to the 12-TET approximation.
                 const rootHz = chord.root || 220.0;
-                const rootNote = this.frequencyToNoteName(rootHz);
+                const rootNote = (typeof window.freqToNoteName53 === 'function' && window.freqToNoteName53(rootHz))
+                    || this.frequencyToNoteName(rootHz);
                 p.textSize(11);
                 p.text(rootNote, x + this.cellSize / 2, y + this.cellSize / 2 - 8);
                 
