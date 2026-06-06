@@ -38,8 +38,18 @@ class AudioEngine {
         try {
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             await this.audioCtx.resume();
+
+            // Master limiter (clip protection) — same settings as KL/ES.
+            this.limiterNode = this.audioCtx.createDynamicsCompressor();
+            this.limiterNode.threshold.value = -3;
+            this.limiterNode.knee.value = 0;
+            this.limiterNode.ratio.value = 20;
+            this.limiterNode.attack.value = 0.001;
+            this.limiterNode.release.value = 0.01;
+            this.limiterNode.connect(this.audioCtx.destination);
+
             this.reverbNode = this.createReverb();
-            this.reverbNode.connect(this.audioCtx.destination);
+            this.reverbNode.connect(this.limiterNode);
             
             // Pre-warm: play silent note to prime audio graph
             const warmupOsc = this.audioCtx.createOscillator();
@@ -70,8 +80,8 @@ class AudioEngine {
         
         for (let i = 0; i < length; i++) {
             const n = length - i;
-            impulseL[i] = (Math.random() * 2 - 1) * Math.pow(n / length, 2);
-            impulseR[i] = (Math.random() * 2 - 1) * Math.pow(n / length, 2);
+            impulseL[i] = (Math.random() * 2 - 1) * Math.pow(n / length, 1.8); // decay matched to KL (0.6×3)
+            impulseR[i] = (Math.random() * 2 - 1) * Math.pow(n / length, 1.8);
         }
         
         convolver.buffer = impulse;
@@ -138,12 +148,19 @@ class AudioEngine {
         dryGain.gain.value = Math.sqrt(1.0 - window.audioParams.dryWet);
         wetGain.gain.value = Math.sqrt(window.audioParams.dryWet) * 2.0;
         
+        // Pan the dry signal by pitch (low→left, high→right); reverb stays centered.
+        const dryPan = this.audioCtx.createStereoPanner();
+        dryPan.pan.value = (window.panForFreq ? window.panForFreq(freq) : 0);
+
         masterGain.connect(dryGain);
         masterGain.connect(wetGain);
-        dryGain.connect(this.audioCtx.destination);
-        wetGain.connect(this.reverbNode);
+        dryGain.connect(dryPan);
+        dryPan.connect(this.limiterNode || this.audioCtx.destination); // dry → pan → limiter → out
+        wetGain.connect(this.reverbNode);                              // wet → reverb → limiter → out
         
-        masterGain.gain.value = 0.15;  // Base gain
+        // Base gain × reverb makeup (louder as the wet mix rises — see eigenspace.js).
+        const makeup = 1 + (window.audioParams.dryWet || 0) * (window.REVERB_MAKEUP || 0);
+        masterGain.gain.value = 0.15 * makeup;
         
         // Create each harmonic as separate oscillator
         for (let i = 0; i < harmonics.length; i++) {

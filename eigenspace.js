@@ -167,21 +167,47 @@ function refineNodeStochastic(node, baseFreq, numHarmonics, iterations = 100) {
 // Audio synthesis with p5.sound -----------------------------------------------------
 let audioCtx;
 let reverbNode;
+let limiterNode; // master brick-wall limiter (clip protection) — mirrors KL
 let audioInitialized = false;
 
 // Track currently playing oscillators so we can stop them
 let currentlyPlaying = [];
 
-// Audio parameters - controlled by GUI
+// Audio parameters — the SINGLE source of truth, shared by ES, MS and KL.
+// `window.audioParams` is aliased to this object below (search "window.audioParams = audioParams"),
+// so all three scenes and the ADSR GUI read/write the same params. Defaults match
+// the former window.audioParams (KL's reference) for consistent sound on load.
 let audioParams = {
     waveType: 'sine',
-    attack: 0.2,
-    sustain: 1.5, // Max 2 seconds total
-    release: 0.3,
-    attackLevel: 1.0,    // peak amplitude after attack
-    sustainLevel: 0.7,    // sustain amplitude level
-    dryWet: 0.25
+    attack: 0.1,
+    sustain: 0.5,
+    release: 1.0,
+    attackLevel: 0.7,    // peak amplitude after attack
+    sustainLevel: 0.5,   // sustain amplitude level
+    dryWet: 0.1
 };
+
+// Reverb makeup gain: more reverb (higher dryWet) smears energy into the wet
+// tail and lowers perceived loudness, so lift the per-note gain by
+// (1 + dryWet × this) to keep volume steady as the mix gets wetter. The master
+// limiters keep that safe from clipping. Shared by ES, MS and KL.
+window.REVERB_MAKEUP = 0.6;
+function reverbMakeup() {
+    return 1 + (window.audioParams && window.audioParams.dryWet || 0) * (window.REVERB_MAKEUP || 0);
+}
+
+// Pitch → stereo pan ("keyboard panning"): low notes lean LEFT, high notes RIGHT,
+// like sitting at a piano. Subtle spread (±PAN_SPREAD) widens chords / separates
+// voices without disorienting or collapsing in mono. Applied to the DRY path only
+// (reverb stays centered for a natural room). Shared by ES, MS, KL.
+window.PAN_SPREAD = 0.6;
+function panForFreq(freq) {
+    if (!(freq > 0)) return 0;
+    const LO = 65.41, HI = 1046.5; // C2 .. C6 maps across the field
+    let n = (Math.log(freq) - Math.log(LO)) / (Math.log(HI) - Math.log(LO));
+    n = Math.max(0, Math.min(1, n));
+    return (n * 2 - 1) * (window.PAN_SPREAD || 0); // low → −(left), high → +(right)
+}
 
 // Create reverb impulse response
 function createReverb() {
@@ -193,7 +219,7 @@ function createReverb() {
     for (let channel = 0; channel < 2; channel++) {
         const channelData = impulse.getChannelData(channel);
         for (let i = 0; i < length; i++) {
-            channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2);
+            channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 1.8); // decay matched to KL (0.6×3)
         }
     }
     convolver.buffer = impulse;
@@ -207,8 +233,19 @@ async function initAudio() {
     try {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         await audioCtx.resume();
+
+        // Master limiter (clip protection) on the output bus — same settings as
+        // KL. Both the dry note path and the reverb feed through it.
+        limiterNode = audioCtx.createDynamicsCompressor();
+        limiterNode.threshold.value = -3;
+        limiterNode.knee.value = 0;
+        limiterNode.ratio.value = 20;
+        limiterNode.attack.value = 0.001;
+        limiterNode.release.value = 0.01;
+        limiterNode.connect(audioCtx.destination);
+
         reverbNode = createReverb();
-        reverbNode.connect(audioCtx.destination);
+        reverbNode.connect(limiterNode);
 
         // PRE-WARM: Play a silent note to prime the audio graph
         const warmupOsc = audioCtx.createOscillator();
@@ -404,15 +441,20 @@ function createNote(freq, harmonics, amplitudes, startTime, isDoubled = false) {
     dryGain.gain.value = Math.sqrt(1.0 - audioParams.dryWet);
     wetGain.gain.value = Math.sqrt(audioParams.dryWet) * 2.0;
 
+    // Pan the dry signal by pitch (low→left, high→right); reverb stays centered.
+    const dryPan = audioCtx.createStereoPanner();
+    dryPan.pan.value = (window.panForFreq ? window.panForFreq(freq) : 0);
+
     masterGain.connect(dryGain);
     masterGain.connect(wetGain);
-    dryGain.connect(audioCtx.destination);
-    wetGain.connect(reverbNode);
+    dryGain.connect(dryPan);
+    dryPan.connect(limiterNode || audioCtx.destination); // dry → pan → limiter → out
+    wetGain.connect(reverbNode);                          // wet → reverb → limiter → out
 
     // Reduce gain for doubled (higher octave) frequencies
     const baseGain = 0.15; // 0.20 = louder, clip on consonant chords
     const doubledGainReduction = 0.7; // Reduce to 70% of original gain for doubled frequencies
-    masterGain.gain.value = isDoubled ? baseGain * doubledGainReduction : baseGain;
+    masterGain.gain.value = (isDoubled ? baseGain * doubledGainReduction : baseGain) * reverbMakeup();
 
     // Create each harmonic as separate oscillator
     for (let i = 0; i < harmonics.length; i++) {
@@ -1697,7 +1739,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 }
 
                 // All buttons use the same color scheme for clean, unified look
-                colorizeButton(btn, '#1d96ffff', '#6ed1feff');
+                colorizeButton(btn, 'rgb(237, 237, 237)', 'rgb(255, 255, 255)');
 
                 // Add general hover background effect
                 btn.addEventListener('mouseenter', () => {
@@ -2420,16 +2462,9 @@ document.addEventListener('keydown', (e) => {
 
 
 //ANIMA code
-// Global audio parameters shared between ADSR GUI and Audio Engine
-window.audioParams = {
-    waveType: 'sine', // 'sine', 'square', 'sawtooth', 'triangle'
-    attack: 0.1,
-    sustain: 0.5,
-    release: 1.0,
-    attackLevel: 0.7,
-    sustainLevel: 0.5,
-    dryWet: 0.1
-};
+// Global audio params: alias the ONE object (declared above) onto window so MS/KL
+// and the ADSR GUI share it with ES — no second copy to keep in sync.
+window.audioParams = audioParams;
 
 // Also initialize global mute state
 window.audioMuted = false;

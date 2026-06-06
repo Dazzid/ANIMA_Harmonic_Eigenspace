@@ -1014,9 +1014,13 @@ function playSingleTone(frequency) {
   // Per-note mixer for the harmonic stack; feeds the global dry + reverb buses.
   // baseGain tames the summed harmonics before masterGain (0.25) + the limiter.
   const noteGain = audioCtx.createGain();
-  noteGain.gain.value = 0.7;
-  noteGain.connect(dryGain);   // dry path → masterGain
-  noteGain.connect(convolver); // wet path → convolver → wetGain → masterGain
+  // Base gain × reverb makeup (louder as the wet mix rises — see eigenspace.js).
+  noteGain.gain.value = 0.7 * (1 + (params.dryWet || 0) * (window.REVERB_MAKEUP || 0));
+  // Pan the dry signal by pitch (low→left, high→right); reverb stays centered.
+  const dryPan = audioCtx.createStereoPanner();
+  dryPan.pan.value = (window.panForFreq ? window.panForFreq(frequency) : 0);
+  noteGain.connect(dryPan); dryPan.connect(dryGain); // dry path → pan → masterGain
+  noteGain.connect(convolver);                       // wet path → convolver → wetGain → masterGain
 
   const oscs = [];
   for (let i = 0; i < KL_HARMONICS.length; i++) {
@@ -1042,7 +1046,7 @@ function playSingleTone(frequency) {
   }
 
   // Track this note as ONE voice in the FIFO pool, stealing the oldest when full.
-  const voice = { oscs, noteGain, endTime: now + totalTime };
+  const voice = { oscs, noteGain, dryPan, endTime: now + totalTime };
   while (activeVoices.length >= MAX_VOICES) stealOldestVoice();
   activeVoices.push(voice);
 
@@ -1055,6 +1059,7 @@ function playSingleTone(frequency) {
       try { o._gain.disconnect(); } catch (e) {}
     });
     try { noteGain.disconnect(); } catch (e) {}
+    try { dryPan.disconnect(); } catch (e) {}
   };
 }
 
