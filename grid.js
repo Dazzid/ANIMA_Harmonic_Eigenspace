@@ -247,16 +247,18 @@ const createGridSketch = (p) => {
                 p.text(rootNote, x + this.cellSize / 2, y + this.cellSize / 2 - 8);
                 
                 // Display chord quality below (chord name or node number)
+                // No chord name → show nothing on the quality line (e.g. a single
+                // note has no chord quality). Only the root note shows on top.
                 let quality;
                 if (chord.chordName) {
                     quality = chord.chordName;
                 } else if (chord.nodeNumber !== undefined && chord.nodeNumber !== null) {
                     quality = `#${chord.nodeNumber}`;
                 } else {
-                    quality = `${row},${col}`;
+                    quality = '';
                 }
                 p.textSize(11);
-                p.text(quality, x + this.cellSize / 2, y + this.cellSize / 2 + 8);
+                if (quality) p.text(quality, x + this.cellSize / 2, y + this.cellSize / 2 + 8);
             }
             // Draw border on hover
             if (isHovered) {

@@ -908,23 +908,77 @@ function playNote(btn) {
   // Play each interval in the selected chord (+ extensions)
   const rootFreq = btn.frequency;
   const intervals = getActiveIntervals(btn);
-  const freqs = [];
   for (const steps of intervals) {
     const freq = rootFreq * Math.pow(2, steps / 53);
-    freqs.push(freq);
     playSingleTone(freq);
   }
+  // Note: Chord Memory capture is driven by the input handlers (mouse/keydown)
+  // via captureKeyboardChord(), so multi-key clusters can be grouped — see below.
+}
 
-  // Record into the app-wide Chord Memory (grid.js) as absolute frequencies.
-  if (typeof window.captureChord === 'function' && freqs.length > 0) {
-    window.captureChord({
-      frequencies: freqs,
-      root: rootFreq,
-      chordName: (selectedChord && selectedChord.name) ? selectedChord.name : null,
-      cellColor: null,
-      sourceScene: (window.ANIMA && window.ANIMA.Scenes) ? window.ANIMA.Scenes.KEYBOARD : 2
-    });
+// True when the "Single note" voicing is selected (one interval per key).
+function isSingleNoteMode() {
+  return !(selectedChord && selectedChord.intervals && selectedChord.intervals.length > 1);
+}
+
+// Try to name a held cluster by matching its pitch-class shape against the known
+// chord templates (CHORDS_53TET). Returns the chord QUALITY (e.g. "M triad",
+// "maj7") or null if the shape isn't a known chord. The root note is already
+// shown on the CM cell's top line, so we don't repeat it here (keeps it short).
+// Octave/voicing-independent: notes are reduced to 53-TET pitch classes and each
+// candidate root is tested (so inversions still match).
+function clusterChordName(rootBtns) {
+  const pcs = [...new Set(rootBtns.map(b => (((b.note53 || 0) % 53) + 53) % 53))].sort((a, b) => a - b);
+  if (pcs.length < 2) return null; // a single pitch class isn't a chord
+  for (const root of pcs) {
+    const rel = pcs.map(pc => (((pc - root) % 53) + 53) % 53).sort((a, b) => a - b);
+    for (const tmpl of CHORDS_53TET) {
+      if (!tmpl.intervals || tmpl.intervals.length !== rel.length) continue;
+      const tset = tmpl.intervals.map(x => ((x % 53) + 53) % 53).sort((a, b) => a - b);
+      if (tset.every((v, i) => v === rel[i])) {
+        return tmpl.name;
+      }
+    }
   }
+  return null;
+}
+
+// Capture what was just played into the app-wide Chord Memory (grid.js) as
+// absolute Hz. `rootBtns` is one button (single press) or several (a held
+// cluster). In Single-note mode, holding several keys saves the union of those
+// notes — named as a known chord if the shape is recognized, otherwise "cust".
+// One key, or chord mode, keeps the existing behavior (single note → no name;
+// a selected chord → its name).
+function captureKeyboardChord(rootBtns, isCluster) {
+  if (typeof window.captureChord !== 'function' || !rootBtns || rootBtns.length === 0) return;
+  const seen = new Set();
+  const freqs = [];
+  for (const btn of rootBtns) {
+    for (const steps of getActiveIntervals(btn)) {
+      const f = btn.frequency * Math.pow(2, steps / 53);
+      const k = Math.round(f * 100);
+      if (!seen.has(k)) { seen.add(k); freqs.push(f); }
+    }
+  }
+  if (freqs.length === 0) return;
+  freqs.sort((a, b) => a - b);
+
+  let chordName;
+  if (isCluster) {
+    chordName = clusterChordName(rootBtns) || 'cust';     // known chord, else custom cluster
+  } else if (selectedChord && selectedChord.intervals && selectedChord.intervals.length > 1) {
+    chordName = selectedChord.name;                       // a real chord
+  } else {
+    chordName = null;                                     // single note → no name
+  }
+
+  window.captureChord({
+    frequencies: freqs,
+    root: freqs[0],
+    chordName: chordName,
+    cellColor: null,
+    sourceScene: (window.ANIMA && window.ANIMA.Scenes) ? window.ANIMA.Scenes.KEYBOARD : 2
+  });
 }
 
 // Play an arbitrary set of absolute frequencies through the 53-TET synth. Used
@@ -1024,6 +1078,7 @@ function hitTestAndPlay(cx, cy) {
   if (best) {
     best.active = true;
     playNote(best);
+    captureKeyboardChord([best], false); // mouse plays one hex at a time
     // Playing a hex tucks the chord menu away so it's out of the way.
     const cp = document.getElementById('chord-panel');
     if (cp) cp.classList.remove('visible');
@@ -1056,6 +1111,7 @@ function dragTest(cx, cy) {
   if (best && !best.active) {
     best.active = true;
     playNote(best);
+    captureKeyboardChord([best], false);
   }
 }
 
@@ -1251,6 +1307,15 @@ document.addEventListener('keydown', function(ev) {
   rootBtn._keyPressedAt = performance.now();
   pressedKeys.set(ev.code, rootBtn);
   playNote(rootBtn);
+
+  // Capture into Chord Memory. In Single-note mode, several keys held at once
+  // become one custom cluster ("cust"); otherwise capture this single press.
+  const held = [...pressedKeys.values()];
+  if (isSingleNoteMode() && held.length > 1) {
+    captureKeyboardChord(held, true);
+  } else {
+    captureKeyboardChord([rootBtn], false);
+  }
 
   ev.preventDefault();
 });
