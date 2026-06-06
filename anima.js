@@ -135,10 +135,41 @@ document.addEventListener('mouseup', function(e) {
 // scenes' own keydown listeners (notably KL, where 1/2/3 are hex keys). Plain
 // digits still reach the scenes.
 const SCENE_HOTKEYS = { Digit1: Scenes.EIGENSPACE, Digit2: Scenes.MODALSTUDIO, Digit3: Scenes.KEYBOARD };
+
+// Toggle the ACTIVE scene's Audio Settings (ADSR) panel. Each scene shows the
+// shared ADSR canvas in its own container, so the toggle differs per scene.
+function toggleAudioSettings() {
+    switch (currentScene) {
+        case Scenes.EIGENSPACE: {
+            const ag = document.getElementById('eigenspace-audio-gui');
+            if (ag) ag.style.display = (!ag.style.display || ag.style.display === 'none') ? 'block' : 'none';
+            break;
+        }
+        case Scenes.MODALSTUDIO: {
+            const btn = document.getElementById('audio-toggle'); // its handler reparents the ADSR canvas
+            if (btn) btn.click();
+            break;
+        }
+        case Scenes.KEYBOARD:
+            if (typeof window.toggleKeyboardAudio === 'function') window.toggleKeyboardAudio();
+            break;
+    }
+}
+window.toggleAudioSettings = toggleAudioSettings;
+
 window.addEventListener('keydown', function(e) {
     if (!e.shiftKey) return;
     const ae = document.activeElement;
     if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+
+    // Shift+A → toggle the active scene's Audio Settings panel.
+    if (e.code === 'KeyA') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        toggleAudioSettings();
+        return;
+    }
+
     const target = SCENE_HOTKEYS[e.code];
     if (target === undefined) return;
     e.preventDefault();

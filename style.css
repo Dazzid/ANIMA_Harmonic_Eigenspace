@@ -302,8 +302,8 @@ body.scene-modalstudio #eigenspace-app * {
 /* Position Plotly's modebar (node visibility toggles) to top-right */
 .modebar {
     position: fixed !important;
-    top: 60px !important;
-    right: 15px !important;
+    top: 10px !important;
+    right: 64px !important;
     z-index: 150 !important;
     background: rgba(0, 0, 0, 0.5) !important;
     border-radius: 6px !important;

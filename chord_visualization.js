@@ -59,7 +59,7 @@ class ChordVisualization {
         // MIDI keyboard active notes (exact frequencies, not normalized to 12-TET)
         this.midiActiveNotes = []; // Array of {freq: number, velocity: number}
 
-        this.bgColor = 'rgba(33, 33, 33, 0.9)';
+        this.bgColor = 'rgba(25, 25, 25, 0.9)';
 
         // Frequency doubling flags for each voice
         this.doublingFlags = {

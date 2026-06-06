@@ -1123,13 +1123,13 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
     const traces = [];
     const myColor = [
-        [0.0, 'rgba(0, 0, 255, 1)'],
+        [0.0,  'rgba(0, 0, 255, 1)'],
         [0.25, 'rgba(0, 200, 255, 1)'],
-        [0.5, 'rgba(255, 255, 255, 1)'],
+        [0.5,  'rgba(255, 255, 255, 1)'],
         [0.75, 'rgba(255, 200, 0, 1)'],
-        [1.0, 'rgba(255, 0, 0, 1)']
+        [1.0,  'rgba(255, 0, 0, 1)']
     ];
-
+  
     // ========== CREATE FULL 3D TRACE (first trace, initially hidden) ==========
     // Use stratified sampling to ensure all dissonance ranges are represented
     const samplingRate = 0.8;
@@ -1721,8 +1721,8 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             const buttons = document.querySelectorAll('.modebar-btn');
             buttons.forEach(btn => {
                 // Uniform button sizing and spacing
-                btn.style.width = '28px';
-                btn.style.height = '28px';
+                btn.style.width = '30px';
+                btn.style.height = '30px';
                 btn.style.display = 'flex';
                 btn.style.alignItems = 'center';
                 btn.style.justifyContent = 'center';
@@ -1739,7 +1739,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 }
 
                 // All buttons use the same color scheme for clean, unified look
-                colorizeButton(btn, 'rgb(237, 237, 237)', 'rgb(255, 255, 255)');
+                colorizeButton(btn, 'rgb(235, 235, 235)', 'rgb(255, 255, 255)');
 
                 // Add general hover background effect
                 btn.addEventListener('mouseenter', () => {

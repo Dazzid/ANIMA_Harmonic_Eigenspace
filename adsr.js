@@ -83,7 +83,7 @@ let dryWetKnob = {
 function setDark(mode){
     darkMode = mode;
     if (darkMode) {
-        bgColor = 'rgba(33, 33, 33, 0.9)';
+        bgColor = 'rgba(25, 25, 25, 0.9)';
         textColor = 'rgba(230, 230, 230, 1)';
         buttonColor = 'rgba(15, 15, 15, 1)';
         buttonHoverColor = 'rgba(40, 40, 40, 1)';
@@ -322,16 +322,24 @@ function drawKnob() {
     textSize(textButtonSize);
     text('Dry/Wet', knobX, knobY - knobR - 10);
 
-    fill(buttonColor);
-    stroke(100, 100);
-    strokeWeight(1);
-    circle(knobX, knobY, knobR * 2);
-
-        // ANNULAR SECTOR (outer ring wedge) showing value, 5px thick near the edge
-        const percentage = 0.99;
+        // 0.8 → the dial sweeps 80% of the circle: new 0% at the old 10% position
+        // (lower-left), new 100% at the old 90% (lower-right), ~72° gap at the
+        // bottom. MUST match the drag mapping (±PI*0.8).
+        const percentage = 0.8;
         const minAngle = -PI * percentage;
         const maxAngle = PI * percentage;
         const startAngle = minAngle - HALF_PI;
+
+    // Knob body (filled disk, no outline)
+    noStroke();
+    fill(buttonColor);
+    circle(knobX, knobY, knobR * 2);
+
+    // Frame: stroke only the 80% arc we actually use (open gap at the bottom)
+    noFill();
+    stroke(100, 100);
+    strokeWeight(1);
+    arc(knobX, knobY, knobR * 2, knobR * 2, startAngle, maxAngle - HALF_PI);
         const endAngle = map(audioParams.dryWet, 0, 1, minAngle, maxAngle) - HALF_PI;
 
         const thickness = 5;
@@ -363,7 +371,7 @@ function drawKnob() {
     fill(textColor);
     noStroke();
     textSize(textButtonSize);
-    text(`${(audioParams.dryWet * 100).toFixed(0)}%`, knobX, knobY + knobR + 15);
+    text(`${(audioParams.dryWet * 100).toFixed(0)}%`, knobX, knobY + knobR);
 }
 
 //--------------------------------------------------------------------
@@ -508,8 +516,8 @@ function mouseDragged() {
         while (angle > PI) angle -= TWO_PI;
         while (angle < -PI) angle += TWO_PI;
 
-        const minAngle = -PI * 0.75;
-        const maxAngle = PI * 0.75;
+        const minAngle = -PI * 0.8; // must match the draw sweep (percentage 0.8)
+        const maxAngle = PI * 0.8;
         angle = constrain(angle, minAngle, maxAngle);
         const dryWetValue = map(angle, minAngle, maxAngle, 0, 1);
         audioParams.dryWet = dryWetValue;
