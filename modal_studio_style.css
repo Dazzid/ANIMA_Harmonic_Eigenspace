@@ -72,7 +72,9 @@ body.scene-modalstudio canvas {
    it must look identical in every scene (its design is owned by menu.css). Without
    the :not()s this blanket rule out-specifies menu.css and recolors the menu in
    Modal Studio. */
-body.scene-modalstudio button:not(#anima-menu-toggle):not(.anima-menu-item) {
+/* The MIDI Settings panel keeps its shared (EigenSpace) design in MS too, so its
+   buttons are excluded from this generic Modal Studio button theme. */
+body.scene-modalstudio button:not(#anima-menu-toggle):not(.anima-menu-item):not(.midi-close-btn):not(.midi-piano-btn):not(.midi-refresh-btn):not(.midi-panic-btn) {
     background-color: var(--button-not-clicked);
     color: var(--button-text);
     border: var(--button-border-width) solid var(--button-border);
@@ -86,7 +88,7 @@ body.scene-modalstudio button:not(#anima-menu-toggle):not(.anima-menu-item) {
     margin: 2px;
 }
 
-body.scene-modalstudio button:not(#anima-menu-toggle):not(.anima-menu-item):hover {
+body.scene-modalstudio button:not(#anima-menu-toggle):not(.anima-menu-item):not(.midi-close-btn):not(.midi-piano-btn):not(.midi-refresh-btn):not(.midi-panic-btn):hover {
     background-color: var(--button-hover);
 }
 
@@ -451,29 +453,9 @@ label {
     justify-content: center;
 }
 
-body.scene-modalstudio .midi-piano-btn {
-    width: 100%;
-    padding: 10px;
-    border-radius: 8px;
-    background: rgb(11, 174, 17);
-    color: white;
-    border: none;
-    font-size: 14px;
-    cursor: pointer;
-    font-family: 'Source Code Pro', monospace;
-}
-
-body.scene-modalstudio .midi-piano-btn:hover {
-    background: rgb(24, 185, 29);
-}
-
-body.scene-modalstudio .midi-piano-btn.disabled {
-    background: rgba(158, 158, 158, 0.8);
-}
-
-body.scene-modalstudio .midi-piano-btn.disabled:hover {
-    background: rgba(158, 158, 158, 1);
-}
+/* MIDI Settings panel uses the shared (EigenSpace) design in all scenes — the
+   former body.scene-modalstudio .midi-* overrides were removed so the panel looks
+   identical everywhere. Base styles live in style.css. */
 
 @keyframes pulse {
     0%, 100% {
@@ -564,26 +546,7 @@ body.scene-modalstudio .midi-piano-btn.disabled:hover {
     flex: 1;
 }
 
-body.scene-modalstudio .midi-refresh-btn {
-    background: rgb(20, 20, 20);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    margin-top: 4px;
-    color: rgba(250, 250, 250, 1);
-    font-size: 25px;
-    width: 33px;
-    height: 33px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-body.scene-modalstudio .midi-refresh-btn:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-    background: rgba(0, 0, 0, 0.7);
-}
+/* .midi-refresh-btn MS overrides removed — uses the shared style.css design. */
 
 .midi-info {
     background: rgba(0, 0, 0, 0.3);
@@ -609,31 +572,7 @@ body.scene-modalstudio .midi-refresh-btn:hover {
     font-weight: 600;
 }
 
-body.scene-modalstudio .midi-panic-btn {
-    width: 100%;
-    padding: 10px;
-    background: rgb(255, 170, 0);
-    border: none;
-    color: rgb(38, 38, 38);
-    font-family: 'Source Code Pro', monospace;
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-body.scene-modalstudio .midi-panic-btn:hover {
-    background: rgb(255, 200, 0);
-}
-
-body.scene-modalstudio .midi-panic-btn:active {
-    background: rgb(255, 50, 3);
-    color: rgb(211, 211, 211);
-    transform: scale(0.99);
-}
+/* .midi-panic-btn MS overrides removed — uses the shared style.css design. */
 
 /* Modal Studio MIDI button - match EigenSpace styling */
 #modalstudio-midi-toggle {

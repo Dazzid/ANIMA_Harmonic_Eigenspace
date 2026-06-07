@@ -45,27 +45,27 @@ let visualizationMode = 'full3d'; // 'sectioned' or 'full3d'
 // Store sampled points for dynamic sorting based on camera
 let sampledPointsData = null;
 
-const zoneSize = 3.0;
-const zoneFull = 1.0;
+const zoneSize = 2.0;
+const zoneFull = 0.5;
 const chordSize = 7.0;
 const localMinSize = 9.0;
 
 // Keyboard shortcuts for root note selection
-const keyToFreq = {
-    'q': 130.81,   // C3
-    '2': 138.59,   // C#3
-    'w': 146.83,   // D3
-    '3': 155.56,   // D#3
-    'e': 164.81,   // E3
-    'r': 174.61,   // F3
-    '5': 185.00,   // F#3
-    't': 196.00,   // G3
-    '6': 207.65,   // G#3
-    'y': 220.00,   // A3
-    '7': 233.08,   // A#3
-    'u': 246.94,   // B3
-    'i': 261.63    // C4
-};
+// const keyToFreq = {
+//     'q': 130.81,   // C3
+//     '2': 138.59,   // C#3
+//     'w': 146.83,   // D3
+//     '3': 155.56,   // D#3
+//     'e': 164.81,   // E3
+//     'r': 174.61,   // F3
+//     '5': 185.00,   // F#3
+//     't': 196.00,   // G3
+//     '6': 207.65,   // G#3
+//     'y': 220.00,   // A3
+//     '7': 233.08,   // A#3
+//     'u': 246.94,   // B3
+//     'i': 261.63    // C4
+// };
 
 const freqToName = {
     130.81: 'C3', 138.59: 'C#3', 146.83: 'D3', 155.56: 'D#3',
@@ -1214,7 +1214,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             cmin: vmin,
             cmax: vmax,
             showscale: false,  // Hide Plotly colorbar - we use P5 instead
-            opacity: 0.5
+            opacity: 1.0
         },
         name: 'Full 3D View',
         visible: visualizationMode === 'full3d',  // Show if starting in full3d mode
@@ -1228,7 +1228,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
     // Gaussian curve point distribution
     let numLayers = 200;
-    let windowSize = (vmax - vmin) / 25;
+    let windowSize = (vmax - vmin) / 50;
     let thresholds = linspace(vmin, vmax, numLayers);
     const tracesPerLayer = ENABLE_DISTANCE_LINES ? 2 : 1;
 
@@ -1311,7 +1311,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                     showlegend: false,
                     hoverinfo: 'skip',
                     visible: visualizationMode === 'sectioned' && i === 0,
-                    opacity: 0.5
+                    opacity: 1.0
                 });
             }
         }
@@ -2138,25 +2138,25 @@ function saveDatasetBinary(data, baseFreq) {
 }
 
 
-window.addEventListener('keydown', function (e) {
-    const freq = keyToFreq[e.key.toLowerCase()];
-    if (freq) {
-        currentBaseFreq = freq;
-        // rootSelector.value = freq;
-        document.getElementById('click-output').textContent =
-            `Root: ${freqToName[freq]} (${freq.toFixed(2)} Hz) - Click any point to hear`;
+// window.addEventListener('keydown', function (e) {
+//     const freq = keyToFreq[e.key.toLowerCase()];
+//     if (freq) {
+//         currentBaseFreq = freq;
+//         // rootSelector.value = freq;
+//         document.getElementById('click-output').textContent =
+//             `Root: ${freqToName[freq]} (${freq.toFixed(2)} Hz) - Click any point to hear`;
 
-        // Update chord visualization root
-        if (typeof setRootVisualization === 'function') {
-            setRootVisualization(freq);
-        }
+//         // Update chord visualization root
+//         if (typeof setRootVisualization === 'function') {
+//             setRootVisualization(freq);
+//         }
 
-        // Clear any playing chord when root changes
-        if (typeof clearChordVisualization === 'function') {
-            clearChordVisualization();
-        }
-    }
-});
+//         // Clear any playing chord when root changes
+//         if (typeof clearChordVisualization === 'function') {
+//             clearChordVisualization();
+//         }
+//     }
+// });
 
 // Function to update root from chord visualization clicks
 window.updateGlobalRoot = function (freq, name) {
@@ -2314,7 +2314,7 @@ window.addEventListener('load', async () => {
     currentBaseFreq = 220.0;
     const localNodes = 77;
     const harmonics = 6;
-    const zoneNodes = 400;
+    const zoneNodes = 500;
 
     // Try to load pre-computed data first, with progress bar updates
     const progressContainer = document.getElementById('progress-container');
@@ -2451,14 +2451,9 @@ window.addEventListener('load', async () => {
     }
 });
 
-// Keyboard shortcut: Press 'M' to toggle MIDI panel
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'p' || e.key === 'P') {
-        if (window.midiController) {
-            window.midiController.toggleUI();
-        }
-    }
-});
+// 'p' toggles the MIDI panel in EigenSpace only — handled in
+// EigenspaceScene.keyPressed (scene-scoped). MS/KL don't use it. (Removed the old
+// global listener that fired in every scene and double-toggled in ES.)
 
 
 //ANIMA code
@@ -2566,13 +2561,6 @@ const EigenspaceScene = {
                 e.preventDefault();
                 window.stepRoot53(e.key === 'ArrowUp' ? +1 : -1);
             }
-            return;
-        }
-
-        // MIDI panel toggle ('p') — kept as a reserved key (checked before the
-        // note mapping so 'p' doesn't also pick a root).
-        if (e.key === 'p' || e.key === 'P') {
-            if (window.midiController) window.midiController.toggleUI();
             return;
         }
 

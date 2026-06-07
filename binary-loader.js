@@ -81,14 +81,16 @@ async function loadDissonanceMap(baseFreq = 220, nodes = 400, onProgress) {
     if (typeof onProgress === 'function') onProgress(8, 'Loading dataset…');
         const chunks = [];
         const maxRetries = 3;
-        const TOTAL_CHUNKS = 10; // dataset is split into exactly 10 chunks
+        // Don't assume a fixed chunk count — datasets vary (400 nodes → 10 chunks,
+        // 500 nodes → 20, etc.). Load until we've accumulated the expected element
+        // count (reachedTarget) or a chunk 404s. MAX_CHUNKS is just a safety bound.
+        const MAX_CHUNKS = 10000;
         let totalSize = 0; // number of Float32 elements accumulated
         let loadedChunks = 0;
         const expectedSize = nodes * nodes * nodes; // exact element count
         let percent = 0;
-        let easing = 0.99;
 
-        for (let idx = 1; idx <= TOTAL_CHUNKS; idx++) {
+        for (let idx = 1; idx <= MAX_CHUNKS; idx++) {
             const chunkNum = String(idx).padStart(3, '0');
             const chunkUrl = `dataset/${baseFilename}-chunk${chunkNum}.bin`;
 
@@ -115,9 +117,10 @@ async function loadDissonanceMap(baseFreq = 220, nodes = 400, onProgress) {
                         reachedTarget = true;
                     }
                     if (typeof onProgress === 'function') {
-                        percent += (loadedChunks * 10 - percent) * easing;
-                        percent = Math.floor(percent * 100) / 100;
-                        onProgress(percent, `Loading dataset… (${percent+9}%)`);
+                        // Scale with data actually loaded (works for any chunk count): 8→97%.
+                        percent = 8 + Math.min(1, totalSize / expectedSize) * 89;
+                        percent = Math.floor(percent * 10) / 10;
+                        onProgress(percent, `Loading dataset… (${percent}%)`);
                     }
                     break;
                 } catch (err) {

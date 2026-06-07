@@ -137,7 +137,7 @@
             const eigenAudio = document.getElementById('eigenspace-audio-gui');
             const eigenAudioShown = !!(eigenAudio && eigenAudio.style.display !== 'none');
             options.appendChild(makeItem(eigenAudioShown ? 'Audio Settings: Hide' : 'Audio Settings: Show', {
-                icon: '♪', active: eigenAudioShown,
+                icon: '♪', active: eigenAudioShown, shortcut: '⇧A',
                 onClick: () => {
                     const ag = document.getElementById('eigenspace-audio-gui');
                     if (ag) ag.style.display = ag.style.display === 'none' ? 'block' : 'none';
@@ -151,7 +151,7 @@
             }));
             const audioShown = legacyText('audio-label', '').indexOf('Hide') !== -1;
             options.appendChild(makeItem(legacyText('audio-label', 'Audio Settings: Show'), {
-                icon: '♪', active: audioShown,
+                icon: '♪', active: audioShown, shortcut: '⇧A',
                 onClick: () => clickLegacy('audio-toggle')
             }));
         } else if (scene === S.KEYBOARD) {
@@ -171,7 +171,7 @@
                 return !!(ag && ag.style.display !== 'none' && ag.style.display !== '');
             })();
             options.appendChild(makeItem(kbAudioShown ? 'Audio Settings: Hide' : 'Audio Settings: Show', {
-                icon: '♪', active: kbAudioShown,
+                icon: '♪', active: kbAudioShown, shortcut: '⇧A',
                 onClick: () => { if (window.toggleKeyboardAudio) window.toggleKeyboardAudio(); }
             }));
         }
