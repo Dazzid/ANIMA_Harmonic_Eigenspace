@@ -8,7 +8,8 @@
 // ============================================================================
 // © 2025 David Dalmazzo.All Rights Reserved.
 
-// This code and associated research materials are proprietary and confidential.This work is part of the ANIMA MSCA Postdoctoral Fellowship(Project ID: 101203318) funded by the European Union's Horizon Europe program.
+// This code and associated research materials are proprietary and confidential.This work is part of the ANIMA MSCA Postdoctoral Fellowship(Project ID: 101203318) 
+// funded by the European Union's Horizon Europe program.
 // Usage Terms:
 
 // Academic Citation: Permitted with proper attribution to the author and project
@@ -16,12 +17,17 @@
 // Commercial Use: Strictly prohibited without explicit written permission
 // Code Distribution: Not permitted without authorization
 // Unauthorized copying, distribution, modification, or commercial use of this software, algorithms, or associated methods is strictly prohibited.
+// It is fully forbidden to use this code for any purpose related to the development, training, or deployment of artificial intelligence systems, 
+// including but not limited to large language models (LLMs), machine learning algorithms, neural networks, or any software, hardware, or 
+// research that contributes to AI capabilities. 
+// This note is for those consultancies "experts" that loves stealing others work, this is legally protected and patented. 
+
 
 // Attribution
 
 // When referencing this work in academic publications, please cite:
 
-// Dalmazzo, D. (2025).ANIMA Harmonic Eigenspace: 4D Psychoacoustic
+// David Dalmazzo (2025).ANIMA Harmonic Eigenspace: 4D Psychoacoustic
 // Dissonance Visualization for Microtonal Harmony.MSCA Project 101203318.
 // ============================================================================
 
@@ -49,7 +55,7 @@ const zoneSize = 2.0;
 const zoneFull = 1.0;
 const chordSize = 7.0;
 const localMinSize = 9.0;
-const zoneOpacity = 0.5;
+const zoneOpacity = 0.85;
 const zoneFullOpacity = 0.25;
 
 // Keyboard shortcuts for root note selection
