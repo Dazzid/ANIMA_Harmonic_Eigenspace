@@ -46,9 +46,11 @@ let visualizationMode = 'full3d'; // 'sectioned' or 'full3d'
 let sampledPointsData = null;
 
 const zoneSize = 2.0;
-const zoneFull = 0.5;
+const zoneFull = 1.0;
 const chordSize = 7.0;
 const localMinSize = 9.0;
+const zoneOpacity = 0.5;
+const zoneFullOpacity = 0.25;
 
 // Keyboard shortcuts for root note selection
 // const keyToFreq = {
@@ -1093,14 +1095,23 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     const sampleRate = 2;
     const xData = [], yData = [], zData = [], dData = [];
 
+    // Subtle, fixed position jitter (a fraction of one grid step) so the perfectly
+    // regular lattice doesn't form moiré patterns at certain camera angles. This
+    // offsets only the DISPLAYED position — dissonance/color stays mapped to the
+    // true grid cell. Computed once here, so it's stable (no shimmer on rotation).
+    const gridStep = alphaRange.length > 1 ? Math.abs(alphaRange[1] - alphaRange[0]) : 0;
+    const JITTER_FRAC = 0.35; // 0 = off; raise for more scatter
+    const jitterAmp = gridStep * JITTER_FRAC;
+    const jit = () => (Math.random() * 2 - 1) * jitterAmp;
+
     for (let i = 0; i < alphaRange.length; i += sampleRate) {
         for (let j = 0; j < betaRange.length; j += sampleRate) {
             for (let k = 0; k < gammaRange.length; k += sampleRate) {
                 const d = dissonance3d[i][j][k];
                 if (!isNaN(d)) {
-                    xData.push(alphaRange[i]);
-                    yData.push(betaRange[j]);
-                    zData.push(gammaRange[k]);
+                    xData.push(alphaRange[i] + jit());
+                    yData.push(betaRange[j] + jit());
+                    zData.push(gammaRange[k] + jit());
                     dData.push(d);
                 }
             }
@@ -1214,7 +1225,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             cmin: vmin,
             cmax: vmax,
             showscale: false,  // Hide Plotly colorbar - we use P5 instead
-            opacity: 1.0
+            opacity: zoneFullOpacity
         },
         name: 'Full 3D View',
         visible: visualizationMode === 'full3d',  // Show if starting in full3d mode
@@ -1263,60 +1274,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
         if (layerX.length === 0) continue;
 
-        // CONDITIONAL: Create lines only if ENABLE_DISTANCE_LINES is true
-        if (ENABLE_DISTANCE_LINES) {
-            const lineX = [], lineY = [], lineZ = [];
-            const lineColors = [];
-            const maxDistance = 0.02;
-            const maxConnectionsPerPoint = 6;
-
-            for (let p = 0; p < layerX.length; p++) {
-                const neighbors = [];
-                for (let q = 0; q < layerX.length; q++) {
-                    if (p === q) continue;
-                    const dist = Math.sqrt(
-                        Math.pow(layerX[p] - layerX[q], 2) +
-                        Math.pow(layerY[p] - layerY[q], 2) +
-                        Math.pow(layerZ[p] - layerZ[q], 2)
-                    );
-                    if (dist < maxDistance) {
-                        neighbors.push({ q, dist });
-                    }
-                }
-
-                neighbors.sort((a, b) => a.dist - b.dist);
-                neighbors.slice(0, maxConnectionsPerPoint).forEach(n => {
-                    const avgDiss = (layerD[p] + layerD[n.q]) / 2;
-                    lineX.push(layerX[p], layerX[n.q], null);
-                    lineY.push(layerY[p], layerY[n.q], null);
-                    lineZ.push(layerZ[p], layerZ[n.q], null);
-                    lineColors.push(avgDiss, avgDiss, avgDiss);
-                });
-            }
-
-            if (lineX.length > 0) {
-                traces.push({
-                    type: 'scatter3d',
-                    mode: 'lines',
-                    x: lineX,
-                    y: lineY,
-                    z: lineZ,
-                    line: {
-                        color: lineColors,
-                        colorscale: myColor,
-                        cmin: vmin,
-                        cmax: vmax,
-                        width: 1.0
-                    },
-                    showlegend: false,
-                    hoverinfo: 'skip',
-                    visible: visualizationMode === 'sectioned' && i === 0,
-                    opacity: 1.0
-                });
-            }
-        }
-
-        // Add zone point trace
+        // Add zone point trace --------------------------------------------------------------------
         traces.push({
             type: 'scatter3d',
             mode: 'markers',
@@ -1331,7 +1289,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 cmin: vmin,
                 cmax: vmax,
                 showscale: false,  // Hide Plotly colorbar - we use P5 instead
-                opacity: 0.7
+                opacity: zoneOpacity
             },
             name: `${(threshold - windowSize / 2).toFixed(3)} - ${(threshold + windowSize / 2).toFixed(3)}`,
             visible: visualizationMode === 'sectioned' && i === 0, // Only first layer visible in sectioned mode
@@ -1373,7 +1331,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 size: localMinSize,
                 color: 'rgba(235, 235, 235, 1)',
                 symbol: 'circle',
-                opacity: 1
+                opacity: 1.0
             },
             text: nodes.map((_, i) => String(i + 1)),
             textposition: 'middle center',
@@ -1417,7 +1375,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 cmax: vmax,
                 symbol: 'square',
                 // line: { color: 'rgba(255, 255, 255, 1)', width: 1 },
-                opacity: 1
+                opacity: 1.0
             },
             text: chordData12TET.map(c => c[0]),
             textposition: 'top center',
@@ -1461,7 +1419,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 cmax: vmax,
                 symbol: 'diamond',
                 // line: { color: 'rgba(255, 200, 0, 1)', width: 2 },
-                opacity: 1,
+                opacity: 1.0,
                 showscale: false
             },
             text: chordData31TET.map(c => c[0]),
@@ -1507,7 +1465,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
                 cmax: vmax,
                 symbol: 'circle',
                 // line: { color: 'rgba(202, 202, 202, 1)', width: 1 },
-                opacity: 1,
+                opacity: 1.0,
                 showscale: false  // Don't show separate colorbar for chords
             },
             text: chordData53TET.map(c => c[0]),
