@@ -217,30 +217,6 @@ Tick as we go. Don't start a phase before the one above is green.
 - [x] 12-TET keyboard keys still set their reference roots (unchanged `keyToFreq` path)
 - [x] Ticks inert + not drawn when not in ES (scene gate)
 
-### 6.3 Progressive "populating" reveal of the Full 3D view — ❌ ABANDONED (reverted to the plain toggle)
-
-> **Tried, failed, reverted.** Built it three ways — staged slice‑reveal (near→far, then by‑consonance) and an opacity fade — all worse than the plain toggle. **Root cause (measured): Plotly gl3d rebuilds the ENTIRE scene on any `restyle`/`update`, re‑uploading the ~1.9M‑point cloud each time** (a `Plotly.update({visible})` blocked ~11s). So every animation frame = another full rebuild → stutters and *lengthens* the freeze instead of hiding it; opacity tricks don't help because the accompanying visibility change still rebuilds. There is **no cheap/incremental/partial update** for a gl3d trace this size. Only real levers: fewer points (`sampleRate`, ruled out) or a different renderer (Three.js/regl with true incremental buffers — out of scope). **Reverted `toggleVisualizationMode` to the single `Plotly.update({visible})`** — the one rebuild the user had already accepted as "ok." Don't re‑attempt without changing the renderer or point count.
-
-**Goal.** Switching Layered → **Full 3D** currently freezes for a few seconds while Plotly/WebGL uploads the full ~11M‑point cloud to the GPU in one bulk op. Replace that dead wait with an **animated reveal** — the cloud grows from ~10% → 100% of points over a handful of frames, so the user *sees the dissonance volume populate* instead of staring at a frozen screen. On‑theme: the structure emerges before your eyes.
-
-**Not a performance fix.** `sampleRate` stays **2** (full density renders fine once loaded; the only pain is the re‑render on switch‑back). This spreads the *same* work across animation frames so it reads as progress, not a stall. Early frames are cheap (instant start); later frames are heavier (revealing millions) — that's the accepted trade for the effect.
-
-**Mechanism**
-- When the viz is built (`createVisualization`), **stash the full‑cloud arrays** (the sorted+sampled `x/y/z` + `marker.color`) on a module/`window` handle.
-- In `toggleVisualizationMode`'s **switch‑to‑full** branch, instead of just `visible:true`, run a `requestAnimationFrame` loop that reveals a **growing fraction** of the cloud each frame (`Plotly.restyle`/`extendTraces` on trace 0), ~10% → 100% over ~12–18 frames, then settle on the complete set. Layers hide as they do now.
-- Switching back to Layered is unchanged (cheap — one thin slice).
-
-**Reveal order (pick one):** random sprinkle (density grows everywhere); sweep (front‑to‑back); **by‑consonance** (the dissonance‑minima nodes appear first, field fills in around them — recommended, structure‑first and on‑theme).
-
-**Files:** `eigenspace.js` only — stash arrays in `createVisualization`; add a `revealFull3d()` reveal loop; call it from the switch‑to‑full branch of `toggleVisualizationMode` (replacing the single `Plotly.update` visible flip there).
-
-**Build checklist**
-- [x] Stash full‑cloud `{x,y,z,color}` when built (sorted/sampled arrays used by trace 0)
-- [x] `revealFull3d()` — rAF loop, growing fraction 10%→100% over ~15 frames, settle on full
-- [x] Wire into `toggleVisualizationMode` switch‑to‑full (layers hide as now); Layered→ unchanged
-- [x] Reveal order = by‑consonance (nodes first) unless changed
-- [x] Verify: switch‑to‑full animates from sparse→full, no errors; switch‑back still instant; repeated toggles fine
-
 ## 7. Conventions
 
 - Plain script tags, **not** ES modules — globals are intentional; don't add a bundler casually.

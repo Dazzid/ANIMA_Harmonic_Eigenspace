@@ -23,57 +23,107 @@
 // Maps incoming notes to dynamic 53-TET scale while preserving C as root
 // Sends retuned notes via MPE output
 
-// 12-TET chord templates (relative semitones from the root, sorted ascending) used to
-// label a chord pressed on the MIDI keyboard for the Chord Memory grid. MIDI keys are
-// physical 12-TET semitones, so we recognize the shape under the hand. Longer templates
-// are listed first so e.g. a 7th isn't mislabeled as the triad it contains.
-const MIDI_CHORD_TEMPLATES_12TET = [
-    { name: 'maj7',  iv: [0, 4, 7, 11] },
-    { name: '7',     iv: [0, 4, 7, 10] },
-    { name: '6',     iv: [0, 4, 7, 9] },
-    { name: 'mMaj7', iv: [0, 3, 7, 11] },
-    { name: 'm7',    iv: [0, 3, 7, 10] },
-    { name: 'm6',    iv: [0, 3, 7, 9] },
-    { name: 'm7b5',  iv: [0, 3, 6, 10] },
-    { name: 'dim7',  iv: [0, 3, 6, 9] },
-    { name: '7#5',   iv: [0, 4, 8, 10] },
-    { name: 'maj',   iv: [0, 4, 7] },
-    { name: 'min',   iv: [0, 3, 7] },
-    { name: 'dim',   iv: [0, 3, 6] },
-    { name: 'aug',   iv: [0, 4, 8] },
-    { name: 'sus4',  iv: [0, 5, 7] },
-    { name: 'sus2',  iv: [0, 2, 7] },
-    { name: '5',     iv: [0, 7] }
-];
-
-// Identify the quality of a set of held MIDI notes by pitch-class shape (octaves and
-// doublings collapse). The lowest held key is taken as the root, which resolves the
-// real pitch-class ambiguities (Cm7 ≡ Eb6, Csus2 ≡ Gsus4) the way the player hears
-// them; other roots are tried only as a fallback so genuine inversions still match.
+// Name a chord pressed on the MIDI keyboard for the Chord Memory grid. MIDI keys are
+// physical 12-TET semitones, so we read the shape relative to the lowest held key (the
+// bass = the root, which also resolves the pitch-class ambiguities Cm7≡Eb6, Csus2≡Gsus4
+// the way the player hears them). Rather than a flat template per chord — which explodes
+// once 9ths/11ths/13ths and their alterations are added — we work analytically:
+//   1. read the core (third, fifth, seventh / sixth) → a base quality token,
+//   2. whatever pitch classes are left over are extensions (b9 9 #9, 11 #11, b13 13),
+//   3. compose: natural extensions stack into the chord number (9/11/13) for 7th-family
+//      chords, altered extensions are appended (e.g. maj7#11, 7b9, 13#11, 7#9).
 // Returns the quality label, 'cust' for an unrecognized 2+ note cluster, or null for a
-// single pitch (not a chord). Mirrors keyboard.js clusterChordName, but in 12-TET.
+// single pitch. The label is the root-position quality; the grid stores the root (Hz)
+// separately. The 53-TET path (keyboard.js) follows the same core+extension scheme.
 function midiChordName12TET(midiNotes) {
     if (!midiNotes || midiNotes.length === 0) return null;
-    const pcs = [...new Set(midiNotes.map(n => ((n % 12) + 12) % 12))].sort((a, b) => a - b);
-    if (pcs.length < 2) return null;
+    const distinct = [...new Set(midiNotes.map(n => ((n % 12) + 12) % 12))];
+    if (distinct.length < 2) return null;
 
-    const matchFromRoot = (root) => {
-        const rel = pcs.map(pc => (((pc - root) % 12) + 12) % 12).sort((a, b) => a - b);
-        for (const tmpl of MIDI_CHORD_TEMPLATES_12TET) {
-            if (tmpl.iv.length === rel.length && tmpl.iv.every((v, i) => v === rel[i])) return tmpl.name;
-        }
-        return null;
-    };
+    const rootPc = ((Math.min(...midiNotes) % 12) + 12) % 12;
+    const S = new Set(distinct.map(pc => (((pc - rootPc) % 12) + 12) % 12)); // relative to root
+    const has = (i) => S.has(i);
+    const used = new Set([0]);
 
-    const bassPc = ((Math.min(...midiNotes) % 12) + 12) % 12;
-    const byBass = matchFromRoot(bassPc);          // bass is the intended root
-    if (byBass) return byBass;
-    for (const root of pcs) {                       // fallback: inversions/voicings
-        if (root === bassPc) continue;
-        const n = matchFromRoot(root);
-        if (n) return n;
+    // ---- core tones ----
+    let third = null;                                  // 'M' | 'm' | null(sus/power)
+    if (has(4)) { third = 'M'; used.add(4); }
+    else if (has(3)) { third = 'm'; used.add(3); }
+
+    let fifth = null;                                  // 'P' | 'dim' | 'aug' | null
+    if (has(7)) { fifth = 'P'; used.add(7); }
+    else if (has(6)) { fifth = 'dim'; used.add(6); }
+    else if (has(8)) { fifth = 'aug'; used.add(8); }
+
+    let seventh = null;                                // 'M7' | 'm7' | null
+    if (has(11)) { seventh = 'M7'; used.add(11); }
+    else if (has(10)) { seventh = 'm7'; used.add(10); }
+
+    let sixth = false, dimSeventh = false;
+    if (has(9) && !used.has(9)) {
+        if (third === 'm' && fifth === 'dim' && !seventh) { dimSeventh = true; used.add(9); }
+        else if (!seventh) { sixth = true; used.add(9); }
+        // else: a 9 alongside a 7th is the 13th — handled as an extension below
     }
-    return 'cust';
+
+    // ---- base quality token ----
+    let base = null;
+    if (third === null) {
+        const susAllowed = (fifth === 'P') || (seventh !== null); // avoid naming clusters
+        let sus = null;
+        if (susAllowed && has(5)) { sus = 'sus4'; used.add(5); }
+        else if (susAllowed && has(2)) { sus = 'sus2'; used.add(2); }
+        if (sus) {
+            base = seventh === 'm7' ? '7' + sus : seventh === 'M7' ? 'maj7' + sus : sus;
+        } else if (fifth === 'P' && S.size === 2) {
+            base = '5';                                 // power chord
+        }
+    } else if (third === 'M') {
+        if (fifth === 'aug') {
+            base = seventh === 'm7' ? '7#5' : seventh === 'M7' ? 'maj7#5' : 'aug';
+        } else {
+            base = seventh === 'M7' ? 'maj7' : seventh === 'm7' ? '7' : sixth ? '6' : 'maj';
+        }
+    } else { // minor third
+        if (fifth === 'dim') {
+            base = dimSeventh ? 'dim7' : seventh === 'm7' ? 'm7b5'
+                : seventh === 'M7' ? 'mMaj7b5' : 'dim';
+        } else if (fifth === 'aug') {
+            base = seventh === 'm7' ? 'm7#5' : seventh === 'M7' ? 'mMaj7#5' : 'm#5';
+        } else {
+            base = seventh === 'M7' ? 'mMaj7' : seventh === 'm7' ? 'm7' : sixth ? 'm6' : 'min';
+        }
+    }
+    if (base === null) return 'cust';
+
+    // ---- extensions (leftover scale degrees) ----
+    const alts = [];                                    // altered: b9 #9 #11 b13 (pitch order)
+    for (const [pc, label] of [[1, 'b9'], [3, '#9'], [6, '#11'], [8, 'b13']]) {
+        if (has(pc) && !used.has(pc)) { alts.push(label); used.add(pc); }
+    }
+    const nat9 = has(2) && !used.has(2);
+    const nat11 = has(5) && !used.has(5);
+    const nat13 = has(9) && !used.has(9);
+    const stack = nat13 ? '13' : nat11 ? '11' : nat9 ? '9' : null; // highest natural
+
+    // ---- compose ----
+    const seventhFamily = {
+        '7': (n) => n, 'maj7': (n) => 'maj' + n, 'm7': (n) => 'm' + n,
+        'mMaj7': (n) => 'mMaj' + n, 'm7b5': (n) => 'm' + n + 'b5'
+    };
+    let name = base;
+    if (stack && seventhFamily[base]) {
+        name = seventhFamily[base](stack);              // 7→9/11/13, maj7→maj9, m7→m9, …
+    } else if (stack) {
+        // triads / 6 / aug / dim7 / sus etc.: write the natural as an add (6+9 → 6/9).
+        // Major/minor triads use the idiomatic add form (Cadd9, Cmadd9).
+        if (base === '6' || base === 'm6') name = base + '/9';
+        else if (base === 'maj') name = 'add' + stack;          // major triad add (e.g. add9)
+        else if (base === 'min') name = 'm' + 'add' + stack;    // minor triad add (e.g. madd9)
+        else name = base + 'add' + stack;
+    }
+    name += alts.join('');
+    return name;
 }
 
 class MidiPianoHandler {

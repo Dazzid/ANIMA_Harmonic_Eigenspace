@@ -921,12 +921,20 @@ function isSingleNoteMode() {
   return !(selectedChord && selectedChord.intervals && selectedChord.intervals.length > 1);
 }
 
+// 53-TET step → quality name for the ten thirds and ten sevenths (mirrors the maps
+// used to build CHORDS_53TET, so core names match exactly). Module-scope so the
+// extension namer below can reuse them.
+const THIRDS_53 = { 20: 'SM', 19: '^M', 18: 'M', 17: 'vM', 16: 'N', 15: 'n', 14: '^m', 13: 'm', 12: 'vm', 11: 'sm' };
+const SEVENTHS_53 = { 51: 'SM', 50: '^M', 49: 'maj', 48: 'vM', 47: 'N', 46: 'n', 45: '^m', 44: 'm', 43: 'vm', 42: 'sm' };
+
 // Try to name a held cluster by matching its pitch-class shape against the known
 // chord templates (CHORDS_53TET). Returns the chord QUALITY (e.g. "M triad",
 // "maj7") or null if the shape isn't a known chord. The root note is already
 // shown on the CM cell's top line, so we don't repeat it here (keeps it short).
 // Octave/voicing-independent: notes are reduced to 53-TET pitch classes and each
-// candidate root is tested (so inversions still match).
+// candidate root is tested (so inversions still match). Plain triads/7ths/sus match
+// here exactly; chords with extra notes fall through to clusterChordNameExtended,
+// which peels the extension tones and labels the 9th/11th/13th (b9 #11 b13 …).
 function clusterChordName(rootBtns) {
   const pcs = [...new Set(rootBtns.map(b => (((b.note53 || 0) % 53) + 53) % 53))].sort((a, b) => a - b);
   if (pcs.length < 2) return null; // a single pitch class isn't a chord
@@ -941,7 +949,68 @@ function clusterChordName(rootBtns) {
       }
     }
   }
-  return null;
+  return clusterChordNameExtended(rootBtns, pcs);
+}
+
+// Name an extended 53-TET chord (a core triad/7th plus 9th/11th/13th tones) using the
+// same analytic scheme as the 12-TET MIDI namer: read the core relative to the bass
+// (= root), then label whatever steps are left over as extensions. Natural extensions
+// stack into the chord number (9/11/13); altered ones (b9 #11 b13) are appended.
+// Diatonic 53-TET step positions: b9=5, 9=9, 11=22, #11=26/27, b13=36, 13/6=40.
+function clusterChordNameExtended(rootBtns, pcs) {
+  const bassPc = (((Math.min(...rootBtns.map(b => b.note53 || 0))) % 53) + 53) % 53;
+  const rel = new Set(pcs.map(pc => (((pc - bassPc) % 53) + 53) % 53));
+  const has = (i) => rel.has(i);
+  const used = new Set([0]);
+
+  // core tones
+  let thirdStep = null;
+  for (let s = 11; s <= 20; s++) { if (has(s)) { thirdStep = s; used.add(s); break; } }
+  const hasFifth = has(31); if (hasFifth) used.add(31);
+  let seventhStep = null;
+  for (let s = 42; s <= 51; s++) { if (has(s)) { seventhStep = s; used.add(s); break; } }
+  const sixth = has(40) && seventhStep === null; if (sixth) used.add(40);
+
+  // need at least a recognizable core (a third with a fifth or seventh, or a sus frame)
+  const susStep = thirdStep === null ? (has(22) ? 22 : has(9) ? 9 : null) : null;
+  if (thirdStep === null && susStep === null) return null;
+  if (!hasFifth && seventhStep === null) return null; // too sparse to call a chord
+
+  // base quality token (matches CHORDS_53TET naming)
+  let base;
+  if (thirdStep !== null) {
+    const n3 = THIRDS_53[thirdStep];
+    if (seventhStep !== null) base = `${n3}${SEVENTHS_53[seventhStep]}7`;
+    else base = n3; // triad
+  } else {
+    used.add(susStep);
+    const sus = susStep === 22 ? 'sus4' : 'sus2';
+    base = seventhStep !== null
+      ? (SEVENTHS_53[seventhStep] === 'maj' ? 'maj7' + sus : '7' + sus)
+      : sus;
+  }
+
+  // extensions
+  const alts = [];
+  for (const [step, label] of [[5, 'b9'], [26, '#11'], [27, '#11'], [36, 'b13']]) {
+    if (has(step) && !used.has(step)) { alts.push([step, label]); used.add(step); }
+  }
+  const nat9 = has(9) && !used.has(9);
+  const nat11 = has(22) && !used.has(22);
+  const nat13 = has(40) && !used.has(40) && seventhStep !== null;
+  const stack = nat13 ? '13' : nat11 ? '11' : nat9 ? '9' : null;
+
+  // compose
+  let name = base;
+  if (stack) {
+    if (seventhStep !== null) name = base.replace(/7$/, stack); // …maj7 → …maj9
+    else if (sixth) name = base + '6/' + stack;
+    else name = base + 'add' + stack;
+  } else if (sixth) {
+    name = base + '6';
+  }
+  name += alts.sort((a, b) => a[0] - b[0]).map(a => a[1]).join('');
+  return name;
 }
 
 // Capture what was just played into the app-wide Chord Memory (grid.js) as
