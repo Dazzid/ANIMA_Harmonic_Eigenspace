@@ -1499,7 +1499,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             },
             xaxis: {
                 title: 'α (2nd note)',
-                gridcolor: 'rgba(90, 90, 90, 1)',
+                gridcolor: 'rgba(20, 20, 20, 1)',
                 showspikes: true,
                 spikecolor: 'rgba(255, 119, 0, 0.5)',
                 spikethickness: thickness,
@@ -1509,7 +1509,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             },
             yaxis: {
                 title: 'β (3rd note)',
-                gridcolor: 'rgba(90, 90, 90, 1)',
+                gridcolor: 'rgba(20, 20, 20, 1)',
                 showspikes: true,
                 spikecolor: 'rgba(118, 236, 0, 0.5)',
                 spikethickness: thickness,
@@ -1519,7 +1519,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             },
             zaxis: {
                 title: 'γ (4th note)',
-                gridcolor: 'rgba(90, 90, 90, 1)',
+                gridcolor: 'rgba(20, 20, 20, 1)',
                 showspikes: true,
                 spikecolor: 'rgba(0, 128, 255, 0.5)',
                 spikethickness: thickness,

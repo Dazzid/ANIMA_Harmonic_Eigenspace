@@ -74,8 +74,8 @@ class ChordVisualization {
         this.round = 10;
 
         this.textColor = 'rgba(222, 222, 222, 1)';
-        this.whiteKeysPiano = 'rgba(50, 50, 50, 1)';
-        this.lineColors = 'rgba(74, 74, 74, 0.5)';
+        this.whiteKeysPiano = 'rgb(100, 100, 100)';
+        this.lineColors = 'rgba(25, 25, 25, 0.5)';
 
         // Note names for reference
         this.noteFreqs = [
