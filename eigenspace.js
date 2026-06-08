@@ -2402,15 +2402,15 @@ window.addEventListener('load', async () => {
     if (toggleButton) {
         // Set initial button text based on current mode
         toggleButton.textContent = visualizationMode === 'sectioned'
-            ? 'Switch to Full 3D View'
-            : 'Switch to Layered View';
+            ? 'Full 3D View'
+            : 'Layered View';
         
         toggleButton.addEventListener('click', function () {
             toggleVisualizationMode();
 
             this.textContent = visualizationMode === 'sectioned'
-                ? 'Switch to Full 3D View'
-                : 'Switch to Layered View';
+                ? 'Full 3D View'
+                : 'Layered View';
         });
     }
 });
