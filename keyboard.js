@@ -1063,6 +1063,41 @@ window.keyboardPlayChord = function (freqs) {
   }
 };
 
+// Light up the hex that matches an incoming 12-TET MIDI key, so a note played on
+// a physical MIDI keyboard highlights its place on the 53-TET grid (visual only —
+// audio routing is handled by midi_piano.js). The hex chosen is the one whose
+// frequency is closest (in cents) to the MIDI key's standard 12-TET pitch, which
+// also picks the right octave. on=false clears the highlight. Called by
+// midi_piano.js while the Keyboard scene is active.
+const midiHighlightedHexes = new Map(); // midiNote → the hex lit for it
+window.keyboardHighlightMidiNote = function (midiNote, on) {
+  if (!gridButtons || gridButtons.length === 0) return;
+  if (on) {
+    if (midiHighlightedHexes.has(midiNote)) return;
+    const targetFreq = 440 * Math.pow(2, (midiNote - 69) / 12);
+    let best = null, bestCents = Infinity;
+    for (const btn of gridButtons) {
+      if (!btn.frequency) continue;
+      const cents = Math.abs(1200 * Math.log2(btn.frequency / targetFreq));
+      if (cents < bestCents) { bestCents = cents; best = btn; }
+    }
+    if (!best) return;
+    best.active = true;
+    best.keyPressed = true;
+    best._keyPressedAt = performance.now();
+    midiHighlightedHexes.set(midiNote, best);
+  } else {
+    const btn = midiHighlightedHexes.get(midiNote);
+    midiHighlightedHexes.delete(midiNote);
+    if (!btn) return;
+    // Don't clear a hex that a held computer key is still sounding.
+    if (typeof pressedKeys !== 'undefined' && [...pressedKeys.values()].includes(btn)) return;
+    const elapsed = performance.now() - (btn._keyPressedAt || 0);
+    const remaining = Math.max(0, KEY_PRESS_MIN_MS - elapsed);
+    setTimeout(function () { btn.active = false; btn.keyPressed = false; }, remaining);
+  }
+};
+
 // Play one note as an additive stack of 6 harmonics with an exponential ADSR —
 // the same recipe EigenSpace uses (createNote), so a chord recalled from Chord
 // Memory sounds the same here as it does in EigenSpace. Envelope/waveType come

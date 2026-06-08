@@ -340,8 +340,20 @@ class MidiPianoHandler {
         return frequency;
     }
 
+    // True when the hex Keyboard (KL) scene is the active scene.
+    isKeyboardScene() {
+        const A = window.ANIMA;
+        return !!(A && A.Scenes && A.getCurrentScene() === A.Scenes.KEYBOARD);
+    }
+
     // Handle MIDI Note On
     handleNoteOn(midiNote, velocity) {
+        // Keyboard scene: light up the matching hex regardless of whether a
+        // 53-TET scale has been loaded — the hex grid is the instrument here.
+        if (this.isKeyboardScene() && typeof window.keyboardHighlightMidiNote === 'function') {
+            window.keyboardHighlightMidiNote(midiNote, true);
+        }
+
         if (!this.isEnabled || !this.currentScale) {
             console.warn('MIDI Piano: Not ready to play notes');
             return;
@@ -418,6 +430,12 @@ class MidiPianoHandler {
         // CRITICAL: Always process note-offs even when disabled
         // This prevents channel leaks when MIDI Piano is disabled while keys are held
         console.log(`MIDI Piano: Note OFF - MIDI ${midiNote}`);
+
+        // Clear any KL hex highlight lit on note-on. Unconditional (no scene
+        // check) so a note released after switching scenes can't leave a hex stuck.
+        if (typeof window.keyboardHighlightMidiNote === 'function') {
+            window.keyboardHighlightMidiNote(midiNote, false);
+        }
 
         const noteId = this.activeNotes.get(midiNote);
         if (noteId) {

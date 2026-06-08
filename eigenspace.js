@@ -51,12 +51,13 @@ let visualizationMode = 'full3d'; // 'sectioned' or 'full3d'
 // Store sampled points for dynamic sorting based on camera
 let sampledPointsData = null;
 
-const zoneSize = 2.0;
+const zoneSize = 1.5;
 const zoneFull = 1.0;
 const chordSize = 7.0;
 const localMinSize = 9.0;
 const zoneOpacity = 0.65;
 const zoneFullOpacity = 0.3;
+const divisionFactor = 10; 
 
 // Keyboard shortcuts for root note selection
 // const keyToFreq = {
@@ -1245,7 +1246,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
 
     // Gaussian curve point distribution
     let numLayers = 200;
-    let windowSize = (vmax - vmin) / 50;
+    let windowSize = (vmax - vmin) / divisionFactor;
     let thresholds = linspace(vmin, vmax, numLayers);
     const tracesPerLayer = ENABLE_DISTANCE_LINES ? 2 : 1;
 
@@ -2518,6 +2519,11 @@ const EigenspaceScene = {
     resize(p) { /* Plotly responds to its own resize */ },
 
     keyPressed(e) {
+        // Shift is reserved for app shortcuts (Shift+L = layered/full-3D view,
+        // Shift+M = chord grid), handled in key_map.js. Never let a shifted key
+        // also retune the root — e.g. Shift+L must NOT jump the root to L's note.
+        if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+
         // Up/Down arrows nudge the root by one Holdrian comma (one 53-TET step),
         // snapping onto the 53-TET grid. preventDefault so the page doesn't scroll.
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
