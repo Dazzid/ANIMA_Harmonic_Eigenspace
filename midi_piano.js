@@ -23,6 +23,59 @@
 // Maps incoming notes to dynamic 53-TET scale while preserving C as root
 // Sends retuned notes via MPE output
 
+// 12-TET chord templates (relative semitones from the root, sorted ascending) used to
+// label a chord pressed on the MIDI keyboard for the Chord Memory grid. MIDI keys are
+// physical 12-TET semitones, so we recognize the shape under the hand. Longer templates
+// are listed first so e.g. a 7th isn't mislabeled as the triad it contains.
+const MIDI_CHORD_TEMPLATES_12TET = [
+    { name: 'maj7',  iv: [0, 4, 7, 11] },
+    { name: '7',     iv: [0, 4, 7, 10] },
+    { name: '6',     iv: [0, 4, 7, 9] },
+    { name: 'mMaj7', iv: [0, 3, 7, 11] },
+    { name: 'm7',    iv: [0, 3, 7, 10] },
+    { name: 'm6',    iv: [0, 3, 7, 9] },
+    { name: 'm7b5',  iv: [0, 3, 6, 10] },
+    { name: 'dim7',  iv: [0, 3, 6, 9] },
+    { name: '7#5',   iv: [0, 4, 8, 10] },
+    { name: 'maj',   iv: [0, 4, 7] },
+    { name: 'min',   iv: [0, 3, 7] },
+    { name: 'dim',   iv: [0, 3, 6] },
+    { name: 'aug',   iv: [0, 4, 8] },
+    { name: 'sus4',  iv: [0, 5, 7] },
+    { name: 'sus2',  iv: [0, 2, 7] },
+    { name: '5',     iv: [0, 7] }
+];
+
+// Identify the quality of a set of held MIDI notes by pitch-class shape (octaves and
+// doublings collapse). The lowest held key is taken as the root, which resolves the
+// real pitch-class ambiguities (Cm7 ≡ Eb6, Csus2 ≡ Gsus4) the way the player hears
+// them; other roots are tried only as a fallback so genuine inversions still match.
+// Returns the quality label, 'cust' for an unrecognized 2+ note cluster, or null for a
+// single pitch (not a chord). Mirrors keyboard.js clusterChordName, but in 12-TET.
+function midiChordName12TET(midiNotes) {
+    if (!midiNotes || midiNotes.length === 0) return null;
+    const pcs = [...new Set(midiNotes.map(n => ((n % 12) + 12) % 12))].sort((a, b) => a - b);
+    if (pcs.length < 2) return null;
+
+    const matchFromRoot = (root) => {
+        const rel = pcs.map(pc => (((pc - root) % 12) + 12) % 12).sort((a, b) => a - b);
+        for (const tmpl of MIDI_CHORD_TEMPLATES_12TET) {
+            if (tmpl.iv.length === rel.length && tmpl.iv.every((v, i) => v === rel[i])) return tmpl.name;
+        }
+        return null;
+    };
+
+    const bassPc = ((Math.min(...midiNotes) % 12) + 12) % 12;
+    const byBass = matchFromRoot(bassPc);          // bass is the intended root
+    if (byBass) return byBass;
+    for (const root of pcs) {                       // fallback: inversions/voicings
+        if (root === bassPc) continue;
+        const n = matchFromRoot(root);
+        if (n) return n;
+    }
+    return 'cust';
+}
+
 class MidiPianoHandler {
     constructor() {
         this.midiAccess = null;
@@ -273,6 +326,41 @@ class MidiPianoHandler {
         } else {
             console.error('MIDI Piano: playNote function not available');
         }
+
+        // Record the chord currently being held as the "last chord pressed" for the
+        // app-wide Chord Memory grid. As a chord is pressed, each note-on grows the
+        // held set, so the final note leaves the complete chord pending — exactly like
+        // clicking a chord. Storing still happens when the user clicks a grid cell.
+        this.captureHeldChord();
+    }
+
+    // Snapshot the currently-held MIDI notes (as absolute Hz, low→high) into the
+    // app-wide Chord Memory as the pending chord. Mirrors keyboard.js captureKeyboardChord.
+    captureHeldChord() {
+        if (typeof window.captureChord !== 'function' || this.activeNotes.size === 0) return;
+        const seen = new Set();
+        const freqs = [];
+        for (const midiNote of this.activeNotes.keys()) {
+            const f = this.midiNoteToFrequency(midiNote);
+            if (!f) continue;
+            const k = Math.round(f * 100); // dedup near-identical pitches
+            if (!seen.has(k)) { seen.add(k); freqs.push(f); }
+        }
+        if (freqs.length === 0) return;
+        freqs.sort((a, b) => a - b);
+
+        // Name the chord from the 12-TET shape of the held keys: known quality → its
+        // label, an unrecognized 2+ note cluster → 'cust', a single note → no name.
+        const chordName = midiChordName12TET([...this.activeNotes.keys()]);
+
+        const Scenes = (window.ANIMA && window.ANIMA.Scenes) ? window.ANIMA.Scenes : null;
+        window.captureChord({
+            frequencies: freqs,
+            root: freqs[0],
+            chordName: chordName,
+            cellColor: null,
+            sourceScene: Scenes ? Scenes.MODALSTUDIO : 1
+        });
     }
 
     // Handle MIDI Note Off
