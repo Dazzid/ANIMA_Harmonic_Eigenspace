@@ -126,7 +126,7 @@ class ChordVisualization {
         // (no dynamic top here, so the panel sits where the CSS places it).
         
         // p.textMode(p.CENTER);
-        p.textFont('Source Code Pro');
+        p.textFont('Fira Code');
     }
     //----------------------------------------------------------------------------------------
     draw(p) {
@@ -346,9 +346,10 @@ class ChordVisualization {
         const y = this.freqToY(this.rootFreq);
 
         // Root frequency line (extends across the spectrum)
-        p.stroke(0, 200, 255, 150);
-        p.strokeWeight(1);
-        p.line(this.spectrumX + 25, y, this.spectrumX + 220, y);
+        p.fill(0, 200, 255, 100);
+        // p.strokeWeight(1);
+        p.noStroke();
+        p.rect(this.spectrumX + 10, y-5, this.spectrumX + 220, 10, 5);
 
         // Root label with better positioning
         // p.fill(0, 200, 255);
@@ -559,15 +560,11 @@ class ChordVisualization {
         for (const s of steps) {
             const y = this.freqToY(s.frequency);
             const isRoot = Math.abs(s.frequency - this.rootFreq) < 0.5;
-            if (isRoot) {
-                p.stroke(0, 200, 255, 230); // cyan highlight for the current root step
-                p.strokeWeight(2);
-                p.line(x0, y, x0 + 14, y);
-            } else {
-                p.stroke(170, 170, 170, 130); // faint but visible
-                p.strokeWeight(1);
-                p.line(x0, y, x0 + 8, y);
-            }
+            
+            p.stroke(170, 170, 170, 130); // faint but visible
+            p.strokeWeight(1);
+            p.line(x0, y, x0 + 8, y);
+            
         }
     }
 
