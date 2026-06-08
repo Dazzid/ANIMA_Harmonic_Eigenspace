@@ -260,6 +260,24 @@ class MidiPianoHandler {
             return;
         }
 
+        // Keyboard (KL) scene: a physical MIDI key lights up its hex on the 53-TET
+        // grid as soon as the key is sent — the visual mirror of the computer-keyboard
+        // mapping. The key is remapped to a MICROTONAL pitch by the active scale (not
+        // 12-TET), so we light the hex matching that remapped frequency. Done here
+        // (before the enable gate) so the hex shows whenever the MIDI keyboard is
+        // active, not only when the MIDI Piano audio toggle is on. Note-off clears it
+        // via handleNoteOff above.
+        if (command === 0x90 && velocity > 0 && this.isKeyboardScene()
+            && typeof window.keyboardHighlightMidiNote === 'function') {
+            // Use the key's remapped microtonal pitch when a scale is loaded;
+            // before any chord/scale defines a mapping, fall back to plain 12-TET
+            // as a neutral starting point (440·2^((n−69)/12)).
+            const freq = (this.currentScale && this.rootMidiNote)
+                ? this.midiNoteToFrequency(note)
+                : 440 * Math.pow(2, (note - 69) / 12);
+            if (freq) window.keyboardHighlightMidiNote(note, true, freq);
+        }
+
         // Block all other messages when disabled
         if (!this.isEnabled) {
             console.log(`[MIDI Piano Input] → BLOCKED (Piano disabled)`);
@@ -348,12 +366,6 @@ class MidiPianoHandler {
 
     // Handle MIDI Note On
     handleNoteOn(midiNote, velocity) {
-        // Keyboard scene: light up the matching hex regardless of whether a
-        // 53-TET scale has been loaded — the hex grid is the instrument here.
-        if (this.isKeyboardScene() && typeof window.keyboardHighlightMidiNote === 'function') {
-            window.keyboardHighlightMidiNote(midiNote, true);
-        }
-
         if (!this.isEnabled || !this.currentScale) {
             console.warn('MIDI Piano: Not ready to play notes');
             return;

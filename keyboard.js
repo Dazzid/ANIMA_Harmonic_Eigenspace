@@ -1063,22 +1063,24 @@ window.keyboardPlayChord = function (freqs) {
   }
 };
 
-// Light up the hex that matches an incoming 12-TET MIDI key, so a note played on
-// a physical MIDI keyboard highlights its place on the 53-TET grid (visual only —
-// audio routing is handled by midi_piano.js). The hex chosen is the one whose
-// frequency is closest (in cents) to the MIDI key's standard 12-TET pitch, which
-// also picks the right octave. on=false clears the highlight. Called by
-// midi_piano.js while the Keyboard scene is active.
+// Light up the hex that matches an incoming MIDI key, so a note played on a
+// physical MIDI keyboard highlights its place on the 53-TET grid (visual only —
+// audio routing is handled by midi_piano.js). The MIDI keyboard is NOT fixed to
+// 12-TET here: each key is dynamically remapped to a microtonal pitch by the
+// active scale (midi_piano.js midiNoteToFrequency), so the caller passes that
+// actual sounding frequency and we light the hex closest to it (in cents) — the
+// hex whose pitch the key is really playing. on=false clears the highlight.
+// Called by midi_piano.js while the Keyboard scene is active.
 const midiHighlightedHexes = new Map(); // midiNote → the hex lit for it
-window.keyboardHighlightMidiNote = function (midiNote, on) {
+window.keyboardHighlightMidiNote = function (midiNote, on, freq) {
   if (!gridButtons || gridButtons.length === 0) return;
   if (on) {
     if (midiHighlightedHexes.has(midiNote)) return;
-    const targetFreq = 440 * Math.pow(2, (midiNote - 69) / 12);
+    if (!(freq > 0)) return;
     let best = null, bestCents = Infinity;
     for (const btn of gridButtons) {
       if (!btn.frequency) continue;
-      const cents = Math.abs(1200 * Math.log2(btn.frequency / targetFreq));
+      const cents = Math.abs(1200 * Math.log2(btn.frequency / freq));
       if (cents < bestCents) { bestCents = cents; best = btn; }
     }
     if (!best) return;
