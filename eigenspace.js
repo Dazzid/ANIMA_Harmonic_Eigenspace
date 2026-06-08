@@ -56,7 +56,7 @@ const zoneFull = 1.0;
 const chordSize = 7.0;
 const localMinSize = 9.0;
 const zoneOpacity = 0.65;
-const zoneFullOpacity = 0.25;
+const zoneFullOpacity = 0.3;
 
 // Keyboard shortcuts for root note selection
 // const keyToFreq = {
@@ -1098,7 +1098,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     const { alphaRange, betaRange, gammaRange, dissonance3d } = data;
 
     // Sample the data exactly as in the reference implementation
-    const sampleRate = 2;
+    const sampleRate = 3;
     const xData = [], yData = [], zData = [], dData = [];
 
     // Subtle, fixed position jitter (a fraction of one grid step) so the perfectly
