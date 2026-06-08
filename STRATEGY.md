@@ -217,7 +217,9 @@ Tick as we go. Don't start a phase before the one above is green.
 - [x] 12-TET keyboard keys still set their reference roots (unchanged `keyToFreq` path)
 - [x] Ticks inert + not drawn when not in ES (scene gate)
 
-### 6.3 Progressive "populating" reveal of the Full 3D view — 📋 PLANNED
+### 6.3 Progressive "populating" reveal of the Full 3D view — 🅿️ PARKED (optional polish; likely not worth it)
+
+> **Parked.** The full render is acceptable as‑is; this is cosmetic. And the approach fights itself: revealing 10%→100% re‑renders a *growing* cloud each frame, so per‑frame cost rises and the last frames (8–11M pts at `sampleRate=2`) would stutter — risk it feels *worse* than a clean pause. Only revisit as a cheap 3–4 step "pop‑in" prototype, kept only if it genuinely feels good. The notes below are the design if we ever do.
 
 **Goal.** Switching Layered → **Full 3D** currently freezes for a few seconds while Plotly/WebGL uploads the full ~11M‑point cloud to the GPU in one bulk op. Replace that dead wait with an **animated reveal** — the cloud grows from ~10% → 100% of points over a handful of frames, so the user *sees the dissonance volume populate* instead of staring at a frozen screen. On‑theme: the structure emerges before your eyes.
 
