@@ -136,7 +136,7 @@ function isAudioGuiVisible() {
 // ------------------------------------------------------------
 function setup() {
 
-    textFont('Source Code Pro');
+    textFont('Fira Code');
     smooth();
 
     let canvas = createCanvas(W, H);

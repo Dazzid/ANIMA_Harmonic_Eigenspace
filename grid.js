@@ -116,7 +116,7 @@ const createGridSketch = (p) => {
             p.fill(255);
             p.textAlign(p.CENTER);
             p.textSize(14);
-            p.textFont('Source Code Pro');
+            p.textFont('Fira Code');
             p.text('Chord Memory', this.x + this.totalWidth / 2, this.y - 20);
 
             // Draw close + mute buttons at top-right corner
@@ -238,7 +238,7 @@ const createGridSketch = (p) => {
                 
                 p.fill(textColor);
                 p.textAlign(p.CENTER, p.CENTER);
-                p.textFont('Source Code Pro');
+                p.textFont('Fira Code');
                 
                 // Display root note on top. Prefer the real 53-TET name (resolver
                 // loaded by eigenspace.js); fall back to the 12-TET approximation.

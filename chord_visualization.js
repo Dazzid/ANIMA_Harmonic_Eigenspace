@@ -139,9 +139,9 @@ class ChordVisualization {
 
         // Draw title
         p.fill(this.textColor);
-        p.textAlign(p.LEFT);
-        p.textSize(12);
-        p.text('Frequency Spectrum', 90, 25);
+        p.textAlign(p.CENTER);
+        p.textSize(15);
+        p.text('Frequency Spectrum', this.W / 2, 25);
 
         // Draw background spectrum area
         this.drawSpectrumBackground(p);
@@ -561,7 +561,7 @@ class ChordVisualization {
             const y = this.freqToY(s.frequency);
             const isRoot = Math.abs(s.frequency - this.rootFreq) < 0.5;
             
-            p.stroke(170, 170, 170, 130); // faint but visible
+            p.stroke(255, 255, 255, 120); // faint but visible
             p.strokeWeight(1);
             p.line(x0, y, x0 + 8, y);
             

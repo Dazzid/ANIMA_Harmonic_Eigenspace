@@ -1236,7 +1236,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         },
         name: 'Full 3D View',
         visible: visualizationMode === 'full3d',  // Show if starting in full3d mode
-        hovertemplate: '<span style="font-family:Source Code Pro">' +
+        hovertemplate: '<span style="font-family:Fira Code">' +
             '<b>Ratios</b><br>' +
             'α = %{x:.4f}<br>' +
             'β = %{y:.4f}<br>' +
@@ -1300,7 +1300,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             },
             name: `${(threshold - windowSize / 2).toFixed(3)} - ${(threshold + windowSize / 2).toFixed(3)}`,
             visible: visualizationMode === 'sectioned' && i === 0, // Only first layer visible in sectioned mode
-            hovertemplate: '<span style="font-family:Source Code Pro">' +
+            hovertemplate: '<span style="font-family:Fira Code">' +
                 '<b>Ratios</b><br>' +
                 'α = %{x:.4f}<br>' +
                 'β = %{y:.4f}<br>' +
@@ -1342,10 +1342,10 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             },
             text: nodes.map((_, i) => String(i + 1)),
             textposition: 'middle center',
-            textfont: { size: localMinSize - 1, color: 'rgba(41, 41, 41, 1)', font: 'Source Code Pro' },
+            textfont: { size: localMinSize - 1, color: 'rgba(41, 41, 41, 1)', font: 'Fira Code' },
             name: 'Local-minima',
             visible: true,
-            hovertemplate: '<span style="font-family:Source Code Pro">' +
+            hovertemplate: '<span style="font-family:Fira Code">' +
                 '<b>Node %{text}</b><br>' +
                 'α = %{x:.4f}<br>' +
                 'β = %{y:.4f}<br>' +
@@ -1389,7 +1389,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             textfont: { size: 12, color: 'rgba(255, 255, 255, 1)' },
             name: '12-TET Chords',
             visible: true,
-            hovertemplate: '<span style="font-family:Source Code Pro">' +
+            hovertemplate: '<span style="font-family:Fira Code">' +
                 '<b>%{customdata}</b><br>' +
                 'α = %{x:.4f}<br>' +
                 'β = %{y:.4f}<br>' +
@@ -1434,7 +1434,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             textfont: { size: 12, color: 'rgba(255, 200, 0, 1)' },
             name: '31-TET Chords',
             visible: true,
-            hovertemplate: '<span style="font-family:Source Code Pro">' +
+            hovertemplate: '<span style="font-family:Fira Code">' +
                 '<b>%{customdata}</b><br>' +
                 'α = %{x:.4f}<br>' +
                 'β = %{y:.4f}<br>' +
@@ -1480,7 +1480,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             textfont: { size: 12, color: 'white' },
             name: '53-TET Chords',
             visible: true,
-            hovertemplate: '<span style="font-family:Source Code Pro">' +
+            hovertemplate: '<span style="font-family:Fira Code">' +
                 '<b>%{customdata}</b><br>' +
                 'α = %{x:.4f}<br>' +
                 'β = %{y:.4f}<br>' +
@@ -1538,14 +1538,14 @@ function createVisualization(data, baseFreq, numNodes = 15) {
             bgcolor: 'rgba(0,0,0,0.0)',
             bordercolor: 'rgba(255,255,255,0.3)',
             borderwidth: 0,
-            font: { size: 12, family: 'Source Code Pro', weight: 'normal' },
-            fontFamily: 'Source Code Pro',
+            font: { size: 12, family: 'Fira Code', weight: 'normal' },
+            fontFamily: 'Fira Code',
             fontWeight: 'normal',
             itemsizing: 'constant',
             itemwidth: 20
         },
         paper_bgcolor: 'rgba(0, 0, 0, 1)',
-        font: { color: 'white', family: 'Source Code Pro', weight: 'normal' },
+        font: { color: 'white', family: 'Fira Code', weight: 'normal' },
         margin: { l: 0, r: 0, t: 0, b: 0 },
         clickmode: 'event+select',
         hovermode: 'closest'

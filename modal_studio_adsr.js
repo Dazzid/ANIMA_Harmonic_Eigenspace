@@ -119,7 +119,7 @@ function isAudioGuiVisible() {
 
 // ------------------------------------------------------------
 function setup() {
-    textFont('Source Code Pro');
+    textFont('Fira Code');
 
     let canvas = createCanvas(W, H);
     canvas.parent('audio-gui-container');

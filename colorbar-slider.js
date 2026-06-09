@@ -59,7 +59,7 @@ const colorbarSketch = (p) => {
     p.setup = function () {
         let canvas = p.createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
         canvas.parent('colorbar-container');
-        p.textFont('Source Code Pro');
+        p.textFont('Fira Code');
         
         // Initialize position - start off-screen, no animation on load
         const colorbarContainer = document.getElementById('colorbar-container');

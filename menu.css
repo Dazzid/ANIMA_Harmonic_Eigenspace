@@ -109,7 +109,7 @@
     transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.32s ease;
     z-index: 10049;
     overflow-y: auto;
-    font-family: 'Source Code Pro', monospace;
+    font-family: 'Fira Code', monospace;
     color: rgb(40, 40, 40);
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
@@ -155,7 +155,7 @@
     border: none;
     border-radius: 5px;
     color: #fff;
-    font-family: 'Source Code Pro', monospace;
+    font-family: 'Fira Code', monospace;
     font-size: 14px;
     padding: 11px 12px;
     margin-bottom: 6px;
@@ -220,7 +220,7 @@
 /* Keyboard-shortcut hint keycap (right-aligned on the item). */
 .anima-menu-kbd {
     margin-left: auto;
-    font-family: 'Source Code Pro', monospace;
+    font-family: 'Fira Code', monospace;
     font-size: 10px;
     line-height: 1;
     padding: 3px 6px;

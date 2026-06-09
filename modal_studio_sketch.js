@@ -29,7 +29,7 @@ const sketch = (p) => {
         const w = Math.max(p.windowWidth, MIN_WIDTH);
         const h = Math.max(p.windowHeight, MIN_HEIGHT);
         p.createCanvas(w, h);
-        p.textFont('Source Code Pro');
+        p.textFont('Fira Code');
         app = new OfApp();
         
         // Set up scene toggle button handler

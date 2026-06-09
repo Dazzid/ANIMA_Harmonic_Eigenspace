@@ -217,6 +217,85 @@ Tick as we go. Don't start a phase before the one above is green.
 - [x] 12-TET keyboard keys still set their reference roots (unchanged `keyToFreq` path)
 - [x] Ticks inert + not drawn when not in ES (scene gate)
 
+### 6.3 Voicing Editor — Dynamic Editing — 🔲 PLANNED
+
+**Goal.** Turn the Voicing Editor (`modal_studio_VoicingEditor.js`, MS **chord** scene) from a single-gesture widget (drag a note around its own ring) into a full voicing workbench.
+
+**Functionalities to add (the concrete list).** Each row is one user-facing control + the behaviour it triggers:
+
+| # | Control (HTML overlay) | What it does |
+|---|---|---|
+| F1 | **Re-root ▲ / ▼** (and drag-wheel) | Transpose the **whole** voicing ±1 comma (53-TET, chromatic). Moves every note incl. the root pitch class. Wheel = continuous. |
+| F2 | **9** / **11** / **13** (toggle) | Add (or remove) that extension to the voicing by activating its ghost node. |
+| F3 | **Oct ▲ / ▼** + **Shift+↑ / Shift+↓** | Move the **selected** note up/down one octave ring (keyboard shortcut mirrors the buttons). |
+| F4 | **Drop 2** / **Drop 3** / **Drop 2&4** | Apply the jazz drop voicing — drop the numbered note(s) (top→bottom) an octave. |
+| F5 | **Reset** | Restore the chord's default closed voicing. |
+| — | **Click a note to select it** | New: persistent selection (highlight) that F3 acts on. Today selection only exists mid-drag. |
+
+These sit on a **prerequisite refactor** (see next block): make every note editable and track the root by pitch class, not array index.
+
+**How it works today (the baseline we're extending)**
+- `currentVoicing[]` = ordered list of `{ scalePosition, absoluteTET, normalizedTET, octave, noteName }`. **Index 0 is assumed to be the root AND the bass** — `findNearestNote` skips `i===0`, so the root is non-editable.
+- **5 octave rings** (octaves −1…3). A note is drawn at `r = radius*innerRadius + (octave+1)*octaveSpacing`, angle from `normalizedTET` (`octaveSpacing = radius*0.21`). `getOctave(abs) = floor(abs/53)`.
+- **Dragging = angular only**, within the note's current ring, bounded by its same-ring neighbors (`isWithinDraggingLimits` / `handleNoteDragging`). Octave never changes while dragging.
+- **Extension ghosts already exist**: `calculateExtendedComponents()` precomputes inactive 9th (`root+9`), 11th (`root+22`), #11 (`root+27`, majors only) and 13th positions; `determineComponentType()` owns the canonical 53-TET interval bands (9th 3–10, 3rd 11–20, 11th 21–25, #11 26, 5th 27–35, 13th 33–41, 7th 42–52). *(Naming uses the same bands — see §6.x chord-name extensions in `modal_studio_Chord.js`.)*
+- **Change propagation**: any edit calls `notifyVoicingChanged()` → `onVoicingChanged(absoluteTET[])` (wired in `modal_studio_app.js:279`) → `grid.updateSelectedChordVoicing` / `modes[].updateSelectedChordVoicing` → `chord.updateVoicing()` + `chord.setChordQualityFromVoicing()`. **Synergy:** because `setChordQualityFromVoicing` now reads 9/11/13 from the voiced intervals, added extensions will *automatically* show up in the chord label.
+- **Host hooks**: instantiated `modal_studio_app.js:67`, `setup()` `:275`, drawn `:569`, mouse dispatched `:584` (chord scene only). `app.keyPressed` is a **no-op** today; MS keydown currently lives in `key_map.js` (note playback).
+
+**Foundational refactor (do this first — features 1, 3, 4 all depend on it).** Decouple **root identity** from **bass position**. Drop voicings, re-rooting, and octave moves all break the "index 0 = root = lowest note" invariant (e.g. Drop 2 of a closed Cmaj7 → G–C–E–B, bass is G not C).
+- Keep `currentVoicing` **sorted by `absoluteTET`** for ring placement + neighbor bounds.
+- Track the harmonic root **by pitch class** (`root_53` / interval 0), not by array index. Recompute components by interval-from-root each edit (already how `identifyChordComponents` works).
+- Make **every** note editable (drop the `i===0` skip); the root keeps a distinct color but can be dragged/moved like the rest.
+
+**The four features**
+
+1. **Re-root by rotating the whole chord (wheel).** A vertical wheel / ▲▼ control that transposes the *entire* voicing up or down, preserving its interval shape. **Decided: chromatic 53-TET transpose** — every note (incl. the root pitch class `root_53`/`note_53`) shifts by the same ±N commas; **no scale snapping** (microtonal freedom is the point). Wheel drag = continuous comma steps; ▲▼ = ±1 comma. Notes that cross a ring boundary update `octave` + `absoluteTET` naturally via `getOctave`; clamp the whole chord so no note leaves rings −1…3.
+
+2. **Add 9th / 11th / 13th.** Buttons `9` `11` `13` (and maybe `#11`) **toggle** the corresponding extension. "On" = promote the existing ghost position to an active `currentVoicing` entry (insert at its ring, re-sort, notify). "Off" = remove it. Clicking the ghost node directly should do the same.
+
+3. **Move a note between rings (octave ± 1).** Add a persistent `selectedNoteIndex` (set by a click/"flick" on a note; today selection only exists mid-drag). Then **Shift+ArrowUp / Shift+ArrowDown** moves the selected note to the next/previous ring: `octave ±= 1` (clamp −1…3), recompute `absoluteTET = normalizedTET + octave*53`, re-sort, notify. Needs a new keyboard hook routed through `app.keyPressed` → `voicingEditor` **without** colliding with `key_map.js` note keys or the ES/global Shift shortcuts (gate on MS chord scene + editor having a selection).
+
+4. **Drop voicings (Drop 2 / Drop 3 / Drop 2&4).** Buttons that re-octave the active notes. **Decided: act on the *current* arrangement** (no normalize-to-closed step). Algorithm: take `currentVoicing` sorted **high→top** by `absoluteTET`, number 1..n **top→bottom**, then drop note #2 (Drop 2), #3 (Drop 3), or #2 and #4 (Drop 2&4) by one octave (`octave−=1`, recompute `absoluteTET`); re-sort, notify. Results therefore depend on the current octave layout (preserves prior manual edits, as requested). Guard `n < 4` (Drop 3 / 2&4 need ≥3 / ≥4 notes) and clamp to ring −1.
+
+**UI / buttons — HTML overlay.** **Decided: real HTML buttons over the canvas** (not p5-drawn). Add a small control panel (its own `<div>`, Fira Code, styled like the existing toolbar buttons) holding: `▲`/`▼` re-root, `9` `11` `13`, `Drop2` `Drop3` `Drop2&4`, octave `▲`/`▼` for the selected note, `Reset`. Wire each via `addEventListener('click', …)` to a `voicingEditor` method that mutates `currentVoicing` and calls `notifyVoicingChanged()`. **Visibility/positioning caveats:** (a) show only in the MS **chord** scene **and** when a chord is selected (`isChordClicked`) — toggle the panel's `display` from the same gates that draw the widget; (b) the widget's title bar is **drag-movable**, so either dock the panel in a **fixed** position (simplest — doesn't track the drag) or, if it must hug the widget, update the panel's `left/top` from `voicingEditor.center` each frame. Recommend a fixed docked panel to avoid per-frame DOM updates. Buttons must **not** sit inside the p5 canvas hit-area in a way that double-fires — HTML stops the event, but confirm the canvas `mousePressed` doesn't also run for that pixel.
+
+**Risks & mitigations (pre-mortem — read before coding).**
+
+*The two derailers (decide/handle in the refactor step, before any feature):*
+- **R1 — the notify path can't move the root.** `notifyVoicingChanged()` sends only `absoluteTET[]`; `setChordQualityFromVoicing` measures every interval from the chord's stored `root_53`. F1 (re-root) and F4 (drop) move notes but never tell the chord its root moved → after a re-root the name + component colours read N steps off (all wrong). **Fix:** widen the callback to carry the new root (or have `updateVoicing` re-derive `root_53`). Non-negotiable prerequisite for F1.
+- **R2 — re-sorting invalidates index-based state.** `draggedNoteIndex` and the planned selection are **array indices**; any transpose/drop/octave-move re-sorts `currentVoicing`, so the index now points at a *different* note (drag jumps, F3 moves the wrong note). **Fix:** track dragged/selected note by **object identity** (stable ref/id), not index; never re-sort mid-drag.
+
+*Structural:*
+- **R3 — "root = index 0 = bass" is assumed in ~6 places** (`findNearestNote`, `identifyChordComponents`, `calculateExtendedComponents`, `isWithinDraggingLimits`, `isValidTETPosition`, `handleNoteDragging`). Drop voicings make bass ≠ root, so `currentVoicing[0]` is the wrong interval reference. **Fix:** convert all to root-by-pitch-class in one pass; miss one → silent mislabeling.
+- **R4 — F2 extensions are fixed offsets, not scale-derived.** `calculateExtendedComponents` hardcodes 9th=`root+9`, 11th=`root+22`, #11=`root+27` (majors only) → "Add 11" injects a perfect 4th even in Lydian (should be #11), can land off-scale or duplicate a tone. **Fix:** derive 9/11/13 from `currentScalePositions` (the actual stacked degrees).
+- **R5 — phantom doubled root corrupts F4 numbering + selection.** `analyzeVoicing`'s `addOctaveBase` silently inserts a duplicate root; Drop's top→bottom count includes it. **Fix:** exclude doubled/phantom notes from drop numbering + selection, or disable auto-doubling in edit mode.
+
+*Behavioural / integration:*
+- **R6 — F3 keyboard collisions.** `anima.js`→scene `keyPressed`, `key_map.js` note keys, ES Shift+L/M, and page-scroll on arrows all overlap. **Fix:** gate Shift+↑/↓ on MS-chord-scene + live selection, `preventDefault`, ensure no `key_map` note fires. Plus a **click-vs-drag threshold** (every select currently starts a drag) and stop `mouseReleased` from clearing the selection.
+- **R7 — F4 is cumulative, not toggle** ("current arrangement" → repeated Drop 2 keeps sinking notes; Reset is the only undo). Confirmed intended; just flag in UI.
+- **R8 — Reset needs the original template preserved** — snapshot the chord's default voicing on first edit, else there's nothing to restore to.
+- **R9 — audio spam** — a wheel-drag re-root re-triggers the chord per frame. **Fix:** throttle, or sound only on release.
+- **R10 — HTML panel visibility must mirror editor interactivity** — `onVoicingChanged` handles `grid`+`chord` but `mousePressed` is gated to `chord` only; gate the panel to the *real* interactive surface. Fixed-docked panel won't track the drag-movable widget (accept the disconnect).
+- **R11 — off-ring clamping** — only 5 rings (−1…3); a whole-chord transpose where a note is already on the top ring can't move up. **Decide:** block the move vs. let the note go off-ring (sounding, undrawn).
+- **R12 — band overlaps at 10 / 26 / 36** (3rd↔9th, dim5↔#11, aug5↔13th): dynamic editing parks notes on these boundaries far more than static chords do, surfacing the known naming/colour ambiguity.
+
+**Build checklist (de-risked order).**
+- [ ] **Refactor (do all together):** track root **by pitch class** across the ~6 sites (R3); selection/drag **by identity** not index (R2); **carry the root in the notify callback** (R1); snapshot original voicing for Reset (R8); decide auto-doubling in edit mode (R5).
+- [ ] Persistent selection: click-to-select + highlight, with click-vs-drag threshold; don't clear on release (R6).
+- [ ] HTML control panel: markup + styling; show/hide gated to the real interactive surface + `isChordClicked` (R10); fixed docked.
+- [ ] **F2** Add/remove 9 / 11 / 13 — **scale-derived** (R4) → notify; verify the label gains `…9/11/13`.
+- [ ] **F1** Re-root ▲▼ / wheel → chromatic transpose of all notes **incl. root_53** (R1) → notify; clamp to rings (R11); throttle audio (R9).
+- [ ] **F4** Drop 2 / Drop 3 / Drop 2&4 on current arrangement, top→bottom numbering **excluding phantoms** (R5); guard `n<4`.
+- [ ] **F3 (last — riskiest):** `app.keyPressed` hook → Shift+Arrow octave move of the selected note (R6); clamp to rings.
+- [ ] **F5** Reset → restore snapshotted default voicing (R8).
+- [ ] Round-trip every edit through `setChordQualityFromVoicing`: name + colour update, audio re-plays correctly.
+- [ ] Session save/load still round-trips edited voicings (per-cell `noteVoicing`/`voicingType`, §6.1) — re-verify.
+
+**Decisions (resolved with David)**
+- Re-root: **chromatic** 53-TET transpose (no scale snapping).
+- Drop buttons: act on the **current arrangement** (no normalize-to-closed).
+- Buttons: **HTML overlay** panel (fixed docked), not canvas-drawn.
+
 ## 7. Conventions
 
 - Plain script tags, **not** ES modules — globals are intentional; don't add a bundler casually.
