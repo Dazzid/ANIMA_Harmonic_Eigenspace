@@ -298,6 +298,35 @@ class OfApp {
                     }
                 };
 
+                // Re-root wheel (Step 4): transpose the SELECTED chord by N commas
+                // BEFORE the voicing-change recomputes its quality — shift its notes
+                // + root_53 so intervals (and the name) transpose correctly. Each
+                // unique Note object is shifted once (root_53/root alias notes[]).
+                this.voicingEditor.onTranspose = (deltaSteps) => {
+                    const ch = this.selectedChord;
+                    if (!ch || !deltaSteps) return;
+                    // Build FRESH note objects (never mutate in place): grid cells
+                    // share root_53 (and can share notes[]) with the original dragged
+                    // chord, so an in-place shift would transpose those too. Replacing
+                    // the references de-shares — the transpose stays on THIS chord only.
+                    const shifted = (note) => {
+                        if (!note) return note;
+                        const newFt = note.ft_note + deltaSteps;
+                        const ref = this.findScaleByReference(newFt);
+                        return {
+                            ft_note: newFt,
+                            name: (ref && ref.noteName) ? ref.noteName : note.name,
+                            interval: note.interval,
+                            localInterval: note.localInterval,
+                            inScale: note.inScale
+                        };
+                    };
+                    if (Array.isArray(ch.notes)) ch.notes = ch.notes.map(shifted);
+                    ch.root_53 = shifted(ch.root_53);
+                    ch.root = (Array.isArray(ch.notes) && ch.notes.length) ? ch.notes[0] : shifted(ch.root);
+                    if (ch.root_53) ch.note_53 = ch.root_53.ft_note;
+                };
+
                 this.voicingEditorInitialized = true;
                 console.log('✅ Voicing Editor initialized');
             }

@@ -267,11 +267,13 @@ Decouple root identity from bass position so the later features can move/reorder
 - ✅ Placement = **just above the highest note** (David's choice), **hard-clamped to the rings** (octave ≤ 4) — a missing clamp had let spread voicings fling a note ~17 rings off the widget (non-sensical.png). Toggle-off is now **reliable via an `extType` tag** on added notes (band-classification was failing for some scales → kept re-adding instead of removing).
 - ⏳ Verify in-app: click `9`/`11`/`13` (lower-left) → note appears on an **on-screen** upper ring (never off-widget) **and** the label updates (e.g. `Cmaj9`); click again clears it. *(Known: with the spread default voicings "above highest" can land on the outer ring — that's the chosen rule; switch to "one octave above root" is a 1-liner if it feels too high.)*
 
-#### Step 4 — Re-root wheel (only step that moves pitch classes)
-1. **Draw** a grabbable wheel band outside octave-4 (in the frame margin; bump `factorSize` a touch if needed for thickness).
-2. **Drag** on the band → angular delta → comma steps (reuse `angleToTETPosition`); add the same ±N to every note's `absoluteTET`; recompute `octave`/`normalizedTET` via `getOctave`; **clamp** so no note leaves rings −1…4.
-3. **Thread the root (R1):** shift `rootPitchClass` by the same N, and widen `onVoicingChanged` to carry the new root so `chord.root_53` moves too (else the name/colours read N steps off). The new root may not exist in `chord.notes` → set `root_53` to a bare `{ft_note}`.
-4. **Throttle** audio: re-sound on release, not per drag frame.
+#### Step 4 — Re-root wheel — ✅ DONE (2026-06-09)
+- ✅ **Wheel band** drawn in the outer frame margin (1.44–1.56·radius, tick marks; tints orange while dragging). `drawWheel` + `wheelRadii`.
+- ✅ **Drag-to-rotate** → continuous accumulated rotation → Holdrian-comma steps; `applyWheelTranspose(N)` shifts every note's `absoluteTET` by N (chromatic, no snap), recomputes octave/ring, **blocked at ring edges** (−1…4).
+- ✅ **Root threaded (R1):** shifts `rootPitchClass`; `onTranspose(N)` (wired in `modal_studio_app.js`) shifts the selected chord's `notes[]` + `root_53` (dedup by object identity) **before** notify, so intervals are unchanged → the name transposes correctly (C…→C#…), quality preserved.
+- ✅ **De-shared mutation (2026-06-09):** grid cells deep-copy `notes[]` but **share `root_53` by reference** with the original dragged chord (`dropChordIntoCell`), so an in-place transpose leaked to other cells/the palette. `onTranspose` now builds FRESH note objects and reassigns `ch.notes/root_53/root` → transpose affects ONLY the selected chord.
+- ⏳ Verify in-app: drag the outer band → whole voicing rotates up/down by commas; chord name's root letter tracks; **only this chord changes**; stops at the rings.
+- ⬜ Deferred: **audio on release** (transpose is currently silent until the chord is re-clicked); direction (CW=up) — flip if it feels backwards.
 
 #### Step 5 — Drop 2 / Drop 3 / Drop 2&4
 1. Sort `currentVoicing` high→low, number 1..n top→bottom.

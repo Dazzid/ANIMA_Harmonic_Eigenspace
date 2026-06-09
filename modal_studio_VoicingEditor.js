@@ -94,7 +94,15 @@ class VoicingEditor {
         this.CLICK_DRAG_THRESHOLD = 4; // px
         // Snapshot of the voicing as loaded, for the Reset button (R8).
         this.originalVoicing = [];
-        
+
+        // Re-root wheel (Step 4): drag the outer band to transpose the WHOLE voicing
+        // by Holdrian commas (chromatic). Tracks rotation continuously across turns.
+        this.isWheelDragging = false;
+        this.wheelPrevAngle = 0;
+        this.wheelAccumAngle = 0;
+        this.wheelAppliedSteps = 0;
+        this.onTranspose = null; // app hook: shift the chord's notes/root by N commas (keeps the name right)
+
         // State flags (from .hpp lines 216-217, 241)
         this.isChordClicked = false;
         this.hasActiveChord = false;
@@ -504,6 +512,31 @@ class VoicingEditor {
         this.identifyChordComponents();
         this.calculateExtendedComponents();
         this.notifyVoicingChanged();
+    }
+
+    // Re-root: transpose EVERY note by `deltaSteps` commas (chromatic, Step 4).
+    // Blocked (returns false) if any note would leave the rings (−1…4), so the
+    // wheel stops at the boundary. Shifts rootPitchClass + threads the chord's
+    // root via onTranspose BEFORE notify, so the name transposes correctly.
+    applyWheelTranspose(deltaSteps) {
+        if (deltaSteps === 0) return true;
+        for (const v of this.currentVoicing) {
+            const oct = this.getOctave(v.absoluteTET + deltaSteps);
+            if (oct < -1 || oct > 4) return false; // would leave the rings
+        }
+        for (const v of this.currentVoicing) {
+            v.absoluteTET += deltaSteps;
+            v.scalePosition = v.absoluteTET;
+            v.octave = this.getOctave(v.absoluteTET);
+            v.normalizedTET = ((v.absoluteTET % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS;
+            v.noteName = this.getNoteNameForStep(v.normalizedTET, true);
+        }
+        this.rootPitchClass = ((this.rootPitchClass + deltaSteps) % this.TOTAL_STEPS + this.TOTAL_STEPS) % this.TOTAL_STEPS;
+        if (this.onTranspose) this.onTranspose(deltaSteps); // shift chord root/notes first
+        this.identifyChordComponents();
+        this.calculateExtendedComponents();
+        this.notifyVoicingChanged();
+        return true;
     }
 
     // Is voicing-note v this extension `type`? Prefer the explicit `extType` tag we
@@ -1198,6 +1231,7 @@ class VoicingEditor {
         if (this.isChordClicked && this.currentVoicing.length > 0) {
             p.push();
             this.drawMainCircle();
+            this.drawWheel();
             this.drawCircleGrid();
             this.drawIntervalLines();
             this.drawChordComponents();
@@ -1205,6 +1239,41 @@ class VoicingEditor {
             this.drawBottomButtons();
             this.drawTitleBar();
             p.pop();
+        }
+    }
+
+    // Inner/outer radius of the re-root wheel band — centered on the outermost
+    // note ring (octave 4 at 1.35·r), so the wheel is the same size as the outer ring.
+    wheelRadii() {
+        const r = this.radius * 1.35; // octave-4 ring
+        const half = this.radius * 0.07;
+        return { inner: r - half, outer: r + half };
+    }
+
+    // Re-root wheel (Step 4): a grabbable band in the outer margin. Drag (rotate)
+    // it to transpose the whole voicing in Holdrian commas. Tick marks signal it's
+    // draggable; it tints orange while dragging.
+    drawWheel() {
+        const p = this.p;
+        if (!p) return;
+        const cx = this.center.x, cy = this.drawCenterY;
+        const { inner, outer } = this.wheelRadii();
+        const mid = (inner + outer) / 2;
+        const active = this.isWheelDragging;
+
+        p.noFill();
+        if (active) p.stroke(...this.selectedNodeColor, 230); else p.stroke(150, 150, 150, 140);
+        p.strokeWeight(active ? 3 : 2);
+        p.circle(cx, cy, mid * 2);
+
+        // grip ticks around the band
+        p.strokeWeight(1);
+        if (active) p.stroke(...this.selectedNodeColor, 200); else p.stroke(150, 150, 150, 120);
+        const N = 36;
+        for (let i = 0; i < N; i++) {
+            const a = (2 * Math.PI * i / N) - Math.PI / 2;
+            p.line(cx + inner * Math.cos(a), cy + inner * Math.sin(a),
+                   cx + outer * Math.cos(a), cy + outer * Math.sin(a));
         }
     }
 
@@ -1318,6 +1387,22 @@ class VoicingEditor {
             }
         }
 
+        // Re-root wheel (Step 4): grab the outer band to transpose the whole voicing.
+        // Skip if a note is under the cursor — note selection/drag takes priority so
+        // an octave-4 node stays clickable through the band.
+        if (!this.isInteracting && this.findNearestNote(mouse, true) < 0) {
+            const dist = Math.hypot(x - this.center.x, y - this.drawCenterY);
+            const { inner, outer } = this.wheelRadii();
+            if (dist >= inner && dist <= outer) {
+                this.isWheelDragging = true;
+                this.isInteracting = true;
+                this.wheelPrevAngle = Math.atan2(y - this.drawCenterY, x - this.center.x);
+                this.wheelAccumAngle = 0;
+                this.wheelAppliedSteps = 0;
+                return true;
+            }
+        }
+
         // Click an inactive 9/11/13 ghost → add that extension (Step 3).
         if (!this.isInteracting) {
             let extType = this.extensionGhostAt(mouse);
@@ -1352,7 +1437,26 @@ class VoicingEditor {
     
     mouseDragged(x, y, button) {
         if (!this.isChordClicked || this.currentVoicing.length === 0) return;
-        
+
+        // Re-root wheel: accumulate rotation (continuous across full turns) → comma
+        // steps; apply the increment to the whole voicing (blocked at ring edges).
+        if (this.isWheelDragging) {
+            const TWO_PI = Math.PI * 2;
+            const cur = Math.atan2(y - this.drawCenterY, x - this.center.x);
+            let d = cur - this.wheelPrevAngle;
+            if (d > Math.PI) d -= TWO_PI;
+            if (d < -Math.PI) d += TWO_PI;
+            this.wheelAccumAngle += d;
+            this.wheelPrevAngle = cur;
+            // clockwise (increasing screen angle) = transpose UP
+            const targetSteps = Math.round(this.wheelAccumAngle / (TWO_PI / this.TOTAL_STEPS));
+            const increment = targetSteps - this.wheelAppliedSteps;
+            if (increment !== 0 && this.applyWheelTranspose(increment)) {
+                this.wheelAppliedSteps = targetSteps;
+            }
+            return;
+        }
+
         if (this.isDraggingTitleBar) {
             // Title bar dragging
             let newX = x - this.titleBarOffset.x;
@@ -1441,6 +1545,7 @@ class VoicingEditor {
 
         this.isNoteDragging = false;
         this.draggedNoteIndex = -1;
+        this.isWheelDragging = false;
         this.isInteracting = false;
         this._pressNoteId = -1;
         this._didDrag = false;
