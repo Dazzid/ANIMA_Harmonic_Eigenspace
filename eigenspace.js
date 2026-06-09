@@ -57,7 +57,7 @@ const chordSize = 7.0;
 const localMinSize = 9.0;
 const zoneOpacity = 0.65;
 const zoneFullOpacity = 0.3;
-const divisionFactor = 10; 
+const divisionFactor = 15; 
 
 // Keyboard shortcuts for root note selection
 // const keyToFreq = {

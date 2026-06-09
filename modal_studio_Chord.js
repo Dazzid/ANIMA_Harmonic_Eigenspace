@@ -28,6 +28,14 @@ class Chord {
         [250, 250, 250],  // VI  - Submediant
         [255, 255, 255]   // VII - Leading tone
     ];
+
+    // Microtonal third-quality → name-token, matching the lookup-table symbols.
+    // Used to name triads (and any combo the 7th-chord table doesn't cover).
+    static THIRD_SYMBOL = {
+        supermajor: 'SM', upmajor: '^M', major: 'M', downmajor: 'vM',
+        neutralmajor: 'N', neutralminor: 'n', upminor: '^m', minor: 'm',
+        downminor: 'vm', subminor: 'sm'
+    };
     
     constructor() {
         this.notes = [];
@@ -219,7 +227,44 @@ class Chord {
         const baseColor = this.getModalBaseColor(this.chordFunction);
         return this.tintForQuality(baseColor, this.quality);
     }
-    
+
+    // ---- Chord-name helpers (shared by setChordQuality + setChordQualityFromVoicing) ----
+    // Name the chord CORE. Prefers the C++ lookup-table token (`base`); when that
+    // is empty — a triad, or any third/fifth combo the 7th-table doesn't cover —
+    // it builds a triad name from the third + fifth so the chord is never left
+    // unnamed. Diminished/augmented fifths get the usual o / b5 / + markers.
+    qualityCore(base, thirdQuality, fifthQuality) {
+        if (base) return base;
+        const t = Chord.THIRD_SYMBOL[thirdQuality];
+        if (!t) return '';
+        if (fifthQuality === 'diminished') return t + (t.includes('m') ? 'o' : 'b5');
+        if (fifthQuality === 'augmented')  return t + '+';
+        return t; // perfect-fifth triad
+    }
+
+    // Append 9th / 11th / 13th to a core name from the actually-voiced intervals
+    // (53-TET steps from the root). Mirrors the KL scene (keyboard.js
+    // clusterChordNameExtended): the highest natural extension (13>11>9) folds
+    // into the chord number by replacing a trailing 7 (maj7→maj9), and a no-7th
+    // chord uses 'add'. Bands are kept clear of the core chord tones — root(0),
+    // third(10-20), fifth(26-36), seventh(42-52) — so a subminor third (10), a
+    // diminished fifth (26) or an augmented fifth (36) is never mistaken for an
+    // extension (9th:3-9, 11th:21-25, 13th:37-41).
+    qualityWithExtensions(core, intervalsFromRoot) {
+        if (!core || !intervalsFromRoot || intervalsFromRoot.length === 0) return core;
+        let nat9 = false, nat11 = false, nat13 = false;
+        for (const raw of intervalsFromRoot) {
+            const iv = ((raw % 53) + 53) % 53;
+            if (iv >= 3 && iv <= 9) nat9 = true;
+            else if (iv >= 21 && iv <= 25) nat11 = true;
+            else if (iv >= 37 && iv <= 41) nat13 = true;
+        }
+        const stack = nat13 ? '13' : nat11 ? '11' : nat9 ? '9' : null;
+        if (!stack) return core;
+        if (/7\*?$/.test(core)) return core.replace(/7(\*?)$/, stack + '$1'); // maj7→maj9, m7*→m9*
+        return core + 'add' + stack;
+    }
+
     // C++: void Chord::setChordQuality() - EXACT logic from Chord.cpp lines 722-850 ------------------------------
     setChordQuality() {
         // C++ line 931: Store original voicing to preserve it
@@ -488,10 +533,12 @@ class Chord {
             }
         }
         
-        // Build quality key and lookup (C++ lines 828-829)
+        // Build quality key and lookup (C++ lines 828-829). The table covers 7th
+        // chords; qualityCore() fills in a triad name when the lookup is empty so
+        // triads are no longer left unnamed.
         const qualityKey = `${thirdQuality}_${fifthQuality}_${seventhQuality}`;
-        const myQuality = chordNames[qualityKey] || "";
-        
+        const coreQuality = this.qualityCore(chordNames[qualityKey] || "", thirdQuality, fifthQuality);
+
         // Debug: Log unknown chord qualities
         // if (!chordNames[qualityKey]) {
         //     console.warn(`⚠️ Unknown chord quality: "${qualityKey}" for chord with intervals:`, {
@@ -508,27 +555,34 @@ class Chord {
         const functionMap = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI', 7: 'VII' };
         const idMap = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7 };
         this.chordFunction = functionMap[localInterval] || 'I';
-        
-        // Update chord quality string and object
-        this.quality = rootName + myQuality;
-        
+
+        // C++ line 967: If no voicing is provided, generate the default one.
+        // Done BEFORE naming so 9/11/13 tones in the voiced notes (e.g. a 9th
+        // added by checkAndAddNinth, or extensions from the Voicing Editor) can be
+        // read into the chord name, the way the KL scene names what is sounding.
+        if (!hadVoicing) {
+            this.selectVoicingBasedOnFunction(this.chordFunction);
+        }
+        const rootFt = masterRoot.ft_note;
+        const voicedIntervals = this.noteVoicing.map(ft => (((ft - rootFt) % 53) + 53) % 53);
+        const displayQuality = this.qualityWithExtensions(coreQuality, voicedIntervals);
+
+        // this.quality keeps the CORE token (stable input for the color tinting in
+        // getChordColor); the displayed/stored name carries the extensions.
+        this.quality = rootName + coreQuality;
+
         // Update ChordQuality struct (C++ Chord.cpp lines 686-717)
         this.chordQuality.note = rootName;
-        this.chordQuality.quality = myQuality;
+        this.chordQuality.quality = displayQuality;
         this.chordQuality.function = this.chordFunction;
         this.chordQuality.id = idMap[localInterval] || 1;
         this.chordQuality.notes = this.notes;
         this.chordQuality.inversion = this.globalInversion;
-        this.chordQuality.name = this.quality; // Full name
-        
+        this.chordQuality.name = rootName + displayQuality; // Full name
+
         // C++ Chord.cpp line 848 - Construct finalInfo with function in brackets (NO space before [)
         this.finalInfo = this.chordQuality.note + this.chordQuality.quality + '[' + this.chordQuality.function + ']';
-        
-        // C++ line 967: If no voicing is provided, generate the default one
-        if (!hadVoicing) {
-            this.selectVoicingBasedOnFunction(this.chordFunction);
-        }
-        
+
         // C++ Chord.cpp lines 837-851 - Set default color based on quality
         this.defaultColor = this.getChordColor();
         
@@ -944,31 +998,35 @@ class Chord {
         
         //console.log(`Qualities - Third: ${thirdQuality}, Fifth: ${fifthQuality}, Seventh: ${seventhQuality}`);
         
-        // Build quality key and lookup chord name (C++ lines 917-920)
+        // Build quality key and lookup chord name (C++ lines 917-920). qualityCore()
+        // fills in a triad name when the 7th-table lookup is empty; qualityWithExtensions()
+        // reads 9/11/13 directly from the voiced intervals (normalizedVoicing).
         const qualityKey = `${thirdQuality}_${fifthQuality}_${seventhQuality}`;
-        const myQuality = chordNames[qualityKey] || "";
-        
+        const coreQuality = this.qualityCore(chordNames[qualityKey] || "", thirdQuality, fifthQuality);
+        const displayQuality = this.qualityWithExtensions(coreQuality, normalizedVoicing);
+
         // Get root note name without octave
         const rootName = this.root.name.slice(0, -1);
-        
+
         // C++ Chord.cpp lines 686-717 - Determine chord function (Roman numeral)
         const localInterval = this.notes[0].localInterval;
         const functionMap = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI', 7: 'VII' };
         const idMap = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7 };
         this.chordFunction = functionMap[localInterval] || 'I';
-        
-        // Update chord quality string (C++ line 923)
-        this.quality = rootName + myQuality;
-        
+
+        // this.quality keeps the CORE token (stable input for color tinting); the
+        // displayed/stored name carries the extensions.
+        this.quality = rootName + coreQuality;
+
         // Update ChordQuality struct (matching setChordQuality logic)
         this.chordQuality.note = rootName;
-        this.chordQuality.quality = myQuality;
+        this.chordQuality.quality = displayQuality;
         this.chordQuality.function = this.chordFunction;
         this.chordQuality.id = idMap[localInterval] || 1;
         this.chordQuality.notes = this.notes;
         this.chordQuality.inversion = this.globalInversion;
-        this.chordQuality.name = this.quality; // Full name
-        
+        this.chordQuality.name = rootName + displayQuality; // Full name
+
         // C++ Chord.cpp line 848 - Construct finalInfo with function in brackets (NO space before [)
         this.finalInfo = this.chordQuality.note + this.chordQuality.quality + '[' + this.chordQuality.function + ']';
         
