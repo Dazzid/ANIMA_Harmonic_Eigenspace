@@ -252,17 +252,27 @@ class Chord {
     // extension (9th:3-9, 11th:21-25, 13th:37-41).
     qualityWithExtensions(core, intervalsFromRoot) {
         if (!core || !intervalsFromRoot || intervalsFromRoot.length === 0) return core;
-        let nat9 = false, nat11 = false, nat13 = false;
+        let nat9 = false, nat11 = false, nat13 = false, hasP5 = false, raised4 = false;
         for (const raw of intervalsFromRoot) {
             const iv = ((raw % 53) + 53) % 53;
             if (iv >= 3 && iv <= 9) nat9 = true;
             else if (iv >= 21 && iv <= 25) nat11 = true;
             else if (iv >= 37 && iv <= 41) nat13 = true;
+            if (iv >= 30 && iv <= 32) hasP5 = true;          // perfect 5th present
+            if (iv === 26 || iv === 27) raised4 = true;        // augmented 4th region
         }
+        // #11 = a raised 11th that sits ON TOP of a perfect 5th (e.g. Cmaj7#11,
+        // the Lydian tonic). It is NOT a b5 — that's a diminished 5th REPLACING the
+        // 5th, handled by the core when no perfect 5th is present. 53-TET keeps the
+        // two pitches distinct, so we only call it #11 when a perfect 5th is there.
+        const sharp11 = raised4 && hasP5;
         const stack = nat13 ? '13' : nat11 ? '11' : nat9 ? '9' : null;
-        if (!stack) return core;
-        if (/7\*?$/.test(core)) return core.replace(/7(\*?)$/, stack + '$1'); // maj7→maj9, m7*→m9*
-        return core + 'add' + stack;
+        let name = core;
+        if (stack) {
+            name = /7\*?$/.test(core) ? core.replace(/7(\*?)$/, stack + '$1') : core + 'add' + stack;
+        }
+        if (sharp11) name += '#11';
+        return name;
     }
 
     // C++: void Chord::setChordQuality() - EXACT logic from Chord.cpp lines 722-850 ------------------------------
@@ -981,13 +991,22 @@ class Chord {
         let fifthQuality = "perfect";
         let seventhQuality = "unknown";
         
+        // Prefer the perfect 5th: a note at 26/27 alongside a perfect 5th is a #11
+        // (an upper extension, named by qualityWithExtensions), NOT a diminished 5th.
+        // Without this, Cmaj7#11 would mislabel as a b5 chord.
+        const hasPerfectFifth = normalizedVoicing.some(iv => iv >= 30 && iv <= 32);
+
         // Find qualities based on intervals
         for (const interval of normalizedVoicing) {
             if (interval >= 10 && interval <= 20 && thirdIntervals[interval]) {
                 thirdQuality = thirdIntervals[interval];
             }
             if (interval >= 26 && interval <= 36 && fifthIntervals[interval]) {
-                fifthQuality = fifthIntervals[interval];
+                // If a perfect 5th exists, only let perfect-5th intervals set the 5th
+                // quality; the 26/27 note is then the #11, not the 5th.
+                if (!hasPerfectFifth || (interval >= 30 && interval <= 32)) {
+                    fifthQuality = fifthIntervals[interval];
+                }
             }
             if ((interval >= 33 && interval <= 36) || (interval >= 42 && interval <= 51)) {
                 if (seventhIntervals[interval]) {

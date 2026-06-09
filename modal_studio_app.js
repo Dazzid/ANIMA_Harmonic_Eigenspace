@@ -263,11 +263,16 @@ class OfApp {
 
             // C++ ofApp.cpp line 30: Initialize VoicingEditor
             if (!this.voicingEditorInitialized) {
-                const voicingRadius = this.scaleEditor.outerRingSize; // Match ScaleEditor size
-                // Position VoicingEditor 10px below ScaleEditor
-                // ScaleEditor frame height = 2 * (radius * factorSize)
-                const voicingEditorX = this.scaleEditorX;
-                const voicingEditorY = this.scaleEditorY + (2 * radius * this.scaleEditor.factorSize) + 1;
+                const voicingRadius = this.scaleEditor.outerRingSize; // Match ScaleEditor ring size
+                // The Voicing Editor frame is WIDER/taller than the Scale Editor
+                // (its factorSize is larger to fit the 6th ring), so position it by
+                // its OWN frame size — right-aligned and clamped to the canvas — or
+                // its bottom-right buttons fall off-screen.
+                const voicingOuterRadius = voicingRadius * this.voicingEditor.factorSize;
+                const voicingFrame = 2 * voicingOuterRadius;
+                const voicingEditorX = Math.max(10, this.p.width - voicingFrame - 24);
+                let voicingEditorY = this.scaleEditorY + (2 * radius * this.scaleEditor.factorSize) + 1;
+                voicingEditorY = Math.min(voicingEditorY, Math.max(10, this.p.height - voicingFrame - 10));
                 const voicingTopLeft = { x: voicingEditorX, y: voicingEditorY };
                 console.log('Initializing Voicing Editor at', voicingTopLeft);
 
@@ -522,11 +527,14 @@ class OfApp {
 
             console.log('Updated Scale Editor position:', this.scaleEditor.center, 'canvas width:', canvasWidth);
 
-            // Update Voicing Editor position
+            // Update Voicing Editor position — by its OWN (wider/taller) frame,
+            // right-aligned and clamped so its bottom-right buttons stay on-canvas.
             if (this.voicingEditorInitialized) {
-                const voicingEditorX = this.scaleEditorX;
-                const voicingEditorY = this.scaleEditorY + (2 * radius * this.scaleEditor.factorSize) + 10;
                 const voicingOuterRadius = this.voicingEditor.radius * this.voicingEditor.factorSize;
+                const voicingFrame = 2 * voicingOuterRadius;
+                const voicingEditorX = Math.max(10, canvasWidth - voicingFrame - 24);
+                let voicingEditorY = this.scaleEditorY + (2 * radius * this.scaleEditor.factorSize) + 10;
+                voicingEditorY = Math.min(voicingEditorY, Math.max(10, p.height - voicingFrame - 10));
                 this.voicingEditor.center = {
                     x: voicingEditorX + voicingOuterRadius,
                     y: voicingEditorY + voicingOuterRadius
