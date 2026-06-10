@@ -48,16 +48,16 @@ class VoicingEditor {
         // 12-TET pattern for reference notes (from .hpp line 146)
         this.STEP_PATTERN = [0, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5];
         
-        // Display properties (from .cpp lines 5-20)
+        // Display properties 
         this.radius = 0;
         this.innerRadius = 0.3;  // Start point for 6 rings (-1, 0, 1, 2, 3, 4)
         this.center = { x: 0, y: 0 };
         this.octaveSpacing = 0;
-        // Frame size scaling. Grown 1.45 → 1.66 to fit the 6th (outer) ring at
+        // Frame size scaling. Grown 1.45 → 1.6 to fit the 6th (outer) ring at
         // r=1.35·radius while keeping the SAME margin the old outer ring had
         // (1.45−1.14 = 0.31). The existing rings are NOT resized — only the frame
         // expands outward, so the widget gets wider (innerRadius/octaveSpacing fixed).
-        this.factorSize = 1.66; //area of the frame size scaling
+        this.factorSize = 1.6; //area of the frame size scaling
         
         // Title bar dragging (from .hpp lines 182-184)
         this.isDraggingTitleBar = false;
@@ -122,7 +122,7 @@ class VoicingEditor {
         this.outNote = [255, 85, 10];
         this.selectorCircle = [0, 100, 255];
         this.scaleNode = [50, 50, 50, 80];
-        this.ring = [50, 50, 50, 100];
+        this.ring = [100, 100, 100, 50];
         this.subScale = [255, 192, 75];
         this.activeNote = [10, 10, 10];
         this.nodeBackground = [223, 223, 223];
@@ -146,10 +146,10 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // SETUP AND INITIALIZATION (from .cpp lines 5-73)
+    // SETUP AND INITIALIZATION
     // ========================================================================
     setup(inRadius, topLeft, noteDataArray) {
-        // Match ScaleEditor size exactly (from .cpp lines 6-10)
+        // Match ScaleEditor size exactly 
         this.radius = inRadius;
         // Center should be at outerRadius distance from topLeft for proper positioning
         // Add 5px down to account for title bar eating space (matches C++ implementation)
@@ -160,17 +160,17 @@ class VoicingEditor {
         };
         this.drawCenterY = this.center.y + 10;
         
-        // Initialize interaction states (from .cpp lines 12-13)
+        // Initialize interaction states 
         this.selectedNote = -1;
         this.isDragging = false;
         
-        // Load note data (from .cpp line 16)
+        // Load note data 
         this.noteData = noteDataArray;
         
-        // Set spacing between octave rings (from .cpp line 18)
+        // Set spacing between octave rings 
         this.octaveSpacing = this.radius * 0.21;
         
-        // Initialize colors (from .cpp lines 23-24 and 36-42)
+        // Initialize colors
         this.rootColor = this.selectorCircle;
         this.noteColor = [200, 200, 200];
         
@@ -180,13 +180,13 @@ class VoicingEditor {
             this.scaleNode = [255, 255, 255, 80];
         } else {
             this.textColor = this.darkTextColor;
-            this.ring = [50, 50, 50, 100];
+            this.ring = [100, 100, 100, 50];
             this.scaleNode = [50, 50, 50, 80];
         }
     }
     
     // ========================================================================
-    // DARK MODE (from .cpp lines 45-58)
+    // DARK MODE 
     // ========================================================================
     setDarkMode(inDarkMode) {
         this.darkMode = inDarkMode;
@@ -196,13 +196,13 @@ class VoicingEditor {
             this.scaleNode = [255, 255, 255, 80];
         } else {
             this.textColor = this.darkTextColor;
-            this.ring = [50, 50, 50, 100];
+            this.ring = [100, 100, 100, 50];
             this.scaleNode = [50, 50, 50, 80];
         }
     }
     
     // ========================================================================
-    // SCALE MANAGEMENT (from .cpp lines 118-182)
+    // SCALE MANAGEMENT 
     // ========================================================================
     setCurrentScale(notes) {
         this.currentScalePositions = [];
@@ -211,31 +211,31 @@ class VoicingEditor {
             this.currentScalePositions.push(normalizedPos);
         }
         
-        // Sort and remove duplicates (from .cpp lines 126-128)
+        // Sort and remove duplicates
         this.currentScalePositions.sort((a, b) => a - b);
         this.currentScalePositions = [...new Set(this.currentScalePositions)];
     }
     
     isNoteInScale(tetPosition) {
-        // If no scale is set, allow all positions (from .cpp lines 135-137)
+        // If no scale is set, allow all positions 
         if (this.currentScalePositions.length === 0) {
             return true;
         }
         
-        // Normalize to 0-52 range (from .cpp line 140)
+        // Normalize to 0-52 range 
         let normalizedPos = ((tetPosition % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS;
         
-        // Binary search to check if position is in scale (from .cpp lines 142-147)
+        // Binary search to check if position is in scale 
         return this.currentScalePositions.includes(normalizedPos);
     }
     
     snapToNearestScaleNote(tetPosition) {
-        // Direct port - currently returns position as-is (from .cpp lines 152-176)
+        // Direct port - currently returns position as-is
         return tetPosition;
     }
     
     // ========================================================================
-    // NOTE FINDING AND INTERACTION (from .cpp lines 180-230)
+    // NOTE FINDING AND INTERACTION 
     // ========================================================================
     findNearestNote(mouse, includeRoot = false) {
         if (this.currentVoicing.length === 0) return -1;
@@ -308,7 +308,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // ANGLE/TET CONVERSION (from .cpp lines 262-288)
+    // ANGLE/TET CONVERSION 
     // ========================================================================
     angleToTETPosition(angle) {
         const PI = Math.PI;
@@ -335,7 +335,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // NOTE DRAGGING (from .cpp lines 290-307)
+    // NOTE DRAGGING 
     // ========================================================================
     handleNoteDragging(mouseAngle) {
         const TWO_PI = Math.PI * 2;
@@ -376,7 +376,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // VOICING CHANGE NOTIFICATION (from .cpp lines 311-322)
+    // VOICING CHANGE NOTIFICATION 
     // ========================================================================
     notifyVoicingChanged() {
         if (this.onVoicingChanged) {
@@ -393,7 +393,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // CHORD COMPONENT IDENTIFICATION (from .cpp lines 324-392)
+    // CHORD COMPONENT IDENTIFICATION 
     // ========================================================================
     identifyChordComponents() {
         this.chordComponents = [];
@@ -423,7 +423,7 @@ class VoicingEditor {
     }
     
     determineComponentType(interval) {
-        // These intervals are specific to 53TET (from .cpp lines 346-358)
+        // These intervals are specific to 53TET
         if (interval === 0) return ChordComponentType.ROOT;
         if (interval >= 11 && interval <= 20) return ChordComponentType.THIRD;
         if (interval >= 27 && interval <= 35) return ChordComponentType.FIFTH;
@@ -447,8 +447,18 @@ class VoicingEditor {
         // set is 9/11/13 per the design decision.)
         let rootPos = this.rootPitchClass;
         let rootAbs = this.getRootAbsolute();
-        // Top of the current voicing — extensions are added ABOVE this (upper notes).
-        let topAbs = this.currentVoicing.reduce((m, v) => Math.max(m, v.absoluteTET), rootAbs);
+        // "Top" = highest note IGNORING octave-duplications of a pitch class already
+        // present lower (the default voicings double the root 2–3 octaves up; those
+        // doublings must NOT push the extension out to the far ring). This is the
+        // user's C2 E3 G3 B3 C4 → add D4 rule: the high C4 is a dup of C2, so it
+        // doesn't count, and the 9th lands just above B3.
+        let topAbs = rootAbs;
+        const seenPc = new Set();
+        for (const v of [...this.currentVoicing].sort((a, b) => a.absoluteTET - b.absoluteTET)) {
+            if (seenPc.has(v.normalizedTET)) continue; // skip octave-duplicate of a lower note
+            seenPc.add(v.normalizedTET);
+            topAbs = v.absoluteTET;
+        }
 
         // Scale-degree intervals above the root, ascending:
         // rel[1]=2nd, rel[3]=4th, rel[5]=6th  →  9th, 11th, 13th.
@@ -457,9 +467,14 @@ class VoicingEditor {
             .sort((a, b) => a - b);
         const degInterval = (i, fallback) => (rel.length > i ? rel[i] : fallback);
 
+        // On MAJOR chords the natural 11 clashes with the major 3rd (the avoid-note),
+        // so default the 11th to #11 (Lydian). The #11 = the augmented 4th / tritone
+        // = step 27 in 53-TET (NOT 26 — that's the diminished 5th, a comma lower).
+        // Non-major chords keep the diatonic 11 (perfect 4th = 22).
+        const eleventhInterval = this.isMajorChord() ? 27 : degInterval(3, 22);
         const exts = [
             { type: ChordComponentType.NINTH,      interval: degInterval(1, 9)  },
-            { type: ChordComponentType.ELEVENTH,   interval: degInterval(3, 22) },
+            { type: ChordComponentType.ELEVENTH,   interval: eleventhInterval   },
             { type: ChordComponentType.THIRTEENTH, interval: degInterval(5, 40) },
         ];
 
@@ -539,20 +554,25 @@ class VoicingEditor {
         return true;
     }
 
-    // Is voicing-note v this extension `type`? Prefer the explicit `extType` tag we
-    // put on notes WE added (reliable); fall back to interval-band classification
-    // for extensions that were already in the loaded voicing.
-    isExtension(v, type) {
-        if (v.extType !== undefined) return v.extType === type;
-        let band = this.determineComponentType(
-            (((v.normalizedTET - this.rootPitchClass) % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS);
-        return band === type;
+    // True if the voicing has a MAJOR third (interval 17–20 above the root:
+    // downmajor…supermajor). Used to default the 11th to #11 (avoid-note rule).
+    isMajorChord() {
+        return this.currentVoicing.some(v => {
+            const iv = (((v.normalizedTET - this.rootPitchClass) % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS;
+            return iv >= 17 && iv <= 20;
+        });
     }
 
-    // Add or remove a 9th/11th/13th (Step 3). Toggle: if already present, remove
-    // EVERY note of that extension (so repeated clicks can't keep stacking); else
-    // add ONE at the clamped above-top position, tagged with its type. Re-IDs
-    // components and notifies the chord so the label picks up …9/11/13.
+    // A note IS the 9/11/13 only if it was TAGGED as such (by the button that added
+    // it). Identity, not position — so the note stays "the 11" wherever it's dragged,
+    // and the button removes that exact note even if it became the bass.
+    isExtension(v, type) {
+        return v.extType === type;
+    }
+
+    // Toggle a 9th/11th/13th: if the TAGGED note already exists, remove exactly it
+    // (wherever it is); otherwise add exactly ONE note, tagged with this identity,
+    // at the ghost position. Always 0 or 1 of each — never a stack.
     toggleExtension(type) {
         if (this.currentVoicing.some(v => this.isExtension(v, type))) {
             this.currentVoicing = this.currentVoicing.filter(v => !this.isExtension(v, type));
@@ -562,7 +582,7 @@ class VoicingEditor {
             let abs = ghost.absoluteTET;
             this.currentVoicing.push({
                 id: this.noteIdCounter++,
-                extType: type,                  // tag → reliable toggle-off
+                extType: type,                  // identity tag — this note IS the 9/11/13 forever
                 scalePosition: abs,
                 absoluteTET: abs,
                 normalizedTET: ((abs % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS,
@@ -599,7 +619,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // COMPONENT COLOR AND LABELS (from .cpp lines 419-472)
+    // COMPONENT COLOR AND LABELS
     // ========================================================================
     getComponentColor(type, isActive) {
         switch(type) {
@@ -665,7 +685,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // HELPER FUNCTIONS (from .cpp lines 476-531)
+    // HELPER FUNCTIONS 
     // ========================================================================
     shouldDrawNoteAtStep(step) {
         if (step === 0) return true; // Always draw C
@@ -709,7 +729,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // VOICING ANALYSIS (from .cpp lines 549-575)
+    // VOICING ANALYSIS 
     // ========================================================================
     updateCurrentVoicing(notes, positions) {
         // console.log('🎵 VoicingEditor.updateCurrentVoicing called:', {
@@ -730,7 +750,20 @@ class VoicingEditor {
         // Snapshot the as-loaded voicing so the Reset button can restore it (R8).
         this.originalVoicing = [...positions];
         this.selectedNoteId = -1; // clear any stale selection from the previous chord
-        this.analyzeVoicing(notes, positions);
+
+        // Carry extension IDENTITIES (extType) across the rebuild — but only when the
+        // SAME chord is reloaded (same root), never bleed tags onto a different chord.
+        // Positions match because the chord's voicing came from this tagged voicing.
+        const newRoot = notes.length > 0 ? (((notes[0].ft_note % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS) : -1;
+        const sameChord = newRoot === this.rootPitchClass;
+        let prevTags = null;
+        if (sameChord) {
+            prevTags = new Map();
+            for (const v of this.currentVoicing) {
+                if (v.extType !== undefined) prevTags.set(v.absoluteTET, v.extType);
+            }
+        }
+        this.analyzeVoicing(notes, positions, prevTags);
         this.identifyChordComponents();
         this.calculateExtendedComponents();
         
@@ -741,7 +774,10 @@ class VoicingEditor {
         // });
     }
     
-    analyzeVoicing(notes, voicingPositions) {
+    // prevTags (optional): Map absoluteTET → extType, used to carry an extension's
+    // identity across a rebuild (re-selection / interchange recalc), so a 9/11/13
+    // keeps being the 9/11/13 even though the rebuild only knows raw positions.
+    analyzeVoicing(notes, voicingPositions, prevTags) {
         this.currentVoicing = [];
 
         // Root pitch class = the chord root (notes[0]), tracked independently of
@@ -777,6 +813,11 @@ class VoicingEditor {
                 vPos.noteName = note.name;
             }
 
+            // Carry an extension's identity (9/11/13) across the rebuild.
+            if (prevTags && prevTags.has(tetPosition)) {
+                vPos.extType = prevTags.get(tetPosition);
+            }
+
             this.currentVoicing.push(vPos);
         }
 
@@ -804,7 +845,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // DRAWING: CIRCLE GRID (from .cpp lines 693-789)
+    // DRAWING: CIRCLE GRID
     // ========================================================================
     drawCircleGrid() {
         const p = this.p;
@@ -850,8 +891,8 @@ class VoicingEditor {
                     // Draw regular small node
                     p.noFill();
                     p.stroke(...this.scaleNode);
-                    p.strokeWeight(1);
-                    p.circle(outerPos.x, outerPos.y, 5);
+                    p.strokeWeight(0.5);
+                    p.circle(outerPos.x, outerPos.y, 3);
                 }
                 
                 // Only draw reference points and labels for the innermost wheel
@@ -885,7 +926,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // DRAWING: MAIN CIRCLE BACKGROUND (from .cpp lines 791-828)
+    // DRAWING: MAIN CIRCLE BACKGROUND 
     // ========================================================================
     drawMainCircle() {
         const p = this.p;
@@ -927,7 +968,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // DRAWING: TITLE BAR (from .cpp lines 830-850)
+    // DRAWING: TITLE BAR 
     // ========================================================================
     drawTitleBar() {
         const p = this.p;
@@ -953,7 +994,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // DRAWING: CURRENT VOICING (from .cpp lines 852-946)
+    // DRAWING: CURRENT VOICING 
     // ========================================================================
     drawCurrentVoicing() {
         const p = this.p;
@@ -1071,7 +1112,7 @@ class VoicingEditor {
             if (pos.id === this.selectedNoteId) {
                 p.noFill();
                 p.stroke(...this.selectedNodeColor);
-                p.strokeWeight(3);
+                p.strokeWeight(1);
                 p.rect(notePos.x - rectWidth/2 - 3, notePos.y - rectHeight/2 - 3,
                        rectWidth + 6, rectHeight + 6, 12);
             }
@@ -1079,7 +1120,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // DRAWING: INTERVAL LINES (from .cpp lines 948-1006)
+    // DRAWING: INTERVAL LINES 
     // ========================================================================
     drawIntervalLines() {
         if (this.currentVoicing.length < 2) return;
@@ -1138,7 +1179,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // DRAWING: CHORD COMPONENTS (from .cpp lines 1008-1090)
+    // DRAWING: CHORD COMPONENTS 
     // ========================================================================
     drawComponentAtOctave(component, octave) {
         const p = this.p;
@@ -1214,7 +1255,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // UPDATE (from .cpp update method)
+    // UPDATE 
     // ========================================================================
     update(p) {
         // Store p5 instance for drawing
@@ -1222,7 +1263,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // MAIN DRAW (from .cpp lines 1092-1105)
+    // MAIN DRAW 
     // ========================================================================
     draw(p) {
         // Store p5 instance
@@ -1246,7 +1287,7 @@ class VoicingEditor {
     // note ring (octave 4 at 1.35·r), so the wheel is the same size as the outer ring.
     wheelRadii() {
         const r = this.radius * 1.35; // octave-4 ring
-        const half = this.radius * 0.07;
+        const half = this.radius * 0.05;
         return { inner: r - half, outer: r + half };
     }
 
@@ -1263,18 +1304,23 @@ class VoicingEditor {
 
         p.noFill();
         if (active) p.stroke(...this.selectedNodeColor, 230); else p.stroke(150, 150, 150, 140);
-        p.strokeWeight(active ? 3 : 2);
-        p.circle(cx, cy, mid * 2);
+        p.strokeWeight(active ? 2 : 1);
+        // p.circle(cx, cy, mid * 2);
 
         // grip ticks around the band
-        p.strokeWeight(1);
+        //p.strokeWeight(1);
+        p.push();
+        p.translate(cx, cy);
+        p.rotate(this.wheelAccumAngle);
+        
         if (active) p.stroke(...this.selectedNodeColor, 200); else p.stroke(150, 150, 150, 120);
-        const N = 36;
+        const N = 106;
         for (let i = 0; i < N; i++) {
-            const a = (2 * Math.PI * i / N) - Math.PI / 2;
-            p.line(cx + inner * Math.cos(a), cy + inner * Math.sin(a),
-                   cx + outer * Math.cos(a), cy + outer * Math.sin(a));
+            const a = (2 * Math.PI * i / N) - Math.PI ;
+            p.line(inner * Math.cos(a), inner * Math.sin(a),
+                   outer * Math.cos(a), outer * Math.sin(a));
         }
+        p.pop();
     }
 
     // Bottom controls:
@@ -1294,7 +1340,7 @@ class VoicingEditor {
         const eY = bottom - eh;
         const ext = [
             { type: ChordComponentType.NINTH, label: '9' },
-            { type: ChordComponentType.ELEVENTH, label: '11' },
+            { type: ChordComponentType.ELEVENTH, label: this.isMajorChord() ? '#11' : '11' },
             { type: ChordComponentType.THIRTEENTH, label: '13' },
         ];
         this._extButtons = [];
@@ -1334,7 +1380,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // ANGLE CALCULATION (from .cpp lines 1107-1111)
+    // ANGLE CALCULATION 
     // ========================================================================
     getAngle(noteReference) {
         const TWO_PI = Math.PI * 2;
@@ -1344,7 +1390,7 @@ class VoicingEditor {
     }
     
     // ========================================================================
-    // MOUSE INTERACTION (from .cpp lines 1113-1256)
+    // MOUSE INTERACTION 
     // ========================================================================
     mousePressed(x, y, button) {
         if (!this.isChordClicked || this.currentVoicing.length === 0) return false;
@@ -1405,9 +1451,9 @@ class VoicingEditor {
 
         // Click an inactive 9/11/13 ghost → add that extension (Step 3).
         if (!this.isInteracting) {
-            let extType = this.extensionGhostAt(mouse);
-            if (extType !== null) {
-                this.toggleExtension(extType);
+            let ghostType = this.extensionGhostAt(mouse);
+            if (ghostType !== null) {
+                this.toggleExtension(ghostType);
                 return true;
             }
         }

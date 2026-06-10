@@ -66,7 +66,7 @@ class ScaleEditor {
         this.previousInversionAngle = 0.0;
         this.isRotatingInversion = false;
         this.currentInversion = 'ROOT';  // Enum: ROOT, NINTH, THIRD, FOURTH, FIFTH, SEVENTH
-        this.factorSize = 1.66; //area of the frame size scaling — matches Voicing Editor
+        this.factorSize = 1.6; //area of the frame size scaling — matches Voicing Editor
         this.textDistanceFactor = 0.23; //factor to determine how far text is drawn from center
         this.pointDistanceFactor = 0.1; //factor to determine how far point is drawn from center
         

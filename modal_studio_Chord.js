@@ -259,12 +259,12 @@ class Chord {
             else if (iv >= 21 && iv <= 25) nat11 = true;
             else if (iv >= 37 && iv <= 41) nat13 = true;
             if (iv >= 30 && iv <= 32) hasP5 = true;          // perfect 5th present
-            if (iv === 26 || iv === 27) raised4 = true;        // augmented 4th region
+            if (iv === 27) raised4 = true;                     // augmented 4th / tritone = #11 (26 = b5, distinct)
         }
-        // #11 = a raised 11th that sits ON TOP of a perfect 5th (e.g. Cmaj7#11,
-        // the Lydian tonic). It is NOT a b5 — that's a diminished 5th REPLACING the
-        // 5th, handled by the core when no perfect 5th is present. 53-TET keeps the
-        // two pitches distinct, so we only call it #11 when a perfect 5th is there.
+        // #11 = a raised 11th (augmented 4th, step 27) ON TOP of a perfect 5th
+        // (e.g. Cmaj7#11, the Lydian tonic). It is NOT a b5 — that's the diminished
+        // 5th at step 26, a comma lower, handled by the core's fifth detection. 53-TET
+        // keeps the two pitches distinct, so we only call 27 a #11 when a P5 is present.
         const sharp11 = raised4 && hasP5;
         const stack = nat13 ? '13' : nat11 ? '11' : nat9 ? '9' : null;
         let name = core;
