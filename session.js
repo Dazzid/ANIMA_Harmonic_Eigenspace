@@ -237,33 +237,33 @@
         #session-load-overlay {
             position: fixed; inset: 0; z-index: 100000; display: none;
             align-items: center; justify-content: center;
-            background: rgba(8, 10, 16, 0.62); backdrop-filter: blur(2px);
-            font-family: 'Source Code Pro', monospace;
+            background: rgba(228, 228, 228, 0.02); backdrop-filter: blur(2px);
+            font-family: 'Fira Code', monospace;
         }
         #session-load-overlay .session-card {
             position: relative; width: 420px; max-width: 90vw;
-            background: rgba(20, 22, 30, 0.98); color: #fff;
-            border: 1px solid rgba(255,255,255,0.14); border-radius: 12px;
+            background: rgba(229, 229, 229, 0.98); color: #3599f7;
+            border: 1px solid rgba(0, 136, 255, 0.5); border-radius: 12px;
             padding: 22px 22px 18px; box-shadow: 0 18px 50px rgba(0,0,0,0.5);
         }
         #session-load-overlay .session-close {
             position: absolute; top: 10px; right: 12px; width: 28px; height: 28px;
-            border: none; background: transparent; color: #aaa; font-size: 22px;
+            border: none; background: transparent; color: #141414; font-size: 22px;
             cursor: pointer; line-height: 1; border-radius: 6px;
         }
-        #session-load-overlay .session-close:hover { color: #fff; background: rgba(255,255,255,0.08); }
+        #session-load-overlay .session-close:hover { color: #171717; background: rgba(255,255,255,0.08); }
         #session-load-overlay .session-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
         #session-load-overlay .session-drop {
             border: 2px dashed rgba(255,255,255,0.28); border-radius: 10px;
             padding: 30px 16px; text-align: center; cursor: pointer;
-            transition: all 0.15s ease; background: rgba(255,255,255,0.02);
+            transition: all 0.15s ease; background: rgba(240, 240, 240, 0.99);
         }
         #session-load-overlay .session-drop:hover,
         #session-load-overlay .session-drop.hover {
             border-color: #4aa3ff; background: rgba(74,163,255,0.10);
         }
         #session-load-overlay .session-drop-icon { font-size: 26px; opacity: 0.7; margin-bottom: 8px; }
-        #session-load-overlay .session-drop-text { font-size: 12.5px; line-height: 1.5; color: #cfd3da; }
+        #session-load-overlay .session-drop-text { font-size: 12.5px; line-height: 1.5; color: #222222; }
         #session-load-overlay .session-msg { min-height: 18px; margin-top: 12px; font-size: 12.5px; text-align: center; }
         #session-load-overlay .session-msg.ok  { color: #57d977; }
         #session-load-overlay .session-msg.err { color: #ff6b6b; }

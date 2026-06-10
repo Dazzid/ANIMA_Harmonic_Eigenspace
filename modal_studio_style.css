@@ -74,7 +74,9 @@ body.scene-modalstudio canvas {
    Modal Studio. */
 /* The MIDI Settings panel keeps its shared (EigenSpace) design in MS too, so its
    buttons are excluded from this generic Modal Studio button theme. */
-body.scene-modalstudio button:not(#anima-menu-toggle):not(.anima-menu-item):not(.midi-close-btn):not(.midi-piano-btn):not(.midi-refresh-btn):not(.midi-panic-btn) {
+/* The Load Session overlay owns its own design (session.js injected styles); its
+   transparent close (×) button must NOT get the generic light theme. */
+body.scene-modalstudio button:not(#anima-menu-toggle):not(.anima-menu-item):not(.midi-close-btn):not(.midi-piano-btn):not(.midi-refresh-btn):not(.midi-panic-btn):not(.session-close) {
     background-color: var(--button-not-clicked);
     color: var(--button-text);
     border: var(--button-border-width) solid var(--button-border);
@@ -88,7 +90,7 @@ body.scene-modalstudio button:not(#anima-menu-toggle):not(.anima-menu-item):not(
     margin: 2px;
 }
 
-body.scene-modalstudio button:not(#anima-menu-toggle):not(.anima-menu-item):not(.midi-close-btn):not(.midi-piano-btn):not(.midi-refresh-btn):not(.midi-panic-btn):hover {
+body.scene-modalstudio button:not(#anima-menu-toggle):not(.anima-menu-item):not(.midi-close-btn):not(.midi-piano-btn):not(.midi-refresh-btn):not(.midi-panic-btn):not(.session-close):hover {
     background-color: var(--button-hover);
 }
 
