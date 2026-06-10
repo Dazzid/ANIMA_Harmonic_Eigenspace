@@ -303,13 +303,18 @@ All buttons are canvas-drawn on the widget: **top row** `Drop2 / Drop3 / Drop2&4
 - **No `#11` button — drag the 11th instead.** Buttons are just `9 / 11 / 13`; the 11th note is then **dragged to any 53-TET quality** (natural 11, #11, etc.) and the NAME follows. Naming intelligence (kept): `setChordQualityFromVoicing` prefers the perfect 5th (so a 26/27 note ≠ `b5` when a P5 is present), and `qualityWithExtensions` appends `#11` only when a perfect 5th coexists. So dragging the 11 up to the augmented-4th next to a P5 → `Cmaj7#11`; a flattened 5th with no P5 still → `b5`. (A magic fixed `#11` button contradicted the microtonal drag model — removed.)
 - Auto-doubling (R5): **removed**. 6th ring (R11): **added outward**, existing rings unchanged.
 
-### 6.4 Unify Scale + Voicing editors into one tabbed slot — 🔲 IDEA (deferred)
+### 6.4 Unify Scale + Voicing editors into one tabbed slot — ✅ DONE (2026-06-11)
 
-**Goal.** Scale Editor and Voicing Editor are the same-size canvas widget but stack **vertically** in the top-right, eating ~2 frame-heights — overflows small/laptop screens. They're mutually exclusive in practice (Scale = global scale; Voicing = the *selected chord's* voicing, only shown once a chord is clicked), so collapse them into **one slot with a tab toggle** `[ Scale | Voicing ]`, reclaiming a whole frame-height.
+**Goal.** Scale Editor and Voicing Editor are the same-size widget (`factorSize 1.6`, radius `160`) but used to stack **vertically** top-right, eating ~2 frame-heights (overflowed small/laptop screens). They're mutually exclusive in practice (Scale = global scale; Voicing = the *selected chord's* voicing), so they now share **one slot** with a `[ Scale | Voicing ]` tab toggle — reclaiming a whole frame-height.
 
-**Approach (sketch).** Place both widgets at the **same** top-left (the Scale Editor's current slot); track `activeEditor ('scale'|'voicing')`; the app `draw()`s and routes `mousePressed` to **only the active one**; small canvas-drawn tab strip in the title-bar area, hit-tested to switch. Voicing tab with no chord selected → faint "Select a chord" placeholder.
+**Locked decisions (David):** (a) **switching = auto + manual** — clicking a chord (Modes button or Grid cell) auto-flips to the Voicing tab via `setActiveEditorTab('voicing')`; both tabs stay clickable for manual switching (Scale is home); (b) **tabs = DOM/CSS**, a real **two-button segmented control** (one click, NOT a dropdown), matching the Voicing dropdown theme; (c) **empty Voicing** → frame + centered "Click a chord to edit its voicing".
 
-**Decisions to make at build:** (a) **switching** — recommend **auto + manual**: clicking a chord auto-flips to the Voicing tab (Scale is home), tabs still clickable; (b) **tab style** — canvas-drawn (moves with the draggable widget), not HTML. Independent of the remaining Voicing Editor steps (drops, reset). **Do AFTER the Voicing Editor is finished.**
+**Implementation.**
+- `modal_studio_app.js`: `this.activeEditorTab` ('scale' home / 'voicing'); Voicing editor pinned to the **same center** as Scale (`updatePositions` + init), so they fully overlap. `drawActiveEditor(p)` draws ONLY the active editor in both scenes; `mousePressed`/`mouseReleased` routed to the active editor only (critical now that both are co-located); `mouseDragged` already gated by `isInteracting`.
+- DOM tab strip: `ensureEditorTabs` / `updateEditorTabs` / `hideEditorTabs` / `setActiveEditorTab` — modeled on the editor's `ensureMenuDom`/`updateMenuDom`/`hideMenuDom` (same `getBoundingClientRect` + `center − outerRadius` tracking). Left-aligned on the active editor's title bar (right of the bar stays grabbable for dragging, and clear of the top-right global hamburger menu). `setActiveEditorTab` syncs co-location (incoming adopts the dragged position) and hides the Voicing dropdown when leaving the Voicing tab.
+- `modal_studio_VoicingEditor.js`: `drawEmptyPlaceholder()` in the no-chord `draw` branch.
+- `modal_studio_style.css`: `.editor-tabs` / `.editor-tab` / `.editor-tab.active` (segmented pill, `#2b2b2b` + amber `#ffc800`, Fira Code).
+- Scene `exit()` hides the tab strip; `updateEditorTabs` no-ops when not in MODALSTUDIO.
 
 ## 7. Conventions
 

@@ -783,7 +783,8 @@ label {
    ============================================================================ */
 .voicing-menu {
     font-family: 'Fira Code', monospace;
-    font-size: 12px;
+    font-size: 11px;
+    margin-top: 5px;
     -webkit-user-select: none;
     user-select: none;
     width: 124px;
@@ -835,3 +836,29 @@ label {
 }
 .voicing-option:hover { background: #ffc800; color: #1a1a1a; }
 .voicing-option:active { background: #e6b400; }
+
+/* §6.4 Scale ⇄ Voicing tab strip — segmented control on the editor title bar.
+   Background matches the title-bar gray (fill(210) = #d2d2d2); no shadow so it
+   sits flush in the bar. Only the active tab is highlighted (amber). */
+.editor-tabs {
+    display: inline-flex;
+    font-family: 'Fira Code', monospace;
+    font-size: 10.5px;
+    -webkit-user-select: none;
+    user-select: none;
+    background: #d2d2d2;
+    border: 1px solid #bcbcbc;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.editor-tab {
+    padding: 3px 13px;
+    line-height: 14px;
+    color: #333333;
+    cursor: pointer;
+    transition: background .14s ease, color .14s ease;
+}
+.editor-tab + .editor-tab { border-left: 1px solid #bcbcbc; }
+.editor-tab:hover { background: #c4c4c4; color: #111111; }
+.editor-tab.active { background: #ffc800; color: #1a1a1a; }
+.editor-tab.active:hover { background: #ffce1a; color: #1a1a1a; }

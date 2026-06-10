@@ -450,14 +450,22 @@ class VoicingEditor {
         // set is 9/11/13 per the design decision.)
         let rootPos = this.rootPitchClass;
         let rootAbs = this.getRootAbsolute();
-        // "Top" = highest note IGNORING octave-duplications of a pitch class already
-        // present lower (the default voicings double the root 2–3 octaves up; those
-        // doublings must NOT push the extension out to the far ring). This is the
-        // user's C2 E3 G3 B3 C4 → add D4 rule: the high C4 is a dup of C2, so it
-        // doesn't count, and the 9th lands just above B3.
+        // "Top" = highest CHORD TONE (root/3rd/5th/7th), ignoring:
+        //   (a) octave-duplications of a pitch class already present lower (default
+        //       voicings double the root 2–3 octaves up — those must NOT push the
+        //       extension out to the far ring), AND
+        //   (b) other extensions (9/11/13) — CRITICAL: if an already-added 11th/13th
+        //       counted here, the next extension would stack ABOVE it and re-adding
+        //       a 9th after a 13th would fling it above the 13th → the "escalating
+        //       up" bug. Anchoring every extension to the chord-tone top instead
+        //       makes 9=D, 11=F, 13=A all land in the octave above the 7th, ascending
+        //       and ORDER-INDEPENDENT — nothing climbs.
+        // User's rule: C2 E3 G3 B3 C4 → add D4 (C4 is a dup of C2, so the 9th lands
+        // just above B3).
         let topAbs = rootAbs;
         const seenPc = new Set();
         for (const v of [...this.currentVoicing].sort((a, b) => a.absoluteTET - b.absoluteTET)) {
+            if (v.extType !== undefined) continue;     // ignore other 9/11/13 (no escalation)
             if (seenPc.has(v.normalizedTET)) continue; // skip octave-duplicate of a lower note
             seenPc.add(v.normalizedTET);
             topAbs = v.absoluteTET;
@@ -1382,7 +1390,24 @@ class VoicingEditor {
             this.updateMenuDom();   // position + show the <select>
         } else {
             this.hideMenuDom();
+            this.drawEmptyPlaceholder();
         }
+    }
+
+    // §6.4: when the Voicing tab is active but no chord is selected, show the
+    // framed title bar + a centered hint instead of an empty void.
+    drawEmptyPlaceholder() {
+        const p = this.p;
+        if (!p) return;
+        p.push();
+        this.drawTitleBar();
+        p.noStroke();
+        p.fill(120);
+        p.textAlign(p.CENTER, p.CENTER);
+        p.textSize(13);
+        p.text('Click a chord to', this.center.x, this.center.y - 9);
+        p.text('edit its voicing', this.center.x, this.center.y + 9);
+        p.pop();
     }
 
     // Voicing presets as a CUSTOM DOM drop-down (trigger + list), so it's fully
@@ -1400,7 +1425,7 @@ class VoicingEditor {
         wrap.style.display = 'none';
 
         const trigger = div('voicing-trigger');
-        trigger.innerHTML = '<span class="vt-label">Voicing</span><span class="vt-arrow">▾</span>';
+        trigger.innerHTML = '<span class="vt-label">Voicing types</span><span class="vt-arrow">▾</span>';
         trigger.addEventListener('mousedown', (e) => { e.stopPropagation(); this._setMenuOpen(!this._menuOpen); });
 
         const list = div('voicing-list');

@@ -67,6 +67,10 @@ class OfApp {
         this.voicingEditor = new VoicingEditor();
         this.voicingEditorInitialized = false;
 
+        // Scale + Voicing share ONE top-right slot, toggled by DOM tabs (§6.4).
+        // 'scale' (home) or 'voicing'. Only the active editor draws + gets events.
+        this.activeEditorTab = 'scale';
+
         // Grid (C++ ofApp.h - Grid member)
         this.grid = new Grid();
         this.gridInitialized = false;
@@ -264,16 +268,11 @@ class OfApp {
             // C++ ofApp.cpp line 30: Initialize VoicingEditor
             if (!this.voicingEditorInitialized) {
                 const voicingRadius = this.scaleEditor.outerRingSize; // Match ScaleEditor ring size
-                // The Voicing Editor frame is WIDER/taller than the Scale Editor
-                // (its factorSize is larger to fit the 6th ring), so position it by
-                // its OWN frame size — right-aligned and clamped to the canvas — or
-                // its bottom-right buttons fall off-screen.
-                const voicingOuterRadius = voicingRadius * this.voicingEditor.factorSize;
-                const voicingFrame = 2 * voicingOuterRadius;
-                const voicingEditorX = Math.max(10, this.p.width - voicingFrame - 24);
-                let voicingEditorY = this.scaleEditorY + (2 * radius * this.scaleEditor.factorSize) + 1;
-                voicingEditorY = Math.min(voicingEditorY, Math.max(10, this.p.height - voicingFrame - 10));
-                const voicingTopLeft = { x: voicingEditorX, y: voicingEditorY };
+                // §6.4: Scale + Voicing share ONE slot. Both frames are the same
+                // size (identical factorSize/radius), so place the Voicing editor at
+                // the SAME top-left as the Scale editor — they fully overlap and the
+                // tab toggles which one draws. (updatePositions keeps them locked.)
+                const voicingTopLeft = { x: this.scaleEditorX, y: this.scaleEditorY };
                 console.log('Initializing Voicing Editor at', voicingTopLeft);
 
                 // Setup with radius, position, and note data
@@ -408,6 +407,8 @@ class OfApp {
                     //console.log(`✓ Grid chord selected: ${notes.length} notes, voicing: [${voicing.join(', ')}]`);
                     this.voicingEditor.setCurrentScale(notes);
                     this.voicingEditor.updateCurrentVoicing(notes, voicing);
+                    // §6.4: selecting a chord auto-switches to the Voicing tab.
+                    this.setActiveEditorTab('voicing');
 
                     // Play chord audio (C++ ofApp.cpp mousePressed on chords)
                     const frequencies = voicing.map(pos => {
@@ -507,22 +508,8 @@ class OfApp {
                 this.modes[i].draw(p, p.mouseX, p.mouseY);
             }
 
-            // Draw Scale Editor
-            if (this.scaleEditorInitialized) {
-                this.scaleEditor.update(p);
-                this.scaleEditor.draw(p);
-            } else {
-                // Debug: Show why scale editor not drawing
-                if (this.fiftyThree.length === 0) {
-                    console.log('Scale Editor not initialized: waiting for JSON');
-                }
-            }
-
-            // Draw Voicing Editor
-            if (this.voicingEditorInitialized) {
-                this.voicingEditor.update(p);
-                this.voicingEditor.draw(p);
-            }
+            // Draw the active editor (Scale ⇄ Voicing share one slot, §6.4)
+            this.drawActiveEditor(p);
         } else if (this.currentScene === 'grid') {
             p.textSize(18);
             p.noStroke();
@@ -539,17 +526,8 @@ class OfApp {
                 this.draggingChords.draw(p);
             }
 
-            // Draw Scale Editor in Grid scene
-            if (this.scaleEditorInitialized) {
-                this.scaleEditor.update(p);
-                this.scaleEditor.draw(p);
-            }
-
-            // Draw Voicing Editor in Grid scene
-            if (this.voicingEditorInitialized) {
-                this.voicingEditor.update(p);
-                this.voicingEditor.draw(p);
-            }
+            // Draw the active editor (Scale ⇄ Voicing share one slot, §6.4)
+            this.drawActiveEditor(p);
         }
     }
 
@@ -573,21 +551,114 @@ class OfApp {
 
             console.log('Updated Scale Editor position:', this.scaleEditor.center, 'canvas width:', canvasWidth);
 
-            // Update Voicing Editor position — by its OWN (wider/taller) frame,
-            // right-aligned and clamped so its bottom-right buttons stay on-canvas.
+            // §6.4: Voicing shares the SAME slot as Scale (same-size frame), so
+            // pin its center to the Scale editor's center — they fully overlap and
+            // the tab toggles which one draws.
             if (this.voicingEditorInitialized) {
-                const voicingOuterRadius = this.voicingEditor.radius * this.voicingEditor.factorSize;
-                const voicingFrame = 2 * voicingOuterRadius;
-                const voicingEditorX = Math.max(10, canvasWidth - voicingFrame - 24);
-                let voicingEditorY = this.scaleEditorY + (2 * radius * this.scaleEditor.factorSize) + 10;
-                voicingEditorY = Math.min(voicingEditorY, Math.max(10, p.height - voicingFrame - 10));
                 this.voicingEditor.center = {
-                    x: voicingEditorX + voicingOuterRadius,
-                    y: voicingEditorY + voicingOuterRadius
+                    x: this.scaleEditor.center.x,
+                    y: this.scaleEditor.center.y
                 };
                 this.voicingEditor.drawCenterY = this.voicingEditor.center.y + 15;
             }
         }
+    }
+
+    // ── Scale ⇄ Voicing tab strip (§6.4) ──────────────────────────────────
+    // DOM segmented control overlaid on the active editor's title bar. Built
+    // once, repositioned each frame (same getBoundingClientRect math as the
+    // Voicing dropdown). Manual switching only.
+    getActiveEditor() {
+        return this.activeEditorTab === 'voicing' ? this.voicingEditor : this.scaleEditor;
+    }
+
+    ensureEditorTabs() {
+        if (this._editorTabs) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'editor-tabs';
+        wrap.style.position = 'fixed';
+        wrap.style.zIndex = '9998';
+        wrap.style.display = 'none';
+        const mkTab = (label, key) => {
+            const b = document.createElement('div');
+            b.className = 'editor-tab';
+            b.textContent = label;
+            b.dataset.tab = key;
+            b.addEventListener('mousedown', (e) => {
+                e.stopPropagation(); e.preventDefault();
+                this.setActiveEditorTab(key);
+            });
+            return b;
+        };
+        this._tabScale = mkTab('Scale', 'scale');
+        this._tabVoicing = mkTab('Voicing', 'voicing');
+        wrap.appendChild(this._tabScale);
+        wrap.appendChild(this._tabVoicing);
+        document.body.appendChild(wrap);
+        this._editorTabs = wrap;
+    }
+
+    setActiveEditorTab(tab) {
+        if ((tab !== 'scale' && tab !== 'voicing') || tab === this.activeEditorTab) return;
+        const outgoing = this.getActiveEditor();
+        this.activeEditorTab = tab;
+        const incoming = this.getActiveEditor();
+        // Keep both co-located: the newly shown editor adopts the (possibly
+        // dragged) position of the one that was visible.
+        if (outgoing && incoming && outgoing.center) {
+            incoming.center = { x: outgoing.center.x, y: outgoing.center.y };
+            incoming.drawCenterY = incoming.center.y + 15;
+            if (typeof incoming.updateNodePositions === 'function') incoming.updateNodePositions();
+        }
+        // Leaving the Voicing tab → hide its leading-voice dropdown.
+        if (tab !== 'voicing' && this.voicingEditor) this.voicingEditor.hideMenuDom();
+    }
+
+    updateEditorTabs(p) {
+        if (currentScene !== Scenes.MODALSTUDIO) { this.hideEditorTabs(); return; }
+        if (!this._editorTabs) return;
+        const editor = this.getActiveEditor();
+        if (!editor || !editor.center) { this.hideEditorTabs(); return; }
+        const canvasEl = (p && p.canvas) || document.querySelector('#canvas-container canvas') || document.querySelector('canvas');
+        if (!canvasEl) return;
+        const r = canvasEl.getBoundingClientRect();
+        const outerRadius = editor.radius * editor.factorSize;
+        const leftEdge = r.left + editor.center.x - outerRadius;
+        const titleTop = r.top + (editor.center.y - outerRadius);
+        // Left-align to the frame edge, sit inside the title bar (the right side
+        // is clear of the top-right global hamburger menu).
+        this._editorTabs.style.right = 'auto';
+        this._editorTabs.style.left = (leftEdge + 6) + 'px';
+        this._editorTabs.style.top = (titleTop + 2) + 'px';
+        this._editorTabs.style.display = 'inline-flex';
+        this._tabScale.classList.toggle('active', this.activeEditorTab === 'scale');
+        this._tabVoicing.classList.toggle('active', this.activeEditorTab === 'voicing');
+    }
+
+    hideEditorTabs() {
+        if (this._editorTabs) this._editorTabs.style.display = 'none';
+    }
+
+    // Draw ONLY the active editor (Scale or Voicing) into the shared slot, plus
+    // the tab strip. Used by both the Modes and Grid scenes.
+    drawActiveEditor(p) {
+        if (!this.scaleEditorInitialized) {
+            if (this.fiftyThree.length === 0) {
+                console.log('Scale Editor not initialized: waiting for JSON');
+            }
+            return;
+        }
+        this.ensureEditorTabs();
+        if (this.activeEditorTab === 'voicing' && this.voicingEditorInitialized) {
+            this.voicingEditor.update(p);
+            this.voicingEditor.draw(p);
+        } else {
+            // Scale is active (or Voicing not ready) — keep the Voicing dropdown hidden.
+            if (this.voicingEditorInitialized) this.voicingEditor.hideMenuDom();
+            this.scaleEditor.update(p);
+            this.scaleEditor.draw(p);
+        }
+        this.updateEditorTabs(p);
     }
 
     // Scene switching
@@ -634,14 +705,13 @@ class OfApp {
         }
         
         if (this.currentScene === 'chord') {
-            // Forward to Voicing Editor first (C++ ofApp.cpp line 608)
+            // §6.4: only the ACTIVE editor (Scale or Voicing) receives events.
             let voicingEditorHandled = false;
-            if (this.voicingEditorInitialized) {
-                voicingEditorHandled = this.voicingEditor.mousePressed(mouseX, mouseY);
-            }
-
-            // Forward to Scale Editor
-            if (this.scaleEditorInitialized) {
+            if (this.activeEditorTab === 'voicing') {
+                if (this.voicingEditorInitialized) {
+                    voicingEditorHandled = this.voicingEditor.mousePressed(mouseX, mouseY);
+                }
+            } else if (this.scaleEditorInitialized) {
                 this.scaleEditor.mousePressed(mouseX, mouseY);
             }
 
@@ -721,6 +791,8 @@ class OfApp {
                                     const chordNotes = chord.notes; // Scale notes for the chord
                                     this.voicingEditor.setCurrentScale(mode.scale);
                                     this.voicingEditor.updateCurrentVoicing(chordNotes, noteVoicing);
+                                    // §6.4: selecting a chord auto-switches to the Voicing tab.
+                                    this.setActiveEditorTab('voicing');
 
                                     //console.log(`📍 Selected: ${chord.getChordQuality()} from ${mode.modeName}`);
                                 }
@@ -740,11 +812,11 @@ class OfApp {
             if (this.gridInitialized) {
                 this.grid.mousePressed(mouseX, mouseY);
             }
-            if (this.scaleEditorInitialized) {
+            // §6.4: only the ACTIVE editor receives events.
+            if (this.activeEditorTab === 'voicing') {
+                if (this.voicingEditorInitialized) this.voicingEditor.mousePressed(mouseX, mouseY);
+            } else if (this.scaleEditorInitialized) {
                 this.scaleEditor.mousePressed(mouseX, mouseY);
-            }
-            if (this.voicingEditorInitialized) {
-                this.voicingEditor.mousePressed(mouseX, mouseY);
             }
         }
     }
@@ -917,11 +989,11 @@ class OfApp {
             if (this.gridInitialized) {
                 this.grid.mouseReleased(mouseX, mouseY);
             }
-            if (this.scaleEditorInitialized) {
+            // §6.4: only the ACTIVE editor receives the release.
+            if (this.activeEditorTab === 'voicing') {
+                if (this.voicingEditorInitialized) this.voicingEditor.mouseReleased(mouseX, mouseY);
+            } else if (this.scaleEditorInitialized) {
                 this.scaleEditor.mouseReleased(mouseX, mouseY);
-            }
-            if (this.voicingEditorInitialized) {
-                this.voicingEditor.mouseReleased(mouseX, mouseY);
             }
             // C++ line 639: Apply inversion ONLY to dragging chords (not grid cells)
             if (this.draggingChordsInitialized) {
@@ -1048,9 +1120,10 @@ const ModalStudioScene = {
     },
 
     exit() {
-        // Hide the voicing-editor <select> DOM element when leaving Modal Studio
-        // (its p5 draw stops running, so it can't hide itself).
+        // Hide the DOM overlays when leaving Modal Studio (their p5 draw stops
+        // running, so they can't hide themselves): voicing dropdown + tab strip.
         if (window.app && window.app.voicingEditor) window.app.voicingEditor.hideMenuDom();
+        if (window.app && window.app.hideEditorTabs) window.app.hideEditorTabs();
     },
 
     draw(p) { if (window.app) window.app.draw(p); },
