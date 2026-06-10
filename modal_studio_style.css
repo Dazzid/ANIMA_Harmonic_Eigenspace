@@ -777,3 +777,61 @@ label {
     border-radius: 5px;
     border-left: 3px solid rgba(0, 111, 229, 1);
 }
+
+/* ============================================================================
+   Voicing Editor — custom drop-down (built in modal_studio_VoicingEditor.js)
+   ============================================================================ */
+.voicing-menu {
+    font-family: 'Fira Code', monospace;
+    font-size: 12px;
+    -webkit-user-select: none;
+    user-select: none;
+    width: 124px;
+}
+.voicing-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 11px;
+    background: #e5e5e5;
+    color: #2e2e2e;
+    border: 1px solid #aeaeae;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+}
+.voicing-trigger:hover { background: #eeeeee; border-color: #b3b3b3; }
+.voicing-menu.open .voicing-trigger { border-color: #ffc800; }
+.vt-arrow { transition: transform .2s ease; font-size: 10px; opacity: .8; }
+.voicing-menu.open .vt-arrow { transform: rotate(180deg); }
+
+.voicing-list {
+    margin-top: 5px;
+    background: #e5e5e5;
+    border: 1px solid #aeaeae;
+    
+    border-radius: 7px;
+    overflow: hidden;
+    box-shadow: 0 4px 5px rgba(0, 0, 0, .1);
+    /* closed state */
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease, max-height .2s ease;
+}
+.voicing-menu.open .voicing-list {
+    opacity: 1;
+    max-height: 220px;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+.voicing-option {
+    padding: 7px 11px;
+    color: #1a1a1a;
+    cursor: pointer;
+    transition: background .12s ease, color .12s ease;
+}
+.voicing-option:hover { background: #ffc800; color: #1a1a1a; }
+.voicing-option:active { background: #e6b400; }

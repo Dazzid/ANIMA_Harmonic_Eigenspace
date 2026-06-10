@@ -327,6 +327,23 @@ class OfApp {
                     if (ch.root_53) ch.note_53 = ch.root_53.ft_note;
                 };
 
+                // Voicing preset (Step 5): apply the chord's OWN built-in voicing
+                // template (musical), then reload the editor from it. type → which
+                // chord tone leads (0=root,2=7th,4=5th,6=3rd on top).
+                this.voicingEditor.onSelectVoicing = (type) => {
+                    const ch = this.selectedChord;
+                    if (!ch || typeof ch.voicing !== 'function') return;
+                    ch.numVoicing = type;
+                    // Apply the RAW template: temporarily clear previousVoicing so
+                    // checkAndAddNinth() no-ops — otherwise it can dump a 9th/13th
+                    // ABOVE the leading note, knocking the chosen tone off the top.
+                    const savedPrev = ch.previousVoicing;
+                    ch.previousVoicing = [];
+                    ch.voicing(type);                       // rebuilds ch.noteVoicing from the template
+                    ch.previousVoicing = savedPrev;
+                    this.voicingEditor.reloadVoicing(ch.notes, ch.getNoteVoicing());
+                };
+
                 this.voicingEditorInitialized = true;
                 console.log('✅ Voicing Editor initialized');
             }
@@ -1030,7 +1047,11 @@ const ModalStudioScene = {
         if (window.launchpadHandler) window.launchpadHandler.setScene(Scenes.MODALSTUDIO);
     },
 
-    exit() { /* no teardown needed */ },
+    exit() {
+        // Hide the voicing-editor <select> DOM element when leaving Modal Studio
+        // (its p5 draw stops running, so it can't hide itself).
+        if (window.app && window.app.voicingEditor) window.app.voicingEditor.hideMenuDom();
+    },
 
     draw(p) { if (window.app) window.app.draw(p); },
     mousePressed(x, y) { if (window.app) window.app.mousePressed(x, y); },

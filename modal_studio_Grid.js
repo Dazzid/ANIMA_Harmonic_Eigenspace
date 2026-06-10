@@ -306,7 +306,6 @@ class Grid {
                 targetCell.chord.quality = "Empty";
                 targetCell.chord.chordFunction = "Empty";
                 targetCell.chord.setColor(this.cellColor);
-                targetCell.chord.hoverColor = this.cellColor;
                 targetCell.colorCode = this.cellColor;
             }
             return;
@@ -792,7 +791,6 @@ class Grid {
                 targetCell.chord.quality = "Empty";
                 targetCell.chord.chordFunction = "Empty";
                 targetCell.chord.setColor(this.cellColor);
-                targetCell.chord.hoverColor = this.cellColor;
                 targetCell.colorCode = this.cellColor;
                 continue;
             }
@@ -918,8 +916,6 @@ class Grid {
                 targetCell.chord.setNotes([]);
                 targetCell.chord.setChordQuality();
                 targetCell.chord.setColor(this.cellColor);
-                // Reset hover color to gray as well
-                targetCell.chord.hoverColor = this.cellColor;
                 targetCell.colorCode = this.cellColor;
                 targetCell.chord.setInfo("Empty");
                 continue;
@@ -1166,8 +1162,6 @@ class Grid {
             cell.chord.chordFunction = sourceChord.chordFunction || "Empty";
             // Empty chords should use gray cellColor
             cell.chord.setColor(this.cellColor);
-            // Reset hover color to gray as well
-            cell.chord.hoverColor = this.cellColor;
             this.cells[cellIndex].colorCode = this.cellColor;
         }
         

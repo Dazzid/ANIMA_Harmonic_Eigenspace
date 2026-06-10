@@ -277,22 +277,21 @@ Decouple root identity from bass position so the later features can move/reorder
 - ⏳ Verify in-app: drag the outer band → whole voicing rotates up/down by commas; chord name's root letter tracks; **only this chord changes**; stops at the rings.
 - ⬜ Deferred: **audio on release** (transpose is currently silent until the chord is re-clicked); direction (CW=up) — flip if it feels backwards.
 
-#### Step 5 — Drop 2 / Drop 3 / Drop 2&4
-1. Sort `currentVoicing` high→low, number 1..n top→bottom.
-2. Drop note #2 (Drop 2), #3 (Drop 3), or #2 & #4 (Drop 2&4): `octave -= 1`, recompute `absoluteTET`; re-sort, notify.
-3. Acts on the current arrangement (cumulative). Guard `n < 4`; clamp to ring −1.
+#### Step 5 — Voicing drop-down (4 leading-voice voicings, David's table) — ✅ DONE (2026-06-10, FINAL)
+- ✅ **HARDCODED exactly from David's table** (`buildLeadingVoicing(lead)` in the editor) — the saved `voicing_1…7` templates double the *wrong* tone, so they were dropped. Each note is `[tone, octaveOffset]`; tone interval read from the actual chord (any quality), octave/order literal:
+  - **Root** C2 C3 E3 G3 B3 C4 · **3rd** C2 C3 G3 B3 C4 E4 · **5th** C2 C3 B3 C4 E3 G4 · **7th** C3 B3 C4 E4 G4 B4
+- ✅ **Drop-down** (top-right, canvas-drawn): `Root on top / 3rd on top / 5th on top / 7th on top`. **No "Default"** (all four ARE musical defaults). Clamped to rings −1…4.
+- ✂️ Removed: my from-scratch drop math AND the `ch.voicing(n)` saved-template approach — both gave non-matching/collapsed voicings. Root stays in the bass → no inversion/slash.
 
-#### Step 6 — HTML control panel (hosts the buttons from Steps 3 / 5 / 7 / 8)
-1. A `<div>` (Fira Code, toolbar styling): `9 11 13`, `Drop2 Drop3 Drop2&4`, oct `▲▼`, `Reset`.
-2. Each button → a `voicingEditor` method → mutate `currentVoicing` → `notifyVoicingChanged`.
-3. Show/hide gated to the **chord** sub-scene **and** `isChordClicked` (same gate that draws the widget). Fixed-docked (won't track the drag-movable widget — accepted).
+#### Step 6 — HTML control panel — ❌ DROPPED (buttons went canvas-drawn)
+All buttons are canvas-drawn on the widget: **top row** `Drop2 / Drop3 / Drop2&4 / Reset` (under the title bar), **bottom-left** `9 / #11 / 13`, **bottom-right** octave `↑/↓` stepper, plus the re-root **wheel** (outer ring). No HTML panel needed. (The space crunch this creates is what motivates §6.4 tabs.)
 
 #### Step 7 — Move selected note ±1 octave — 🚧 buttons DONE (2026-06-09), keyboard pending
 - ✅ **Octave ↑/↓ buttons** (lower-right of the widget) → `moveSelectedNoteOctave(±1)` on the selected note: clamp to rings −1…4, recompute `absoluteTET`, re-sort, notify; note keeps its `id` so the highlight follows. Dimmed when nothing is selected. (Unblocks "notes trapped on their ring".)
 - ⬜ **Shift+↑/↓** keyboard shortcut via a new `app.keyPressed` hook — require MS chord scene + a live `selectedNoteId`; `preventDefault`; **no collisions** with `key_map.js` notes or ES Shift+L/M. (Deferred — riskier.)
 
-#### Step 8 — Reset
-Restore `originalVoicing` (the snapshot from load) → rebuild `currentVoicing` → notify.
+#### Step 8 — Reset — ✅ DONE (2026-06-10)
+`resetVoicing()`: restore `originalVoicing` (load snapshot) + `_notes` → rebuild `currentVoicing` with no extension tags → notify. Wipes every edit (extensions, drags, drops, transpose) back to the chord's default. Top-row `Reset` button.
 
 #### Step 9 — Round-trip & session verify
 - Every edit reaches `setChordQualityFromVoicing`: name + colour update, audio re-plays.
@@ -303,6 +302,14 @@ Restore `originalVoicing` (the snapshot from load) → rebuild `currentVoicing` 
 - **Down-room for drops** is just the single octave −1 ring below the root; if cramped, re-center the rings (separate change).
 - **No `#11` button — drag the 11th instead.** Buttons are just `9 / 11 / 13`; the 11th note is then **dragged to any 53-TET quality** (natural 11, #11, etc.) and the NAME follows. Naming intelligence (kept): `setChordQualityFromVoicing` prefers the perfect 5th (so a 26/27 note ≠ `b5` when a P5 is present), and `qualityWithExtensions` appends `#11` only when a perfect 5th coexists. So dragging the 11 up to the augmented-4th next to a P5 → `Cmaj7#11`; a flattened 5th with no P5 still → `b5`. (A magic fixed `#11` button contradicted the microtonal drag model — removed.)
 - Auto-doubling (R5): **removed**. 6th ring (R11): **added outward**, existing rings unchanged.
+
+### 6.4 Unify Scale + Voicing editors into one tabbed slot — 🔲 IDEA (deferred)
+
+**Goal.** Scale Editor and Voicing Editor are the same-size canvas widget but stack **vertically** in the top-right, eating ~2 frame-heights — overflows small/laptop screens. They're mutually exclusive in practice (Scale = global scale; Voicing = the *selected chord's* voicing, only shown once a chord is clicked), so collapse them into **one slot with a tab toggle** `[ Scale | Voicing ]`, reclaiming a whole frame-height.
+
+**Approach (sketch).** Place both widgets at the **same** top-left (the Scale Editor's current slot); track `activeEditor ('scale'|'voicing')`; the app `draw()`s and routes `mousePressed` to **only the active one**; small canvas-drawn tab strip in the title-bar area, hit-tested to switch. Voicing tab with no chord selected → faint "Select a chord" placeholder.
+
+**Decisions to make at build:** (a) **switching** — recommend **auto + manual**: clicking a chord auto-flips to the Voicing tab (Scale is home), tabs still clickable; (b) **tab style** — canvas-drawn (moves with the draggable widget), not HTML. Independent of the remaining Voicing Editor steps (drops, reset). **Do AFTER the Voicing Editor is finished.**
 
 ## 7. Conventions
 

@@ -207,14 +207,9 @@ class Chord {
             result[1] = Math.min(255, result[1] + 10);
         }
         
-        // Calculate hover color
-        this.hoverColor = [
-            Math.min(255, result[0] * 1.1),
-            Math.min(255, result[1] * 1.1),
-            Math.min(255, result[2] * 1.1),
-            225
-        ];
-        
+        // Calculate hover color (shared brighten helper)
+        this.hoverColor = this.deriveHoverColor(result);
+
         return result;
     }
     
@@ -1076,6 +1071,20 @@ class Chord {
             // p5 color object - extract RGB
             this.defaultColor = [color.levels[0], color.levels[1], color.levels[2]];
         }
+        // Keep the hover tint in sync with the new base color so EVERY recolor
+        // path (clean, column-clear, copy/paste, session-load …) gets a live,
+        // non-stale hover. Same brighten (x1.1, alpha 225) the quality tints use.
+        this.hoverColor = this.deriveHoverColor(this.defaultColor);
+    }
+
+    // Brighten a base RGB into the hover tint (shared by setColor + tintForQuality).
+    deriveHoverColor(base) {
+        return [
+            Math.min(255, base[0] * 1.1),
+            Math.min(255, base[1] * 1.1),
+            Math.min(255, base[2] * 1.1),
+            225
+        ];
     }
     
     getColor() {

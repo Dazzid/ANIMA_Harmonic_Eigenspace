@@ -102,6 +102,9 @@ class VoicingEditor {
         this.wheelAccumAngle = 0;
         this.wheelAppliedSteps = 0;
         this.onTranspose = null; // app hook: shift the chord's notes/root by N commas (keeps the name right)
+        this.onSelectVoicing = null; // app hook: apply the chord's built-in voicing(n) preset + reload
+        this._menuOpen = false;            // voicing drop-down open?
+        this._currentVoicingType = null; // which voicing is selected (label in the box; null → "Voicing")
 
         // State flags (from .hpp lines 216-217, 241)
         this.isChordClicked = false;
@@ -554,13 +557,106 @@ class VoicingEditor {
         return true;
     }
 
-    // True if the voicing has a MAJOR third (interval 17–20 above the root:
-    // downmajor…supermajor). Used to default the 11th to #11 (avoid-note rule).
-    isMajorChord() {
-        return this.currentVoicing.some(v => {
-            const iv = (((v.normalizedTET - this.rootPitchClass) % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS;
-            return iv >= 17 && iv <= 20;
+    // Reset (Step 8): restore the chord's default (as-loaded) voicing — drops every
+    // edit (extensions, drags, drops, transpose) back to where the chord started.
+    resetVoicing() {
+        if (!this.originalVoicing || !this._notes) return;
+        this.selectedNoteId = -1;
+        this.analyzeVoicing(this._notes, this.originalVoicing); // no prevTags → fresh, no added extensions
+        this.identifyChordComponents();
+        this.calculateExtendedComponents();
+        this.notifyVoicingChanged();
+    }
+
+    // Voicing presets (Step 5): pick which chord tone LEADS (sits on top) by applying
+    // the chord's own built-in voicing template — musical/pianistic, already in the
+    // app. Delegates to the host (it owns the chord). `type` → Chord.voicing(n):
+    // 0 = root on top, 2 = 7th on top, 4 = 5th on top, 6 = 3rd on top.
+    selectVoicing(type) {
+        if (this.onSelectVoicing) this.onSelectVoicing(type);
+    }
+
+    // Build one of the four voicings EXACTLY from David's table. Each note is
+    // [chord-tone, octave-offset] (offset = octaves above the bass root). The tone
+    // interval comes from the actual chord (so it works for any quality); the
+    // octave/order is hardcoded note-for-note:
+    //   root → C2 C3 E3 G3 B3 C4
+    //   3rd  → C2 C3 G3 B3 C4 E4
+    //   5th  → C2 C3 B3 C4 E3 G4
+    //   7th  → C3 B3 C4 E4 G4 B4
+    buildLeadingVoicing(lead) {
+        const ivOf = (v) => (((v.normalizedTET - this.rootPitchClass) % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS;
+        const tones = { root: 0 };
+        for (const v of this.currentVoicing) {
+            const iv = ivOf(v);
+            if (iv >= 11 && iv <= 20 && tones.third === undefined) tones.third = iv;
+            else if (iv >= 26 && iv <= 35 && tones.fifth === undefined) tones.fifth = iv;
+            else if (iv >= 42 && iv <= 52 && tones.seventh === undefined) tones.seventh = iv;
+        }
+        // [tone, octaveOffset] — literal transcription of the table.
+        const SPECS = {
+            root:    [['root',0],['root',1],['third',1],['fifth',1],['seventh',1],['root',2]],
+            third:   [['root',0],['root',1],['fifth',1],['seventh',1],['root',2],['third',2]],
+            fifth:   [['root',0],['root',1],['seventh',1],['root',2],['third',1],['fifth',2]],
+            seventh: [['root',1],['seventh',1],['root',2],['third',2],['fifth',2],['seventh',2]],
+        };
+        const spec = SPECS[lead];
+        if (!spec) return;
+
+        // Anchor to the root PITCH CLASS at a fixed low octave. This can NEVER drift:
+        // rootPitchClass is reset to the same value on every chord reload (unlike
+        // getRootAbsolute / a captured base, which climb when the 7th voicing's lowest
+        // note is the root an octave up). Fixed octave 0 → a sane low-to-mid register.
+        const rootBaseAbs = this.rootPitchClass; // octave 0
+        let abs = [];
+        for (const [role, oct] of spec) {
+            if (tones[role] === undefined) continue; // chord lacks this tone (e.g. triad)
+            abs.push(rootBaseAbs + tones[role] + oct * this.TOTAL_STEPS);
+        }
+        if (abs.length === 0) return;
+        // Keep the whole stack on the rings (−1…4).
+        while (this.getOctave(Math.max(...abs)) > 4) abs = abs.map(a => a - this.TOTAL_STEPS);
+        while (this.getOctave(Math.min(...abs)) < -1) abs = abs.map(a => a + this.TOTAL_STEPS);
+
+        this.currentVoicing = abs.map(a => {
+            const pc = ((a % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS;
+            return { id: this.noteIdCounter++, scalePosition: a, absoluteTET: a,
+                normalizedTET: pc, octave: this.getOctave(a),
+                noteName: this.getNoteNameForStep(pc, true) };
         });
+        this.currentVoicing.sort((x, y) => x.absoluteTET - y.absoluteTET);
+        this.selectedNoteId = -1;
+        this.identifyChordComponents();
+        this.calculateExtendedComponents();
+        this.notifyVoicingChanged();
+    }
+
+    // Reload the editor from a voicing the CHORD just applied (a preset). Rebuilds
+    // currentVoicing WITHOUT re-snapshotting originalVoicing, so Reset still returns
+    // to the chord's default. (Presets are the core voicing — no extension carry-over.)
+    reloadVoicing(notes, positions) {
+        if (!notes || !positions || positions.length === 0) return;
+        this._notes = notes;
+        this.selectedNoteId = -1;
+        this.analyzeVoicing(notes, positions);
+        this.identifyChordComponents();
+        this.calculateExtendedComponents();
+        this.notifyVoicingChanged();
+    }
+
+    // True when the 11th should default to #11 (the natural-11 avoid-note rule).
+    // Holds for MAJOR-quality chords (major 3rd at 17–20 with a major 7th or no 7th),
+    // but NOT for a DOMINANT chord (major 3rd + minor/flat 7th, e.g. G7 = "GMm7") —
+    // over a dominant the natural 11 is fine (the G11 / sus-dominant). So: major 3rd
+    // present AND no flat (minor) 7th (42–46).
+    isMajorChord() {
+        let hasMajorThird = false, hasFlatSeventh = false;
+        for (const v of this.currentVoicing) {
+            const iv = (((v.normalizedTET - this.rootPitchClass) % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS;
+            if (iv >= 17 && iv <= 20) hasMajorThird = true;       // major 3rd
+            else if (iv >= 42 && iv <= 46) hasFlatSeventh = true; // minor / dominant 7th
+        }
+        return hasMajorThird && !hasFlatSeventh;
     }
 
     // A note IS the 9/11/13 only if it was TAGGED as such (by the button that added
@@ -747,8 +843,10 @@ class VoicingEditor {
         }
         
         this.isChordClicked = true;
-        // Snapshot the as-loaded voicing so the Reset button can restore it (R8).
+        // Snapshot the as-loaded voicing + its source notes so Reset (R8) and the
+        // drop voicings can rebuild names without re-querying the chord.
         this.originalVoicing = [...positions];
+        this._notes = notes;
         this.selectedNoteId = -1; // clear any stale selection from the previous chord
 
         // Carry extension IDENTITIES (extType) across the rebuild — but only when the
@@ -1268,7 +1366,8 @@ class VoicingEditor {
     draw(p) {
         // Store p5 instance
         this.p = p;
-        
+        this.ensureMenuDom();
+
         if (this.isChordClicked && this.currentVoicing.length > 0) {
             p.push();
             this.drawMainCircle();
@@ -1280,8 +1379,79 @@ class VoicingEditor {
             this.drawBottomButtons();
             this.drawTitleBar();
             p.pop();
+            this.updateMenuDom();   // position + show the <select>
+        } else {
+            this.hideMenuDom();
         }
     }
+
+    // Voicing presets as a CUSTOM DOM drop-down (trigger + list), so it's fully
+    // CSS-styled with open/close transitions (a native <select> can't animate its
+    // list). All design lives in modal_studio_style.css (.voicing-menu/.voicing-…).
+    static VOICING_MAP = { 'Root on top': 'root', '3rd on top': 'third', '5th on top': 'fifth', '7th on top': 'seventh' };
+
+    ensureMenuDom() {
+        if (this._menuWrap) return;
+        const div = (cls) => { const d = document.createElement('div'); d.className = cls; return d; };
+
+        const wrap = div('voicing-menu');
+        wrap.style.position = 'fixed';
+        wrap.style.zIndex = '9999';
+        wrap.style.display = 'none';
+
+        const trigger = div('voicing-trigger');
+        trigger.innerHTML = '<span class="vt-label">Voicing</span><span class="vt-arrow">▾</span>';
+        trigger.addEventListener('mousedown', (e) => { e.stopPropagation(); this._setMenuOpen(!this._menuOpen); });
+
+        const list = div('voicing-list');
+        for (const [label, lead] of Object.entries(VoicingEditor.VOICING_MAP)) {
+            const opt = div('voicing-option');
+            opt.textContent = label;
+            opt.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                this.buildLeadingVoicing(lead);
+                trigger.querySelector('.vt-label').textContent = label;
+                this._setMenuOpen(false);
+            });
+            list.appendChild(opt);
+        }
+
+        wrap.appendChild(trigger);
+        wrap.appendChild(list);
+        document.body.appendChild(wrap);
+        this._menuWrap = wrap;
+
+        // Close when clicking anywhere outside the menu.
+        document.addEventListener('mousedown', (e) => {
+            if (this._menuOpen && this._menuWrap && !this._menuWrap.contains(e.target)) this._setMenuOpen(false);
+        });
+    }
+
+    _setMenuOpen(open) {
+        this._menuOpen = open;
+        if (this._menuWrap) this._menuWrap.classList.toggle('open', open);
+    }
+
+    // Position the menu at the editor's top-LEFT (page coords) and show it.
+    updateMenuDom() {
+        if (!this._menuWrap || !this.p) return;
+        const canvasEl = this.p.canvas || (this.p.drawingContext && this.p.drawingContext.canvas)
+            || document.querySelector('#canvas-container canvas') || document.querySelector('canvas');
+        if (!canvasEl) { if (!this._menuWarned) { this._menuWarned = true; console.warn('[VoicingMenu] no canvas found'); } return; }
+        const r = canvasEl.getBoundingClientRect();
+        const outerRadius = this.radius * this.factorSize;
+        const left = r.left + this.center.x - outerRadius + 6;
+        const top = r.top + (this.center.y - outerRadius) + this.titleBarHeight + 2;
+        this._menuWrap.style.left = left + 'px';
+        this._menuWrap.style.top = top + 'px';
+        this._menuWrap.style.display = 'block';
+        if (!this._menuLogged) {
+            this._menuLogged = true;
+            console.log('[VoicingMenu] shown at', { left, top, inBody: document.body.contains(this._menuWrap), rLeft: r.left, rTop: r.top, cx: this.center.x, cy: this.center.y, outerRadius });
+        }
+    }
+
+    hideMenuDom() { if (this._menuWrap) { this._menuWrap.style.display = 'none'; this._setMenuOpen(false); } }
 
     // Inner/outer radius of the re-root wheel band — centered on the outermost
     // note ring (octave 4 at 1.35·r), so the wheel is the same size as the outer ring.
@@ -1413,6 +1583,8 @@ class VoicingEditor {
             return true;
         }
         
+        // (Voicing menu is now a native <select> DOM element — handles its own clicks.)
+
         // 9/11/13 buttons (lower-left) → toggle that extension.
         if (this._extButtons) {
             for (let b of this._extButtons) {
