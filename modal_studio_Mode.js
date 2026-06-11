@@ -228,16 +228,17 @@ class Mode {
     }
     
     // C++ Mode.cpp lines 132-139 - updateSelectedChordVoicing method
-    updateSelectedChordVoicing(newVoicing) {
+    updateSelectedChordVoicing(newVoicing, extTags) {
         // If no chord is selected, do nothing
         if (this.selectedChordIndex < 0 || this.selectedChordIndex >= this.chords.length) {
             console.log(`⚠️ Mode.updateSelectedChordVoicing: invalid selectedChordIndex=${this.selectedChordIndex}`);
             return;
         }
-        
+
         console.log(`📝 Mode.updateSelectedChordVoicing: updating chord ${this.selectedChordIndex}`);
-        // Update the chord's voicing using the correct method
-        this.chords[this.selectedChordIndex].updateVoicing(newVoicing);
+        // Update the chord's voicing using the correct method (extTags = persisted
+        // 9/11/13 flags, kept on the chord so they survive a chord switch).
+        this.chords[this.selectedChordIndex].updateVoicing(newVoicing, extTags);
         this.chords[this.selectedChordIndex].setChordQualityFromVoicing(newVoicing);
     }
 }

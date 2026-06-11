@@ -383,13 +383,19 @@ class VoicingEditor {
     // ========================================================================
     notifyVoicingChanged() {
         if (this.onVoicingChanged) {
-            // Create a vector of the updated positions
+            // Create a vector of the updated positions, plus a map of which of those
+            // positions are tagged 9/11/13 extensions (absoluteTET → extType). The
+            // tags travel WITH the voicing so they persist on the chord — otherwise
+            // switching to another chord and back drops the flag and the 9/11/13
+            // buttons stack infinite duplicates (they'd no longer see the note as theirs).
             let newPositions = [];
+            let extTags = {};
             for (let pos of this.currentVoicing) {
                 newPositions.push(pos.absoluteTET);
+                if (pos.extType !== undefined) extTags[pos.absoluteTET] = pos.extType;
             }
             //console.log('🔄 VoicingEditor notifying change:', newPositions);
-            this.onVoicingChanged(newPositions);
+            this.onVoicingChanged(newPositions, extTags);
         } else {
             //console.warn('⚠️ VoicingEditor: onVoicingChanged callback not set!');
         }
@@ -835,7 +841,7 @@ class VoicingEditor {
     // ========================================================================
     // VOICING ANALYSIS 
     // ========================================================================
-    updateCurrentVoicing(notes, positions) {
+    updateCurrentVoicing(notes, positions, savedTags) {
         // console.log('🎵 VoicingEditor.updateCurrentVoicing called:', {
         //     notesCount: notes.length,
         //     positionsCount: positions.length,
@@ -857,13 +863,22 @@ class VoicingEditor {
         this._notes = notes;
         this.selectedNoteId = -1; // clear any stale selection from the previous chord
 
-        // Carry extension IDENTITIES (extType) across the rebuild — but only when the
-        // SAME chord is reloaded (same root), never bleed tags onto a different chord.
-        // Positions match because the chord's voicing came from this tagged voicing.
+        // Carry extension IDENTITIES (extType) across the rebuild so a 9/11/13 stays
+        // "owned" by its button. Two sources, in priority order:
+        //   1. savedTags — the tags PERSISTED ON THE CHORD (absoluteTET → extType).
+        //      This is what survives a chord switch: select chord A, add an 11, click
+        //      chord B, come back to A — A still carries its 11's flag, so re-clicking
+        //      11 removes it instead of stacking another.
+        //   2. The lingering editor state — only valid when the SAME chord (same root)
+        //      is reloaded; a fallback for chords that were never persisted with tags.
+        // Positions match by absoluteTET because the chord's voicing IS this voicing.
         const newRoot = notes.length > 0 ? (((notes[0].ft_note % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS) : -1;
         const sameChord = newRoot === this.rootPitchClass;
         let prevTags = null;
-        if (sameChord) {
+        if (savedTags && Object.keys(savedTags).length > 0) {
+            prevTags = new Map();
+            for (const key of Object.keys(savedTags)) prevTags.set(Number(key), savedTags[key]);
+        } else if (sameChord) {
             prevTags = new Map();
             for (const v of this.currentVoicing) {
                 if (v.extType !== undefined) prevTags.set(v.absoluteTET, v.extType);

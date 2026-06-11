@@ -839,10 +839,16 @@ class Chord {
     }
     
     // C++ Chord.cpp lines 103-118 - updateVoicing method
-    updateVoicing(newVoicing) {
+    updateVoicing(newVoicing, extTags) {
         // Store the new voicing positions
         this.noteVoicing = newVoicing;
-        
+        // Persist which positions are tagged 9/11/13 extensions (absoluteTET →
+        // extType). This lives WITH the voicing so the flags survive a chord switch:
+        // without it, leaving a chord and returning drops the flags and the 9/11/13
+        // buttons stack infinite duplicates. extTags is recomputed on every edit, so
+        // an empty/absent map correctly means "no button extensions".
+        this.extTags = extTags || {};
+
         // Update root_53 if needed based on first note
         if (newVoicing.length > 0 && this.notes.length > 0) {
             for (const note of this.notes) {

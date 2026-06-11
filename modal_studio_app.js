@@ -280,18 +280,21 @@ class OfApp {
                 this.voicingEditor.setDarkMode(false); // Match ScaleEditor mode
 
                 // C++ ofApp.cpp line 72: Connect callback (Grid.cpp updateSelectedChordVoicing)
-                this.voicingEditor.onVoicingChanged = (newVoicing) => {
+                this.voicingEditor.onVoicingChanged = (newVoicing, extTags) => {
                     // C++ ofApp.cpp lines 93-102
+                    // extTags = {absoluteTET: extType} for the 9/11/13 notes, persisted
+                    // ONTO the chord so the flags survive a chord switch (without this,
+                    // switching away and back lets the 9/11/13 buttons stack duplicates).
                     switch (this.currentScene) {
                         case 'grid':
                             if (this.gridInitialized) {
-                                this.grid.updateSelectedChordVoicing(newVoicing);
+                                this.grid.updateSelectedChordVoicing(newVoicing, extTags);
                             }
                             break;
                         case 'chord':
                             // Update all modes - each checks its own selectedChordIndex
                             for (let i = 0; i < this.modes.length; i++) {
-                                this.modes[i].updateSelectedChordVoicing(newVoicing);
+                                this.modes[i].updateSelectedChordVoicing(newVoicing, extTags);
                             }
                             break;
                     }
@@ -406,7 +409,10 @@ class OfApp {
 
                     //console.log(`✓ Grid chord selected: ${notes.length} notes, voicing: [${voicing.join(', ')}]`);
                     this.voicingEditor.setCurrentScale(notes);
-                    this.voicingEditor.updateCurrentVoicing(notes, voicing);
+                    // Pass this cell's persisted 9/11/13 flags so they're restored on
+                    // return — without this, every grid cell reloads flagless and the
+                    // 9/11/13 buttons stack duplicates (cells 00–03 accumulating notes).
+                    this.voicingEditor.updateCurrentVoicing(notes, voicing, chord ? chord.extTags : undefined);
                     // §6.4: selecting a chord auto-switches to the Voicing tab.
                     this.setActiveEditorTab('voicing');
 
@@ -790,7 +796,10 @@ class OfApp {
 
                                     const chordNotes = chord.notes; // Scale notes for the chord
                                     this.voicingEditor.setCurrentScale(mode.scale);
-                                    this.voicingEditor.updateCurrentVoicing(chordNotes, noteVoicing);
+                                    // chord.extTags carries the persisted 9/11/13 flags so they
+                                    // survive switching chords (re-clicking a button removes its
+                                    // note instead of stacking a duplicate).
+                                    this.voicingEditor.updateCurrentVoicing(chordNotes, noteVoicing, chord.extTags);
                                     // §6.4: selecting a chord auto-switches to the Voicing tab.
                                     this.setActiveEditorTab('voicing');
 

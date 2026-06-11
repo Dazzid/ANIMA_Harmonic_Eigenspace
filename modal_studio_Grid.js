@@ -217,7 +217,7 @@ class Grid {
     }
     
     // C++ Grid.cpp lines 118-145 - Update selected chord voicing
-    updateSelectedChordVoicing(newVoicing) {
+    updateSelectedChordVoicing(newVoicing, extTags) {
         // C++ Grid.cpp lines 119-146: Update selected chord voicing and recalculate modal interchange
         // console.log('📝 Grid.updateSelectedChordVoicing called:', {
         //     newVoicing,
@@ -236,7 +236,7 @@ class Grid {
             const cell = this.cells[cellIndex];
             //console.log('📝 Updating cell', cellIndex, 'chord with voicing:', newVoicing);
             
-            cell.chord.updateVoicing(newVoicing);
+            cell.chord.updateVoicing(newVoicing, extTags);
             cell.chord.setChordQualityFromVoicing(newVoicing);
             
             // Update cell colorCode after quality change
