@@ -373,15 +373,20 @@ class VoicingEditor {
         
         // Update the note name based on the new position
         this.currentVoicing[noteIndex].noteName = this.getNoteNameForStep(newPosition, true);
-        
-        // Notify parent of the change
-        this.notifyVoicingChanged();
+
+        // Notify parent of the change — silent: this is a per-frame drag, audition
+        // happens once on release (mouseReleased).
+        this.notifyVoicingChanged(false);
     }
     
     // ========================================================================
     // VOICING CHANGE NOTIFICATION 
     // ========================================================================
-    notifyVoicingChanged() {
+    // audition: when true (default), the app plays the resulting chord so the user
+    // HEARS the edit without re-clicking the chord. Passed false by the per-frame
+    // drag handlers — dragging fires this dozens of times a second and playChord
+    // doesn't cut previous notes, so auditioning every frame would be a mush.
+    notifyVoicingChanged(audition = true) {
         if (this.onVoicingChanged) {
             // Create a vector of the updated positions, plus a map of which of those
             // positions are tagged 9/11/13 extensions (absoluteTET → extType). The
@@ -395,7 +400,7 @@ class VoicingEditor {
                 if (pos.extType !== undefined) extTags[pos.absoluteTET] = pos.extType;
             }
             //console.log('🔄 VoicingEditor notifying change:', newPositions);
-            this.onVoicingChanged(newPositions, extTags);
+            this.onVoicingChanged(newPositions, extTags, audition);
         } else {
             //console.warn('⚠️ VoicingEditor: onVoicingChanged callback not set!');
         }
@@ -1779,9 +1784,9 @@ class VoicingEditor {
             
             // Update note name
             this.currentVoicing[this.draggedNoteIndex].noteName = this.getNoteNameForStep(snappedPosition, true);
-            
-            // Notify of change
-            this.notifyVoicingChanged();
+
+            // Notify of change — silent during the drag; we audition once on release.
+            this.notifyVoicingChanged(false);
             this.identifyChordComponents();
             this.calculateExtendedComponents();
         }

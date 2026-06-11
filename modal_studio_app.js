@@ -119,6 +119,28 @@ class OfApp {
         return null;
     }
 
+    // Audition a voicing as it's edited in the Voicing Editor (add 9/11/13, octave,
+    // transpose, preset, drag-release) so the user hears the change without re-clicking
+    // the chord. Positions are absolute 53-TET refs → frequencies, same as a chord click.
+    // Throttled: playChord doesn't cut previous notes, so rapid sources (wheel
+    // transpose, a preset that notifies twice) would otherwise pile up into a mush.
+    auditionVoicing(positions) {
+        if (!positions || positions.length === 0) return;
+        const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        if (this._lastAuditionAt && (now - this._lastAuditionAt) < 90) return;
+        this._lastAuditionAt = now;
+
+        const frequencies = positions.map(pos => {
+            const scale = this.findScaleByReference(pos);
+            return scale ? scale.frequency : 440;
+        });
+        if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
+            window.midiController.stopChordNotes();
+            window.midiController.playChord(frequencies, 5);
+        }
+        if (this.audioEngine) this.audioEngine.playChord(frequencies);
+    }
+
     // Play a single note (for MIDI Piano input)
     playNote(frequency) {
         // Send MIDI first (independent of audio mute)
@@ -280,7 +302,7 @@ class OfApp {
                 this.voicingEditor.setDarkMode(false); // Match ScaleEditor mode
 
                 // C++ ofApp.cpp line 72: Connect callback (Grid.cpp updateSelectedChordVoicing)
-                this.voicingEditor.onVoicingChanged = (newVoicing, extTags) => {
+                this.voicingEditor.onVoicingChanged = (newVoicing, extTags, audition = false) => {
                     // C++ ofApp.cpp lines 93-102
                     // extTags = {absoluteTET: extType} for the 9/11/13 notes, persisted
                     // ONTO the chord so the flags survive a chord switch (without this,
@@ -298,6 +320,10 @@ class OfApp {
                             }
                             break;
                     }
+                    // Audition the edit: adding a 9/11/13, an octave/transpose move, a
+                    // preset, or a drag-release plays the chord right away so the user
+                    // hears it without re-clicking the chord. Per-frame drag passes false.
+                    if (audition) this.auditionVoicing(newVoicing);
                 };
 
                 // Re-root wheel (Step 4): transpose the SELECTED chord by N commas
