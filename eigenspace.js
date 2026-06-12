@@ -2168,11 +2168,11 @@ window.tet53Steps = [];
             .filter(n => n && typeof n.frequency === 'number' && n.noteName)
             .map(n => ({ reference: n.reference, frequency: n.frequency, noteName: n.noteName }))
             .sort((a, b) => a.frequency - b.frequency);
-        // Subset within the spectrum range (C3–C5) — used for the clickable root
-        // ticks + arrow stepping.
-        const MIN = 130.81, MAX = 523.25;
+        // Subset within the spectrum range (C3–C6, 3 octaves) — used for the clickable
+        // root ticks + arrow stepping.
+        const MIN = 130.81, MAX = 1046.50;
         window.tet53Steps = window.tet53All.filter(n => n.frequency >= MIN - 0.01 && n.frequency <= MAX + 0.01);
-        console.log(`[ES] Loaded ${window.tet53All.length} 53-TET notes (${window.tet53Steps.length} in C3–C5)`);
+        console.log(`[ES] Loaded ${window.tet53All.length} 53-TET notes (${window.tet53Steps.length} in C3–C6)`);
     } catch (e) {
         console.warn('[ES] Failed to load 53-TET steps', e);
     }

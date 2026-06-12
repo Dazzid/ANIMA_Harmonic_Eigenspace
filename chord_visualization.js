@@ -35,9 +35,9 @@ class ChordVisualization {
         this.W = 320;
         this.H = 640;
 
-        // Frequency range: C3 to C5
-        this.minFreq = 130.81;  // C3
-        this.maxFreq = 523.25;  // C5
+        // Frequency range: C3 to C6 (3 octaves)
+        this.minFreq = 130.81;   // C3
+        this.maxFreq = 1046.50;  // C6
 
         // Visual parameters
         this.padding = 10;
@@ -74,7 +74,7 @@ class ChordVisualization {
         this.round = 10;
 
         this.textColor = 'rgba(222, 222, 222, 1)';
-        this.whiteKeysPiano = 'rgb(100, 100, 100)';
+        this.whiteKeysPiano = 'rgb(80, 80, 80)';
         this.lineColors = 'rgba(25, 25, 25, 0.5)';
 
         // Note names for reference
@@ -103,7 +103,19 @@ class ChordVisualization {
             { freq: 440.00, name: 'A4' },
             { freq: 466.16, name: 'A#4' },
             { freq: 493.88, name: 'B4' },
-            { freq: 523.25, name: 'C5' }
+            { freq: 523.25, name: 'C5' },
+            { freq: 554.37, name: 'C#5' },
+            { freq: 587.33, name: 'D5' },
+            { freq: 622.25, name: 'D#5' },
+            { freq: 659.26, name: 'E5' },
+            { freq: 698.46, name: 'F5' },
+            { freq: 739.99, name: 'F#5' },
+            { freq: 783.99, name: 'G5' },
+            { freq: 830.61, name: 'G#5' },
+            { freq: 880.00, name: 'A5' },
+            { freq: 932.33, name: 'A#5' },
+            { freq: 987.77, name: 'B5' },
+            { freq: 1046.50, name: 'C6' }
         ];
 
         // P5 instance mode reference
@@ -115,6 +127,13 @@ class ChordVisualization {
             [118, 236, 0],      // rgba(118, 236, 0, 1)
             [0, 128, 255]       // rgba(0, 128, 255, 1)
         ];
+
+        // WHITE-KEY-uniform axis (same real-piano design as the MS spectrum): 7 white
+        // keys per octave, equal size, black keys narrower ON TOP between them — no
+        // white slot for the sharps. WKU maps a chromatic semitone (0..12 above C) to
+        // white-key units (0..7); a 12-TET note lands on its key centre.
+        this.WKU = [0, 0.5, 1, 1.5, 2, 3, 3.5, 4, 4.5, 5, 5.5, 6, 7];
+        this.BLACK_WKU = [0.5, 1.5, 3.5, 4.5, 5.5]; // C# D# F# G# A# within an octave
     }
     //----------------------------------------------------------------------------------------
     setup(p) {
@@ -175,88 +194,45 @@ class ChordVisualization {
     }
     //----------------------------------------------------------------------------------------
     drawSpectrumBackground(p) {
-        // Background area with rounded corners
-        p.fill(this.whiteKeysPiano); // Darker black background
-        p.stroke(60, 60, 60); // Dark gray border
-        p.strokeWeight(1);
         const bgX = this.spectrumX;
         const bgY = this.spectrumY - 10;
         const bgWidth = 300;
         const bgHeight = this.spectrumHeight + 20;
-        p.rect(bgX, bgY, bgWidth, bgHeight, 8);
 
-        // Piano key pattern areas (white keys = light gray, black keys = dark gray)
-        // Notes with keyboard mapping: Q=C, 2=C#, W=D, 3=D#, E=E, R=F, 5=F#, T=G, 6=G#, Y=A, 7=A#, U=B, I=C
-        const pianoKeyData = [
-            // Note: isBlack = true for sharps/flats (black keys on piano)
-            { freq: 130.81, name: 'C3', key: 'q', isBlack: false },   // C3 - white key
-            { freq: 138.59, name: 'C#3', key: '2', isBlack: true },  // C#3 - black key
-            { freq: 146.83, name: 'D3', key: 'w', isBlack: false },  // D3 - white key
-            { freq: 155.56, name: 'D#3', key: '3', isBlack: true },  // D#3 - black key
-            { freq: 164.81, name: 'E3', key: 'e', isBlack: false },  // E3 - white key
-            { freq: 174.61, name: 'F3', key: 'r', isBlack: false },  // F3 - white key
-            { freq: 185.00, name: 'F#3', key: '5', isBlack: true },  // F#3 - black key
-            { freq: 196.00, name: 'G3', key: 't', isBlack: false },  // G3 - white key
-            { freq: 207.65, name: 'G#3', key: '6', isBlack: true },  // G#3 - black key
-            { freq: 220.00, name: 'A3', key: 'y', isBlack: false },  // A3 - white key
-            { freq: 233.08, name: 'A#3', key: '7', isBlack: true },  // A#3 - black key
-            { freq: 246.94, name: 'B3', key: 'u', isBlack: false },  // B3 - white key
-            { freq: 261.63, name: 'C4', key: 'i', isBlack: false },  // C4 - white key
-            // Continue pattern for C4 to C5
-            { freq: 277.18, name: 'C#4', isBlack: true },            // C#4 - black key
-            { freq: 293.66, name: 'D4', isBlack: false },            // D4 - white key
-            { freq: 311.13, name: 'D#4', isBlack: true },            // D#4 - black key
-            { freq: 329.63, name: 'E4', isBlack: false },            // E4 - white key
-            { freq: 349.23, name: 'F4', isBlack: false },            // F4 - white key
-            { freq: 369.99, name: 'F#4', isBlack: true },            // F#4 - black key
-            { freq: 392.00, name: 'G4', isBlack: false },            // G4 - white key
-            { freq: 415.30, name: 'G#4', isBlack: true },            // G#4 - black key
-            { freq: 440.00, name: 'A4', isBlack: false },            // A4 - white key
-            { freq: 466.16, name: 'A#4', isBlack: true },            // A#4 - black key
-            { freq: 493.88, name: 'B4', isBlack: false },            // B4 - white key
-            { freq: 523.25, name: 'C5', isBlack: false }             // C5 - white key
-        ];
+        // Background panel
+        p.fill(this.whiteKeysPiano);
+        p.stroke(60, 60, 60);
+        p.strokeWeight(1);
+        // p.rect(bgX, bgY, bgWidth, bgHeight, 8);
 
-        // Draw piano key areas
-        p.noStroke();
-        for (let i = 0; i < pianoKeyData.length - 1; i++) {
-            const currentNote = pianoKeyData[i];
-            const nextNote = pianoKeyData[i + 1];
-            
-            
-            if (currentNote.freq >= this.minFreq && currentNote.freq <= this.maxFreq) {
-                const y1 = this.freqToY(currentNote.freq);
-                const y2 = this.freqToY(nextNote.freq);
-                const rectHeight = Math.abs(y1 - y2);
-                
-                // Color based on piano key type
-                if (currentNote.isBlack) {
-                    p.fill(20); // Dark gray for black keys
-                    p.rect(bgX + 5, Math.min(y1, y2) + rectHeight * 0.5, bgWidth * 0.5, rectHeight, 5);
-                } else {
-                    p.fill(this.whiteKeysPiano); // Light gray for white keys
-                    p.rect(bgX + 5, Math.min(y1, y2) + rectHeight * 0.5, bgWidth - 10, rectHeight, 5);
-                }                
-            }
+        // --- Real piano keys (same design as the MS spectrum), drawn VERTICAL ---
+        const total = this._totalWku();
+        const uY = this.spectrumHeight / (total + 1);   // one white-key unit, px (Y)
+        const keyX = bgX + 5;
+        const keyW = bgWidth - 10;
+
+        // White keys: horizontal bands spanning boundary-to-boundary so adjacent keys
+        // TOUCH; the stroke borders delineate them. Bottom (C3) and top (C6) are full.
+        p.stroke(this.lineColors);
+        p.strokeWeight(1);
+        p.fill(this.whiteKeysPiano);
+        for (let w = 0; w <= Math.round(total); w++) {
+            const yTop = this._wkuY(w + 0.5);   // higher freq → smaller y
+            const yBot = this._wkuY(w - 0.5);
+            p.rect(keyX, yTop, keyW, yBot - yTop, 0, 5, 5, 0);
         }
 
-        // Draw thin gray lines for all 12-TET notes to show deviation
-        p.stroke(this.lineColors); // Light gray lines
-        p.strokeWeight(1);
-        
-        // All chromatic notes from C3 to C5 (extended range)
-        const chromaticFreqs = [
-            130.81, 138.59, 146.83, 155.56, 164.81, 174.61, // C3 to F3
-            185.00, 196.00, 207.65, 220.00, 233.08, 246.94, // F#3 to B3
-            261.63, 277.18, 293.66, 311.13, 329.63, 349.23, // C4 to F4
-            369.99, 392.00, 415.30, 440.00, 466.16, 493.88, // F#4 to B4
-            523.25 // C5
-        ];
-
-        for (let freq of chromaticFreqs) {
-            if (freq >= this.minFreq && freq <= this.maxFreq) {
-                const y = this.freqToY(freq);
-                p.line(bgX + 5, y, bgX + bgWidth - 5, y);
+        // Black keys: narrower (left part) + shorter dark bands ON TOP, centered on each
+        // sharp (C# D# F# G# A#) of every octave — never E–F or B–C.
+        const octs = Math.ceil(Math.log(this.maxFreq / this.minFreq) / Math.log(2));
+        p.noStroke();
+        p.fill(20);
+        for (let k = 0; k < octs; k++) {
+            for (const off of this.BLACK_WKU) {
+                const wku = k * 7 + off;
+                if (wku > total) continue;
+                const yc = this._wkuY(wku);
+                p.rect(keyX, yc - uY * 0.3, keyW * 0.55, uY * 0.6, 0, 4, 4, 0);
             }
         }
     }
@@ -416,8 +392,8 @@ class ChordVisualization {
         if (freq < this.minFreq || freq > this.maxFreq) return;
 
         const y = this.freqToY(freq);
-        const barWidth = amplitude * 140; // Animated width based on amplitude
-        const barHeight = 3; // Fixed height for all bars
+        const barWidth = amplitude * 152; // Animated width based on amplitude
+        const barHeight = 5; // Fixed height for all bars
 
         const baseColor = this.colors[noteIndex] || [200, 200, 200];
 
@@ -427,14 +403,14 @@ class ChordVisualization {
         // ALL bars aligned at the same horizontal position, starting from the frequency axis
         const barX = this.spectrumX + 10;
         const barY = y - Math.floor(barHeight / 2);
-        p.rect(barX, barY, barWidth, barHeight, 1);
+        p.rect(barX, barY, barWidth, barHeight, 3);
 
         // Draw frequency value for all fundamentals when bar is visible
         if (amplitude > 0.3 && barWidth > 10) {
             p.fill(baseColor[0], baseColor[1], baseColor[2], 255);
             p.textAlign(p.LEFT);
             p.noStroke();
-            p.textSize(11);
+            p.textSize(12);
             
             // Check if this voice is doubled
             const labels = ['R', 'α', 'β', 'γ'];
@@ -452,7 +428,7 @@ class ChordVisualization {
     //----------------------------------------------------------------------------------------
     drawFrequencyLabels(p) {
         // Legend for the colors
-        const y = this.spectrumY + this.spectrumHeight + 20;
+        const y = this.spectrumY + this.spectrumHeight + 15;
        
         const labels = [
             { color: this.colors[0], text: 'R' },
@@ -603,14 +579,29 @@ class ChordVisualization {
         p.text(best.noteName, this.positionKeys + this.spectrumWidth + 22, y - 4);
     }
 
-    freqToY(freq) {
-        // Convert frequency to Y position (logarithmic scale)
-        const logMin = Math.log(this.minFreq);
-        const logMax = Math.log(this.maxFreq);
-        const logFreq = Math.log(freq);
-        const ratio = (logFreq - logMin) / (logMax - logMin);
-        // Invert Y axis (high frequencies at top)
+    // Total white-key units spanned (7 per octave).
+    _totalWku() { return 7 * (Math.log(this.maxFreq / this.minFreq) / Math.log(2)); }
+
+    // Frequency → white-key units above minFreq (piecewise via WKU).
+    _freqToWku(freq) {
+        const s = 12 * (Math.log(freq / this.minFreq) / Math.log(2)); // semitones above minFreq
+        const oct = Math.floor(s / 12);
+        const rem = s - oct * 12;                                     // 0..12 within octave
+        const lo = Math.floor(rem), hi = Math.min(lo + 1, 12);
+        const wkuIn = this.WKU[lo] + (this.WKU[hi] - this.WKU[lo]) * (rem - lo);
+        return oct * 7 + wkuIn;
+    }
+
+    // White-key units → Y. Reserves half a key at each end so the bottom (C3) and top
+    // (C6) keys are FULL; high frequency at the top (inverted).
+    _wkuY(wku) {
+        const ratio = (wku + 0.5) / (this._totalWku() + 1);
         return this.spectrumY + this.spectrumHeight * (1 - ratio);
+    }
+
+    // Frequency → Y on the white-key-uniform axis (a note lands on its piano key).
+    freqToY(freq) {
+        return this._wkuY(this._freqToWku(freq));
     }
 
     //----------------------------------------------------------------------------------------
