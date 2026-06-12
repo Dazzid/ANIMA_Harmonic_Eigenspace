@@ -374,6 +374,11 @@ class OfApp {
                     ch._transposeOff = (ch._transposeOff || 0) + deltaSteps;
                 };
 
+                // Re-root wheel detent: a soft safe-lock tick per grip line (2 per comma).
+                this.voicingEditor.onWheelTick = () => {
+                    if (this.audioEngine) this.audioEngine.playTick();
+                };
+
                 // Voicing preset (Step 5): apply the chord's OWN built-in voicing
                 // template (musical), then reload the editor from it. type → which
                 // chord tone leads (0=root,2=7th,4=5th,6=3rd on top).

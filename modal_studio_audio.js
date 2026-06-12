@@ -137,7 +137,36 @@ class AudioEngine {
             this.createNote(freq, harmonics, amplitudes, t);
         }
     }
-    
+
+    // UI feedback: a tiny "safe-lock" detent tick (Voicing Editor re-root wheel,
+    // one click per comma step). High, short, quiet, and DRY — straight to the
+    // limiter, no reverb: convolution would smear the transient into a "plink".
+    // Intentionally does NOT init audio: the wheel only moves after a chord has
+    // already played, so a missing context just means silence, never a stall.
+    playTick() {
+        if (window.audioMuted || this.audioMuted) return;
+        if (!this.audioInitialized || !this.audioCtx || !this.limiterNode) return;
+
+        const t = this.audioCtx.currentTime;
+        const env = this.audioCtx.createGain();
+        env.gain.setValueAtTime(0.035, t);
+        env.gain.exponentialRampToValueAtTime(0.0001, t + 0.018);
+        env.connect(this.limiterNode);
+
+        // Two inharmonic high partials → metallic "tick", not a beep.
+        for (const [freq, amp] of [[3150, 1.0], [4730, 0.45]]) {
+            const osc = this.audioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            const og = this.audioCtx.createGain();
+            og.gain.value = amp;
+            osc.connect(og);
+            og.connect(env);
+            osc.start(t);
+            osc.stop(t + 0.02);
+        }
+    }
+
     // Create a single note with ADSR envelope
     createNote(freq, harmonics, amplitudes, startTime) {
         const masterGain = this.audioCtx.createGain();

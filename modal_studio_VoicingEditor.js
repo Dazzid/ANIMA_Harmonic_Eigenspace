@@ -101,8 +101,10 @@ class VoicingEditor {
         this.wheelPrevAngle = 0;
         this.wheelAccumAngle = 0;
         this.wheelAppliedSteps = 0;
+        this.wheelTickCount = 0; // detent-sound counter, in HALF-comma grip lines (106/turn)
         this.onTranspose = null; // app hook: shift the chord's notes/root by N commas (keeps the name right)
         this.onSelectVoicing = null; // app hook: apply the chord's built-in voicing(n) preset + reload
+        this.onWheelTick = null; // app hook: detent "tick" sound, fired per grip line passed (2 per comma)
         // "Over Column" toggle: when ON and a ROW-0 grid chord is being edited,
         // every edit (transpose, 9/11/13, octave, drag, preset) replicates down
         // the chord's column (the modal-interchange rows). Read by the app when
@@ -1527,9 +1529,19 @@ class VoicingEditor {
         const mid = (inner + outer) / 2;
         const active = this.isWheelDragging;
 
+        // Hover invitation: tint the grip lines when the cursor rests on the band
+        // and it would actually be grabbable (a note under the pointer takes
+        // priority, same rule as mousePressed) — softer than the drag orange.
+        let hover = false;
+        if (!active) {
+            const dist = Math.hypot(p.mouseX - cx, p.mouseY - cy);
+            hover = dist >= inner && dist <= outer &&
+                    this.findNearestNote({ x: p.mouseX, y: p.mouseY }, true) < 0;
+        }
+
         p.noFill();
         if (active) p.stroke(...this.selectedNodeColor, 230); else p.stroke(150, 150, 150, 140);
-        p.strokeWeight(active ? 2 : 1);
+        p.strokeWeight(active ? 3 : 1);
         // p.circle(cx, cy, mid * 2);
 
         // grip ticks around the band
@@ -1537,8 +1549,10 @@ class VoicingEditor {
         p.push();
         p.translate(cx, cy);
         p.rotate(this.wheelAccumAngle);
-        
-        if (active) p.stroke(...this.selectedNodeColor, 200); else p.stroke(150, 150, 150, 120);
+
+        if (active) p.stroke(...this.selectedNodeColor, 250);
+        else if (hover) p.stroke(...this.selectedNodeColor, 200);
+        else p.stroke(150, 150, 150, 180);
         const N = 106;
         for (let i = 0; i < N; i++) {
             const a = (2 * Math.PI * i / N) - Math.PI ;
@@ -1703,6 +1717,7 @@ class VoicingEditor {
                 this.wheelPrevAngle = Math.atan2(y - this.drawCenterY, x - this.center.x);
                 this.wheelAccumAngle = 0;
                 this.wheelAppliedSteps = 0;
+                this.wheelTickCount = 0;
                 return true;
             }
         }
@@ -1757,6 +1772,17 @@ class VoicingEditor {
             const increment = targetSteps - this.wheelAppliedSteps;
             if (increment !== 0 && this.applyWheelTranspose(increment)) {
                 this.wheelAppliedSteps = targetSteps;
+            }
+            // Detent ticks track the VISUAL grip lines: the band draws 106 of
+            // them (drawWheel's N = 2 per comma), so it feels like two clicks
+            // per note change. Tied to the accumulated angle, not the applied
+            // steps — the band keeps rotating (lines keep passing) even when
+            // the transpose is blocked at the ring boundary.
+            const tickDetent = TWO_PI / (2 * this.TOTAL_STEPS);
+            const tickTarget = Math.round(this.wheelAccumAngle / tickDetent);
+            if (tickTarget !== this.wheelTickCount) {
+                if (this.onWheelTick) this.onWheelTick(tickTarget - this.wheelTickCount);
+                this.wheelTickCount = tickTarget;
             }
             return;
         }
