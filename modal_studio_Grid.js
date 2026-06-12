@@ -217,7 +217,9 @@ class Grid {
     }
     
     // C++ Grid.cpp lines 118-145 - Update selected chord voicing
-    updateSelectedChordVoicing(newVoicing, extTags) {
+    // overColumn: the Voicing Editor's "Over Column" toggle — replicate a row-0
+    // edit down the chord's modal-interchange column (rows 1-7).
+    updateSelectedChordVoicing(newVoicing, extTags, overColumn = false) {
         // C++ Grid.cpp lines 119-146: Update selected chord voicing and recalculate modal interchange
         // console.log('📝 Grid.updateSelectedChordVoicing called:', {
         //     newVoicing,
@@ -253,6 +255,11 @@ class Grid {
                 this.chordProgression[this.selectedCellCol] = cell;
                 // C++ ALWAYS recalculates modal interchange after voicing change in row 0
                 this.calculateModalInterchange();
+                // The recalc above rebuilt rows 1-7 with their default template
+                // voicings, so propagation must run AFTER it, every time.
+                if (overColumn) {
+                    this.propagateVoicingDownColumn(this.selectedCellCol);
+                }
             }
             
             //console.log(`✓ Updated cell (${this.selectedCellRow},${this.selectedCellCol}) voicing:`, newVoicing);
@@ -731,7 +738,66 @@ class Grid {
         
         //console.log('✓ Modal interchange calculated for all rows');
     }
-    
+
+    // "Over Column" (Voicing Editor toggle): replicate the row-0 chord's edited
+    // voicing onto rows 1-7 of its column. The shape travels as STACK POSITIONS
+    // (indices into the chord's own notes stack), NOT as raw intervals — that way
+    // each interchange chord keeps its own 3rd/7th quality (a 9th stays a 9th,
+    // whatever the mode). Notes that aren't in the parent's stack (microtonal
+    // drag, the computed #11 on majors) fall back to the raw interval from the
+    // root. A wheel re-root travels via the parent's accumulated _transposeOff:
+    // calculateModalInterchange() has just rebuilt the target stacks UNtransposed
+    // from the modes, so the offset is re-applied here — with FRESH note objects,
+    // because those stacks are shared with mode.chordQualities and must never be
+    // mutated in place.
+    propagateVoicingDownColumn(col) {
+        const parent = this.cells[col].chord;
+        const pStack = parent.getNotes();
+        const pVoicing = parent.getNoteVoicing();
+        if (!pStack || pStack.length === 0 || !pVoicing || pVoicing.length === 0) return;
+        const pRoot = parent.root_53 ? parent.root_53.ft_note : pStack[0].ft_note;
+        const offset = parent._transposeOff || 0;
+
+        const shape = pVoicing.map(ft => ({
+            stackIndex: pStack.findIndex(n => n.ft_note === ft),
+            interval: ft - pRoot,
+            ext: parent.extTags ? parent.extTags[ft] : undefined
+        }));
+
+        for (let row = 1; row < 8; row++) {
+            const cell = this.cells[row * 8 + col];
+            const chord = cell.chord;
+            let stack = chord.getNotes();
+            if (!stack || stack.length === 0) continue; // empty interchange cell
+
+            // Tonic cells at root position get the PARENT's notes array by
+            // reference (modeSubstitution's isRootPosition branch) — that stack
+            // is already transposed, so shifting it again would double the offset.
+            if (offset !== 0 && stack !== pStack) {
+                stack = stack.map(n => ({
+                    ...n,
+                    ft_note: n.ft_note + offset,
+                    name: (this.noteNameResolver && this.noteNameResolver(n.ft_note + offset)) || n.name
+                }));
+                chord.setNotes(stack); // fresh objects → root/root_53 follow the shift
+            }
+
+            const tRoot = chord.root_53 ? chord.root_53.ft_note : stack[0].ft_note;
+            const positions = [];
+            const tags = {};
+            for (const s of shape) {
+                const ft = (s.stackIndex >= 0 && s.stackIndex < stack.length)
+                    ? stack[s.stackIndex].ft_note
+                    : tRoot + s.interval;
+                positions.push(ft);
+                if (s.ext !== undefined) tags[ft] = s.ext;
+            }
+            chord.updateVoicing(positions, tags);
+            chord.setChordQualityFromVoicing(positions);
+            cell.colorCode = chord.getColor();
+        }
+    }
+
     // Parallel mode substitution (C++ Grid.cpp lines 310-434)
     modeSubstitution(modeIndex, targetRow) {
         //console.log('🟢 modeSubstitution CALLED - modeIndex:', modeIndex, 'targetRow:', targetRow);

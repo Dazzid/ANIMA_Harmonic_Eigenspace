@@ -322,7 +322,9 @@ class OfApp {
                     switch (this.currentScene) {
                         case 'grid':
                             if (this.gridInitialized) {
-                                this.grid.updateSelectedChordVoicing(newVoicing, extTags);
+                                // "Over Column": when the toggle is ON and the edit is on a
+                                // row-0 chord, the Grid replicates it down the column.
+                                this.grid.updateSelectedChordVoicing(newVoicing, extTags, this.voicingEditor.overColumn);
                             }
                             break;
                         case 'chord':
@@ -365,6 +367,11 @@ class OfApp {
                     ch.root_53 = shifted(ch.root_53);
                     ch.root = (Array.isArray(ch.notes) && ch.notes.length) ? ch.notes[0] : shifted(ch.root);
                     if (ch.root_53) ch.note_53 = ch.root_53.ft_note;
+                    // Cumulative re-root distance, read by the Grid's "Over Column"
+                    // propagation: the column stacks are rebuilt UNtransposed from the
+                    // modes on every interchange recalc, so the total shift must be
+                    // re-applied there each time (not just this edit's delta).
+                    ch._transposeOff = (ch._transposeOff || 0) + deltaSteps;
                 };
 
                 // Voicing preset (Step 5): apply the chord's OWN built-in voicing
@@ -424,6 +431,14 @@ class OfApp {
                 this.grid.setModes(this.modes);
                 this.grid.setDarkMode(false);
                 this.grid.setRound(this.round);
+
+                // Note-name lookup for the Grid's "Over Column" propagation: a wheel
+                // re-root shifts the column chords' notes off the diatonic scale, so
+                // their names must come from the full 53-TET table, not the mode.
+                this.grid.noteNameResolver = (ft) => {
+                    const ref = this.findScaleByReference(ft);
+                    return ref ? ref.noteName : null;
+                };
 
                 // Connect Grid callback to VoicingEditor (C++ Grid.cpp onChordSelected)
                 this.grid.onChordSelected = (notes, voicing, chord, mode) => {

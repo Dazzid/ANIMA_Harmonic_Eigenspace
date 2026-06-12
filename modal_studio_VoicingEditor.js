@@ -103,6 +103,11 @@ class VoicingEditor {
         this.wheelAppliedSteps = 0;
         this.onTranspose = null; // app hook: shift the chord's notes/root by N commas (keeps the name right)
         this.onSelectVoicing = null; // app hook: apply the chord's built-in voicing(n) preset + reload
+        // "Over Column" toggle: when ON and a ROW-0 grid chord is being edited,
+        // every edit (transpose, 9/11/13, octave, drag, preset) replicates down
+        // the chord's column (the modal-interchange rows). Read by the app when
+        // routing onVoicingChanged to the Grid. Only meaningful in the Grid scene.
+        this.overColumn = false;
         this._menuOpen = false;            // voicing drop-down open?
         this._currentVoicingType = null; // which voicing is selected (label in the box; null → "Voicing")
 
@@ -144,6 +149,9 @@ class VoicingEditor {
         // Current fill/stroke colors for drawing
         this.fillColor = [255, 255, 255];
         this.strokeColor = [255, 255, 255];
+
+        //top Buttons background color
+        this.buttonBackground = [230, 230, 230];
 
         this.Report = true;
     }
@@ -1404,7 +1412,7 @@ class VoicingEditor {
             this.drawIntervalLines();
             this.drawChordComponents();
             this.drawCurrentVoicing();
-            this.drawBottomButtons();
+            this.drawToolbar();
             this.drawTitleBar();
             p.pop();
             this.updateMenuDom();   // position + show the <select>
@@ -1486,7 +1494,9 @@ class VoicingEditor {
         const r = canvasEl.getBoundingClientRect();
         const outerRadius = this.radius * this.factorSize;
         const left = r.left + this.center.x - outerRadius + 6;
-        const top = r.top + (this.center.y - outerRadius) + this.titleBarHeight + 2;
+        // −3 compensates the .voicing-menu 5px margin-top so the trigger's top
+        // edge lands at +2, flush with the toolbar buttons (drawToolbar).
+        const top = r.top + (this.center.y - outerRadius) + this.titleBarHeight - 3;
         this._menuWrap.style.left = left + 'px';
         this._menuWrap.style.top = top + 'px';
         this._menuWrap.style.display = 'block';
@@ -1538,60 +1548,69 @@ class VoicingEditor {
         p.pop();
     }
 
-    // Bottom controls:
-    //   bottom-LEFT  : [ 9 ] [ 11 ] [ 13 ]  (toggle extensions; orange when voiced)
-    //   bottom-RIGHT : [ ↑ ]                 (move SELECTED note a ring — vertical
-    //                  [ ↓ ]                  stepper, ↑ above ↓; dim when no selection)
-    // Rects cached for hit-testing.
-    drawBottomButtons() {
+    // Toolbar: ONE control strip in the ~23px of free space between the title
+    // bar and the top of the re-root wheel (the circle is drawn 15px below the
+    // frame center, which is what opens this gap):
+    //   [Voicing types ▾] [9][11][13]  [↑][↓]  [Over Column]  [Reset]
+    // The dropdown is the DOM menu (positioned by updateMenuDom to align with
+    // this row); everything else is canvas. Shared design: rounded rect, orange
+    // when active/armed, light gray otherwise. Rects cached for hit-testing.
+    drawToolbar() {
         const p = this.p;
         if (!p) return;
         const outerRadius = this.radius * this.factorSize;
-        const bottom = this.center.y + outerRadius - 8;
+        const left = this.center.x - outerRadius;
+        const barY = this.center.y - outerRadius + this.titleBarHeight + 2; // strip top
+        const bh = 19; // button height — keeps the row clear of the wheel's top arc
         p.textAlign(p.CENTER, p.CENTER);
 
-        // --- extension buttons: horizontal row, bottom-left ---
-        const ew = 38, eh = 22, egap = 6;
-        const eY = bottom - eh;
+        //
+
+        const drawBtn = (x, w, label, active, txtSize) => {
+            if (active) p.fill(...this.selectedNodeColor); else p.fill(...this.buttonBackground); // orange on / light gray off
+            p.stroke(150); p.strokeWeight(1);
+            p.rect(x, barY, w, bh, 4);
+            p.noStroke();
+            p.fill(active ? 255 : 50); // white text on orange, dark text on gray
+            p.textSize(txtSize);
+            p.text(label, x + w / 2, barY + bh / 2);
+            return { x: x, y: barY, w: w, h: bh };
+        };
+
+        let x = left + 6 + 124 + 12; // after the 124px-wide DOM dropdown
+
+        // --- extension toggles 9/11/13 ---
         const ext = [
             { type: ChordComponentType.NINTH, label: '9' },
             { type: ChordComponentType.ELEVENTH, label: this.isMajorChord() ? '#11' : '11' },
             { type: ChordComponentType.THIRTEENTH, label: '13' },
         ];
         this._extButtons = [];
-        p.textSize(13);
-        let ex = this.center.x - outerRadius + 10;
         for (const e of ext) {
             const active = this.currentVoicing.some(v => this.isExtension(v, e.type));
-            if (active) p.fill(...this.selectedNodeColor); else p.fill(210, 210, 210); // orange on / light gray off
-            p.stroke(150); p.strokeWeight(1);
-            p.rect(ex, eY, ew, eh, 6);
-            p.noStroke();
-            p.fill(active ? 255 : 50); // white text on orange, dark text on gray
-            p.text(e.label, ex + ew / 2, eY + eh / 2);
-            this._extButtons.push({ type: e.type, x: ex, y: eY, w: ew, h: eh });
-            ex += ew + egap;
+            const r = drawBtn(x, 34, e.label, active, 12);
+            this._extButtons.push({ type: e.type, ...r });
+            x += 34 + 5;
         }
+        x += 12;
 
-        // --- octave buttons: vertical stepper (↑ on top, ↓ below), bottom-right ---
-        const ow = 28, oh = 20, ovgap = 4;
-        const ox = this.center.x + outerRadius - 10 - ow;
+        // --- octave stepper ↑/↓ (side by side; armed when a note is selected) ---
         const hasSel = this.currentVoicing.some(v => v.id === this.selectedNoteId);
-        const oct = [
-            { delta: +1, label: '↑', y: bottom - 2 * oh - ovgap }, // upper
-            { delta: -1, label: '↓', y: bottom - oh },             // lower
-        ];
         this._octButtons = [];
-        p.textSize(15);
-        for (const o of oct) {
-            if (hasSel) p.fill(...this.selectedNodeColor); else p.fill(210, 210, 210); // orange when a note is selected, light gray otherwise
-            p.stroke(150); p.strokeWeight(1);
-            p.rect(ox, o.y, ow, oh, 6);
-            p.noStroke();
-            p.fill(hasSel ? 255 : 50); // white arrow on orange, dark on gray
-            p.text(o.label, ox + ow / 2, o.y + oh / 2);
-            this._octButtons.push({ delta: o.delta, x: ox, y: o.y, w: ow, h: oh });
+        for (const o of [{ delta: +1, label: '↑' }, { delta: -1, label: '↓' }]) {
+            const r = drawBtn(x, 26, o.label, hasSel, 13);
+            this._octButtons.push({ delta: o.delta, ...r });
+            x += 26 + 5;
         }
+        x += 12;
+
+        // --- "Over Column" toggle ---
+        this.ButtonColumnSize = 50;
+        this._overColBtn = drawBtn(x, this.ButtonColumnSize, 'Column', this.overColumn, 11);
+        x += this.ButtonColumnSize + 12;
+
+        // --- Reset (Step 8): back to the as-loaded voicing ---
+        this._resetBtn = drawBtn(x, 48, 'Reset', false, 11);
     }
     
     // ========================================================================
@@ -1630,7 +1649,7 @@ class VoicingEditor {
         
         // (Voicing menu is now a native <select> DOM element — handles its own clicks.)
 
-        // 9/11/13 buttons (lower-left) → toggle that extension.
+        // Toolbar — 9/11/13 buttons → toggle that extension.
         if (this._extButtons) {
             for (let b of this._extButtons) {
                 if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
@@ -1640,13 +1659,35 @@ class VoicingEditor {
             }
         }
 
-        // Octave ↑/↓ buttons (lower-right) → move the selected note a ring.
+        // Toolbar — "Over Column" toggle → replicate row-0 edits down the grid
+        // column. Turning it ON re-notifies the current voicing (silently) so the
+        // column syncs immediately, not just on the next edit.
+        if (this._overColBtn) {
+            const b = this._overColBtn;
+            if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+                this.overColumn = !this.overColumn;
+                if (this.overColumn) this.notifyVoicingChanged(false);
+                return true;
+            }
+        }
+
+        // Toolbar — octave ↑/↓ → move the selected note a ring.
         if (this._octButtons) {
             for (let b of this._octButtons) {
                 if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
                     this.moveSelectedNoteOctave(b.delta);
                     return true;
                 }
+            }
+        }
+
+        // Toolbar — Reset → restore the chord's as-loaded voicing (drops every
+        // edit; notifies, so an active Over Column re-syncs the column too).
+        if (this._resetBtn) {
+            const b = this._resetBtn;
+            if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+                this.resetVoicing();
+                return true;
             }
         }
 

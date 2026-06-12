@@ -796,11 +796,12 @@ label {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 5px 11px;
+    /* slim: matches the 19px canvas buttons in the Voicing Editor toolbar */
+    padding: 2px 11px;
     background: #e5e5e5;
     color: #2e2e2e;
     border: 1px solid #aeaeae;
-    border-radius: 7px;
+    border-radius: 4px;
     cursor: pointer;
     transition: background .15s ease, border-color .15s ease;
 }
@@ -814,7 +815,7 @@ label {
     background: #e5e5e5;
     border: 1px solid #aeaeae;
     
-    border-radius: 7px;
+    border-radius: 4px;
     overflow: hidden;
     box-shadow: 0 4px 5px rgba(0, 0, 0, .1);
     /* closed state */
