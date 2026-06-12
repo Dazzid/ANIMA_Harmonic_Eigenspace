@@ -253,71 +253,9 @@ function getRootNoteStep(freq) {
 let currentScaleColor = [255, 255, 255];
 
 function updateKeyboardMapping(chordFreqs, color) {
-    const scale12 = calculateDynamic12Notes(chordFreqs);
-
-    if (!scale12) return;
-
-    // Update color if provided
-    if (color && Array.isArray(color) && color.length >= 3) {
-        currentScaleColor = color;
-    }
-
-    // Map keys to frequencies (for computer keyboard)
-    currentKeyboardMap = {};
-    KEYBOARD_KEYS.forEach((key, index) => {
-        if (index < scale12.length) {
-            currentKeyboardMap[key] = scale12[index].freq;
-        }
-    });
-
-    // console.log('Keyboard mapping updated:');
-    Object.entries(currentKeyboardMap).forEach(([key, freq]) => {
-        // console.log(`  ${key}: ${freq.toFixed(2)} Hz`);
-    });
-
-    // Update chord visualization with the mapped scale
-    if (typeof window.setKeyboardMappedScale === 'function') {
-        // Generate all octaves of the scale from C3 to C5 with note names
-        const allNotes = []; // Array of {freq, name, step}
-        const rootFreq = chordFreqs[0];
-        
-        // CRITICAL: Determine what note the root actually is (relative to A=0)
-        const rootStep = getRootNoteStep(rootFreq);
-        
-        // Calculate how many octaves we need to cover C3 (130.81 Hz) to C5 (523.25 Hz)
-        const minFreq = 130.81; // C3
-        const maxFreq = 523.25; // C5
-        
-        // For each note in the 13-note scale, generate it across all octaves
-        for (let note of scale12) {
-            // note.step is relative to the root (0 = root, 31 = fifth, etc.)
-            // We need to add rootStep to get the absolute step relative to A
-            const relativeStep = note.step; // Step relative to root
-            const baseNoteFreq = note.freq;
-            
-            // Generate this note in all octaves within range
-            let octaveMultiplier = 0.125; // Start 3 octaves down
-            let octaveOffset = -3; // Track which octave we're in
-            while (baseNoteFreq * octaveMultiplier <= maxFreq) {
-                const freq = baseNoteFreq * octaveMultiplier;
-                if (freq >= minFreq && freq <= maxFreq) {
-                    // Absolute step = root's step + this note's offset from root + octave offset
-                    const absoluteStep = rootStep + relativeStep + (octaveOffset * 53);
-                    const noteName = get53TETNoteName(absoluteStep);
-                    allNotes.push({
-                        freq: freq,
-                        name: noteName,
-                        step: absoluteStep
-                    });
-                }
-                octaveMultiplier *= 2;
-                octaveOffset++;
-            }
-        }
-        
-        // Use the stored color
-        window.setKeyboardMappedScale(allNotes, currentScaleColor);
-    }
+    // The MS computer keyboard is the FIXED KL Lumatone 53-TET map
+    // (window.klNoteForKeyCode): every key is a fixed 53-TET note, chord-independent,
+    // no scale imposed. Nothing to update per chord — kept as a no-op for the caller.
 }
 
 // Update MIDI Piano scale separately (so x2 buttons don't affect it)
@@ -333,48 +271,23 @@ function updateMidiPianoScale(chordFreqs) {
     }
 }
 
-// Octave shift multiplier (0 = normal, -1 = down octave, +1 = up octave)
-let octaveShift = 0;
-
-// Shift octave up or down
-function shiftOctave(direction) {
-    octaveShift += direction;
-    octaveShift = Math.max(-2, Math.min(2, octaveShift)); // Limit to ±2 octaves
-    // console.log(`Octave shift: ${octaveShift > 0 ? '+' : ''}${octaveShift}`);
-}
-
-// Play single note from keyboard
-function playKeyboardNote(key) {
-    const baseFreq = currentKeyboardMap[key];
-
-    if (!baseFreq) {
-        // console.log(`Key '${key}' not mapped`);
-        return;
-    }
-
-    // Apply octave shift
-    const freq = baseFreq * Math.pow(2, octaveShift);
-
-    // console.log(`Playing keyboard note: ${key} → ${freq.toFixed(2)} Hz (octave shift: ${octaveShift})`);
-
-    // Call the playNote function from test.js and track the note ID
+// Play a key's note. MS keyboard = the KL Lumatone 53-TET map: each physical key
+// (event.code) is a FIXED 53-TET note (window.klNoteForKeyCode), no scale imposed.
+function playKeyboardNote(code) {
+    if (typeof window.klNoteForKeyCode !== 'function') return false;
+    const note = window.klNoteForKeyCode(code);
+    if (!note) return false;
     if (typeof window.playNote === 'function') {
-        const noteId = window.playNote(freq);
-        // Store the note ID for this key so we can stop it on keyup
-        activeKeyNotes[key] = noteId;
-    } else {
-        // console.error('playNote function not found');
+        activeKeyNotes[code] = window.playNote(note.frequency);
     }
+    return true;
 }
 
-// Stop note when key is released
-function stopKeyboardNote(key) {
-    const noteId = activeKeyNotes[key];
-
-    if (noteId && window.midiController) {
-        window.midiController.stopSpecificNotes([noteId]);
-        delete activeKeyNotes[key];
-    }
+// Stop a key's note on release.
+function stopKeyboardNote(code) {
+    const noteId = activeKeyNotes[code];
+    if (noteId && window.midiController) window.midiController.stopSpecificNotes([noteId]);
+    delete activeKeyNotes[code];
 }
 
 // Keyboard event listener
@@ -423,46 +336,18 @@ document.addEventListener('keydown', (event) => {
         return;
     }
 
-    // Check for octave shift keys
-    // < = octave down
-    // > = octave up
-    if (key === '<') {
-        // console.log('[key_map] Octave shift DOWN');
+    // MS: the whole keyboard is the KL Lumatone 53-TET map. Each physical key is a
+    // fixed 53-TET note; pressing it plays that note (the Frequency Spectrum shows it).
+    if (playKeyboardNote(event.code)) {
         event.preventDefault();
-        shiftOctave(-1);
-        return;
-    }
-
-    if (key === '>') {
-        // console.log('[key_map] Octave shift UP');
-        event.preventDefault();
-        shiftOctave(1);
-        return;
-    }
-
-    // Check if this is one of our keyboard keys
-    const lowerKey = key.toLowerCase();
-    if (KEYBOARD_KEYS.includes(lowerKey)) {
-        // console.log(`[key_map] Playing note for key: ${lowerKey}`);
-        // Prevent default behavior
-        event.preventDefault();
-
-        // Play the note
-        playKeyboardNote(lowerKey);
-    } else {
-        // console.log(`[key_map] Key '${key}' not in KEYBOARD_KEYS`);
     }
 });
 
-// Keyup event listener to stop notes
+// Keyup — stop the note for that physical key.
 document.addEventListener('keyup', (event) => {
-    const key = event.key;
-    const lowerKey = key.toLowerCase();
-
-    // Stop note if this was one of our keyboard keys
-    if (KEYBOARD_KEYS.includes(lowerKey)) {
+    if (activeKeyNotes[event.code] !== undefined) {
         event.preventDefault();
-        stopKeyboardNote(lowerKey);
+        stopKeyboardNote(event.code);
     }
 });
 

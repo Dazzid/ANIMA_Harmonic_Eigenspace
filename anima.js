@@ -293,6 +293,42 @@ window.playChordFrequencies = function (freqs) {
     }
 };
 
+// midi_piano.js broadcasts the currently-held MIDI notes (exact Hz, in the active
+// scale's tuning) here on a global interval, in every scene. chord_visualization.js
+// (ES) defined the original — wrap it so the notes reach whichever Frequency Spectrum
+// is on screen: the ES ChordVisualization or the MS strip (§6.5). Keeps micro-tuning
+// (53-TET vs 12-TET) visible from the MIDI keyboard in BOTH scenes.
+const _esSetMIDIActiveNotes = window.setMIDIActiveNotes;
+window.setMIDIActiveNotes = function (notes) {
+    switch (currentScene) {
+        case Scenes.EIGENSPACE:
+            if (typeof _esSetMIDIActiveNotes === 'function') _esSetMIDIActiveNotes(notes);
+            break;
+        case Scenes.MODALSTUDIO:
+            if (window.app && window.app.msSpectrumInitialized) {
+                window.app.msSpectrum.setMIDIActiveNotes(notes);
+            }
+            break;
+    }
+};
+
+// key_map.js maps the WHOLE computer keyboard to the active scale's exact piano
+// frequencies and broadcasts those markers here. Route them scene-aware so the MS
+// Frequency Spectrum (§6.5) shows the mapped keys at their exact Hz, like ES.
+const _esSetKeyboardMappedScale = window.setKeyboardMappedScale;
+window.setKeyboardMappedScale = function (frequencies, color) {
+    switch (currentScene) {
+        case Scenes.EIGENSPACE:
+            if (typeof _esSetKeyboardMappedScale === 'function') _esSetKeyboardMappedScale(frequencies, color);
+            break;
+        case Scenes.MODALSTUDIO:
+            if (window.app && window.app.msSpectrumInitialized) {
+                window.app.msSpectrum.setKeyboardMappedScale(frequencies, color);
+            }
+            break;
+    }
+};
+
 window.captureChord = function (descriptor) {
     if (!descriptor || !Array.isArray(descriptor.frequencies) || descriptor.frequencies.length === 0) {
         return;

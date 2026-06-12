@@ -316,6 +316,44 @@ All buttons are canvas-drawn on the widget: **top row** `Drop2 / Drop3 / Drop2&4
 - `modal_studio_style.css`: `.editor-tabs` / `.editor-tab` / `.editor-tab.active` (segmented pill, `#2b2b2b` + amber `#ffc800`, Fira Code).
 - Scene `exit()` hides the tab strip; `updateEditorTabs` no-ops when not in MODALSTUDIO.
 
+### 6.5 MS Frequency Spectrum — 🚧 IN PROGRESS (Steps 1, 4–6 wired 2026-06-11; verify in-app)
+
+**Implementation notes (as built).** Component is `modal_studio_chord_visualization.js` (class `MSFrequencySpectrum`, named to mirror the ES `chord_visualization.js`), drawn on the shared MS canvas via `OfApp.draw(p)` (both sub-scenes), lazy-init'd once `fiftyThree` loads. Default region = bottom-docked, full-width (cap 1300px) × 250px, **4 octaves C2–C6** (`setOctaves(3|4)` to test). Feeds: grid/chord/audition playback → `setActiveFrequencies` (at the 3 live `playChord` sites); MIDI keyboard → `window.setMIDIActiveNotes` made **scene-aware in `anima.js`** (wraps the ES global); computer keyboard → `window.setKeyboardMappedScale` scene-aware (markers) + `app.playNote` → `spectrum.pulse(freq)` (transient bar, MS-scene-gated). Click-to-play reference tone via `mousePressed` → `freqAtX` (53-TET snap) → `window.playNote`. Hover tick (Step 7): `_drawHover` highlights the nearest 53-TET step under the cursor with its name + Hz (`noteAtX`). Chord bars now linger then fade (`barHoldMs` ≈2.6 s `until`); key/click pulses fade in ~220 ms.
+
+**Computer keyboard = the KL Lumatone 53-TET map (David's choice, point 4).** The MS keyboard is the SAME map ES and KL use: every physical key (`event.code`) is a FIXED 53-TET note via `window.klNoteForKeyCode(code)` (keyboard.js, the isomorphic Lumatone layout) — **no scale imposed**; a major scale only happens if you press the right keys. `key_map.js` keydown/keyup now call `playKeyboardNote(event.code)` / `stopKeyboardNote(event.code)` → `window.playNote(note.frequency)` (which pulses the spectrum). The old chord-scale 13-key mapping AND the earlier (mistaken) chromatic-piano attempt were both removed; `updateKeyboardMapping` is now a no-op (kept for its call site); `calculateDynamic12Notes` still feeds the MIDI piano. `noteData` loads at startup (`initKeyboardScene` on DOMContentLoaded), so the map works in MS without visiting KL. ⏳ Pending: confirm octave count by fit (`setOctaves(3|4)`); octave shift is fixed for now (mirrors ES).
+
+
+
+**Goal.** Bring the ES Frequency Spectrum into the **MS** scene, but **horizontal** and spanning **3–4 octaves** (final count decided by available space — test it). It shows micro-tuning the way ES does: the computer keyboard and a MIDI keyboard play **exact piano frequencies** (53-TET vs 12-TET drift is visible), and **chords played on the grid are drawn on it** too.
+
+**What exists to mirror (`chord_visualization.js`, the ES spectrum).**
+- Class `ChordVisualization` — **vertical**, range **C3–C5** (2 oct), **its own p5 instance + DOM canvas** (320×640), and a **singleton** (`chordViz`).
+- Log map `freqToY(freq)` = `spectrumY + spectrumHeight·(1 − (ln f − ln min)/(ln max − ln min))` (high freq at top).
+- Draw layers: background → MIDI exact-freq markers (`drawMIDINotes`) → 12-TET note markers (`drawNoteMarkers`) → 53-TET ticks (`draw53TetTicks`) + hover → keyboard-mapped scale (`drawKeyboardMappedScale`) → root indicator → active frequency **bars** (`updateAndDrawActiveFrequencies`, animated by amplitude) → labels.
+- Fed by globals: `window.setChordVisualization(α,β,γ,baseFreq)`, `setRootVisualization(freq)`, `setKeyboardMappedScale(freqs,color)`, `setMIDIActiveNotes(notes)` (called from `midi_piano.js:485`).
+
+**Decisions (locked / to confirm).**
+- **Orientation = horizontal**: low freq **left**, high **right**; active notes become **vertical bars rising from a horizontal baseline**. New map `freqToX(freq)` = `spectrumX + spectrumWidth·(ln f − ln min)/(ln max − ln min)` (no Y-invert).
+- **Octave range is a tunable** (`minFreq`/`maxFreq`): start at **4 octaves** (e.g. C2 65.41 → C6 1046.5), fall back to 3 if the strip doesn't fit. This is the main thing to eyeball in-app.
+- **New component, drawn on the SHARED MS canvas — NOT a second p5 instance.** A standalone p5 would re-introduce the §4 "extra p5 leak" (its `mousePressed` fires on any window press). So build `modal_studio_Spectrum.js` (class `MSFrequencySpectrum`) that draws into `OfApp.draw(p)` in a region `{x,y,w,h}`, exactly like the editors/grid. Port the freq/53-TET/note-name math from `chord_visualization.js` (copy now; optional later: extract shared helpers so ES + MS share one source).
+- **Layout (to test):** full-width strip along the **bottom** of the MS canvas, height tunable; must not overlap the grid or the top-right editor slot.
+
+**Build checklist.**
+1. **Component skeleton** — `modal_studio_Spectrum.js` / `MSFrequencySpectrum`: `{x,y,w,h}`, `minFreq/maxFreq` (octave count), `freqToX`, and `draw(p)`. Loaded before `anima.js`; keep `index.html` + `anima.html` script lists identical (§7).
+2. **Render layers (horizontal port)** — background, 53-TET ticks, 12-TET note markers + labels, root indicator, hover. Reuse the note-name / `53_reference_notes.json` lookups already used elsewhere.
+3. **Mount in MS** — instantiate in `OfApp` setup; call `spectrum.draw(p)` in `draw(p)` for **both** the `grid` and `chord` sub-scenes, gated to `Scenes.MODALSTUDIO`; forward `mousePressed/mouseDragged/mouseReleased` from the app (like the editors). **Pick + tune the strip's region here** (the 3-vs-4-octave space test).
+4. **Feed — grid / chord playback** — at the MS play sites (`modal_studio_app.js`: grid `onChordSelected` ~`:445`, chord-scene select ~`:787`, and `auditionVoicing`) call `spectrum.setActiveFrequencies(frequencies)` so every played chord draws as bars (mirrors §5 audio routing).
+5. **Feed — MIDI keyboard** — `midi_piano.js` already broadcasts `window.setMIDIActiveNotes(notes)` to the ES singleton. Make it a **scene-aware router** (in `anima.js`, alongside `playChordFrequencies`) → dispatch to the **active** scene's spectrum, so MS shows incoming MIDI at exact frequency. ("Interactive with the MIDI keyboard.")
+6. **Feed — computer keyboard (entire keyboard → exact piano Hz)** — reuse `key_map.js` (`updateKeyboardMapping`, `:255`) / the full-keyboard mapping ES & KL use; when in MS, route played keys to `spectrum` (light the exact freq) **and** `window.playNote` (already the MS engine). Reveals the 53-TET vs 12-TET drift like ES.
+7. **Interaction** — click a position → play that 53-TET reference tone (mirror ES `setRootFrequency` + reference play) and highlight; hover tick under the cursor.
+8. **Verify** — choose 3 vs 4 octaves by fit; MIDI + computer keyboard light exact freqs (micro-tuning visible); grid chords visualize; no extra-p5 leak; no overlap with grid/editors; only active in MODALSTUDIO.
+
+**Watch-list.**
+- **No second p5 instance** — draw on the shared MS canvas (§4 leak rule). Route mouse via the scene contract, not a private `p.mousePressed`.
+- **Scene gating** — only draw/feed in MODALSTUDIO; the MIDI router must not also paint the ES spectrum when MS is active (and vice-versa).
+- **Range vs grid octaves** — grid voicings span rings −1…4 (wide); pick min/max so typical chord freqs land on-strip, and **clamp out-of-range bars** like ES `drawFrequencyBar` does instead of drawing off-widget.
+- **Reuse vs copy** — porting `chord_visualization.js` math by copy is fine to start; if it drifts from ES, factor the shared freq↔pixel / 53-TET / note-name helpers into one module.
+
 ## 7. Conventions
 
 - Plain script tags, **not** ES modules — globals are intentional; don't add a bundler casually.

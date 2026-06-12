@@ -32,6 +32,11 @@ class OfApp {
         this.referenceMap = new Map();
         this.modes = [];
 
+        // MS Frequency Spectrum (STRATEGY §6.5) — horizontal multi-octave strip,
+        // lazily created in draw() once the 53-TET reference notes are loaded.
+        this.msSpectrum = null;
+        this.msSpectrumInitialized = false;
+
         // Constants from C++ ofApp.h lines 100-115
         this.SCALE_SIZE = 7;
         this.size_x = 100;
@@ -139,6 +144,7 @@ class OfApp {
             window.midiController.playChord(frequencies, 5);
         }
         if (this.audioEngine) this.audioEngine.playChord(frequencies);
+        if (this.msSpectrumInitialized) this.msSpectrum.setActiveFrequencies(frequencies);
     }
 
     // Play a single note (for MIDI Piano input)
@@ -151,6 +157,12 @@ class OfApp {
 
         // Play audio (audioEngine.playNote checks mute state internally)
         this.audioEngine.playNote(frequency);
+
+        // Light the note on the MS Frequency Spectrum (§6.5) at its exact Hz — this is
+        // the computer keyboard (key_map.js → window.playNote) and spectrum clicks.
+        if (this.msSpectrumInitialized && currentScene === Scenes.MODALSTUDIO) {
+            this.msSpectrum.pulse(frequency);
+        }
 
         return noteId;
     }
@@ -469,6 +481,7 @@ class OfApp {
                     }
 
                     this.audioEngine.playChord(frequencies);
+                    if (this.msSpectrumInitialized) this.msSpectrum.setActiveFrequencies(frequencies);
                     this.captureChordToMemory(frequencies, chord.getChordQuality ? chord.getChordQuality() : null, chord.getColor ? chord.getColor() : null);
                     //console.log('▶ Playing grid chord:', frequencies.length, 'notes');
                 };
@@ -560,6 +573,19 @@ class OfApp {
 
             // Draw the active editor (Scale ⇄ Voicing share one slot, §6.4)
             this.drawActiveEditor(p);
+        }
+
+        // MS Frequency Spectrum (§6.5) — drawn on the shared canvas in BOTH sub-scenes.
+        // Lazy-init once the 53-TET reference notes are loaded.
+        if (!this.msSpectrumInitialized && this.fiftyThree.length > 0 &&
+            typeof MSFrequencySpectrum !== 'undefined') {
+            this.msSpectrum = new MSFrequencySpectrum();
+            this.msSpectrum.setup(this.fiftyThree);
+            this.msSpectrumInitialized = true;
+        }
+        if (this.msSpectrumInitialized) {
+            this.msSpectrum.layout(p);
+            this.msSpectrum.draw(p);
         }
     }
 
@@ -735,7 +761,13 @@ class OfApp {
         if (currentScene !== Scenes.MODALSTUDIO) {
             return; // Block all Modal Studio mouse events when in EigenSpace
         }
-        
+
+        // MS Frequency Spectrum (§6.5): a click on the strip plays that 53-TET
+        // reference tone and sets the root. Only captures clicks inside the strip.
+        if (this.msSpectrumInitialized && this.msSpectrum.mousePressed(mouseX, mouseY)) {
+            return;
+        }
+
         if (this.currentScene === 'chord') {
             // §6.4: only the ACTIVE editor (Scale or Voicing) receives events.
             let voicingEditorHandled = false;
@@ -811,6 +843,7 @@ class OfApp {
 
                                 // Play chord
                                 this.audioEngine.playChord(frequencies);
+                                if (this.msSpectrumInitialized) this.msSpectrum.setActiveFrequencies(frequencies);
                                 this.captureChordToMemory(frequencies, chord.getChordQuality ? chord.getChordQuality() : null, chord.getColor ? chord.getColor() : null);
 
                                 // C++ ofApp.cpp lines 34-35: Send chord to VoicingEditor
