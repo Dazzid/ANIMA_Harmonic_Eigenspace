@@ -63,19 +63,20 @@ class Chord {
             name: '' // Full chord name (e.g., "Cmaj7")
         };
         
-        // Voicing arrays (1-indexed scale positions). The deep sub-bass notes (orig.
-        // positions 1 = C0 and 7/8 = B0/C1) were 2–3 octaves below the cluster — absurd
-        // for a chord root. Each has been raised one octave (≤8 → +7, deduped) so the
-        // bass sits just below the cluster (root ≈ C2/C3) while the cluster is untouched.
-        // (Originals: v1 [8,17,19,21,22] v2 [8,14,17,19,22] v3 [8,14,17,19,21]
-        //  v4 [8,12,14,17,19,21] v5 [1,8,12,14,17,19] v6 [1,7,12,14,17,19] v7 [1,7,10,12,14,17])
-        this.voicing_1 = [15, 17, 19, 21, 22];
-        this.voicing_2 = [14, 15, 17, 19, 22];
-        this.voicing_3 = [14, 15, 17, 19, 21];
-        this.voicing_4 = [12, 14, 15, 17, 19, 21];
-        this.voicing_5 = [8, 12, 14, 15, 17, 19];
-        this.voicing_6 = [8, 12, 14, 17, 19, 21];
-        this.voicing_7 = [8, 10, 12, 14, 17, 21];
+        // Voicing arrays (1-indexed positions into the chord's own scale stack, so
+        // 1/8/15 = the chord ROOT at C0/C1/C2 register and anything else is another
+        // degree — the bass position must stay ≡ 1 (mod 7) or the chord gets the
+        // wrong root in the bass (e.g. Dm7 over C). Only v1's bass was raised an
+        // octave (8 → 15, C1 → C2) to close the gap to its cluster; v2–v7 keep the
+        // original C++ formation, where the bass is already just below the cluster
+        // (v2–v4) or an intentional deep doubled-root form (v5–v7).
+        this.voicing_1 = [15, 17, 19, 21, 22]; // orig [8,17,19,21,22]
+        this.voicing_2 = [8, 14, 17, 19, 22];
+        this.voicing_3 = [8, 14, 17, 19, 21];
+        this.voicing_4 = [8, 12, 14, 17, 19, 21];
+        this.voicing_5 = [1, 8, 12, 14, 17, 19];
+        this.voicing_6 = [1, 7, 12, 14, 17, 19];
+        this.voicing_7 = [1, 7, 10, 12, 14, 17];
         
         // C++ Chord.hpp line 192 - potential positions for 9th in upper register
         this.upperNinth = [23, 27];
