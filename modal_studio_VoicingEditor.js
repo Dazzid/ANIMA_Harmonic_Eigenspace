@@ -110,6 +110,7 @@ class VoicingEditor {
         this.onTranspose = null; // app hook: shift the chord's notes/root by N commas (keeps the name right)
         this.onSelectVoicing = null; // app hook: apply the chord's built-in voicing(n) preset + reload
         this.onWheelTick = null; // app hook: detent "tick" sound, fired per grip line passed (2 per comma)
+        this.onOverColumnOff = null; // app hook: toggle turned OFF → grid drops the propagated column voicings
         // "Over Column" toggle: when ON and a ROW-0 grid chord is being edited,
         // every edit (transpose, 9/11/13, octave, drag, preset) replicates down
         // the chord's column (the modal-interchange rows). Read by the app when
@@ -575,7 +576,10 @@ class VoicingEditor {
         if (deltaSteps === 0) return true;
         for (const v of this.currentVoicing) {
             const t = v.absoluteTET + deltaSteps;
-            if (t < this.WHEEL_MIN_TET || t > this.WHEEL_MAX_TET) return false; // would leave C0…C5
+            // Block only in the direction of travel, so a note that's somehow
+            // already outside C0…C5 (octave stepper) can still rotate back IN.
+            if (deltaSteps > 0 && t > this.WHEEL_MAX_TET) return false;
+            if (deltaSteps < 0 && t < this.WHEEL_MIN_TET) return false;
         }
         for (const v of this.currentVoicing) {
             v.absoluteTET += deltaSteps;
@@ -1680,13 +1684,17 @@ class VoicingEditor {
         }
 
         // Toolbar — "Over Column" toggle → replicate row-0 edits down the grid
-        // column. Turning it ON re-notifies the current voicing (silently) so the
-        // column syncs immediately, not just on the next edit.
+        // column. ON: re-notify the current voicing (silently) so the column
+        // syncs immediately, not just on the next edit. OFF: tell the grid to
+        // drop the propagated voicings — they'd otherwise stick forever, because
+        // setChordQuality preserves any existing voicing across interchange
+        // recalcs (hadVoicing).
         if (this._overColBtn) {
             const b = this._overColBtn;
             if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
                 this.overColumn = !this.overColumn;
                 if (this.overColumn) this.notifyVoicingChanged(false);
+                else if (this.onOverColumnOff) this.onOverColumnOff();
                 return true;
             }
         }
@@ -1774,16 +1782,31 @@ class VoicingEditor {
             this.wheelAccumAngle += d;
             this.wheelPrevAngle = cur;
             // clockwise (increasing screen angle) = transpose UP
-            const targetSteps = Math.round(this.wheelAccumAngle / (TWO_PI / this.TOTAL_STEPS));
+            const stepAngle = TWO_PI / this.TOTAL_STEPS;
+            const targetSteps = Math.round(this.wheelAccumAngle / stepAngle);
             const increment = targetSteps - this.wheelAppliedSteps;
-            if (increment !== 0 && this.applyWheelTranspose(increment)) {
-                this.wheelAppliedSteps = targetSteps;
+            if (increment !== 0) {
+                // One comma at a time, so a fast spin lands exactly ON the
+                // C0…C5 limit instead of rejecting the whole multi-step jump.
+                const dir = increment > 0 ? 1 : -1;
+                for (let k = Math.abs(increment); k > 0; k--) {
+                    if (this.applyWheelTranspose(dir)) {
+                        this.wheelAppliedSteps += dir;
+                    } else {
+                        // HARD STOP at the range limit: pin the accumulated angle
+                        // just shy of the next detent so the band and the ticks
+                        // freeze WITH the pitch, and reversing re-engages after
+                        // one detent of travel — no overshoot to unwind.
+                        this.wheelAccumAngle = (this.wheelAppliedSteps + dir * 0.49) * stepAngle;
+                        break;
+                    }
+                }
             }
             // Detent ticks track the VISUAL grip lines: the band draws 106 of
             // them (drawWheel's N = 2 per comma), so it feels like two clicks
-            // per note change. Tied to the accumulated angle, not the applied
-            // steps — the band keeps rotating (lines keep passing) even when
-            // the transpose is blocked at the ring boundary.
+            // per note change. Tied to the accumulated angle, which the hard
+            // stop above pins at the boundary — band, ticks and pitch all
+            // freeze together there.
             const tickDetent = TWO_PI / (2 * this.TOTAL_STEPS);
             const tickTarget = Math.round(this.wheelAccumAngle / tickDetent);
             if (tickTarget !== this.wheelTickCount) {

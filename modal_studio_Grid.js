@@ -253,11 +253,17 @@ class Grid {
             // Update progression if row 0
             if (this.selectedCellRow === 0) {
                 this.chordProgression[this.selectedCellCol] = cell;
-                // C++ ALWAYS recalculates modal interchange after voicing change in row 0
-                this.calculateModalInterchange();
-                // The recalc above rebuilt rows 1-7 with their default template
-                // voicings, so propagation must run AFTER it, every time.
+                // A row-0 VOICING edit only touches rows 1-7 when "Over Column"
+                // is ON. (The C++ port recalculated the interchange on every
+                // voicing change, but with the editor's richer edits — transpose,
+                // drags — that recalc itself rewrites the column: the tonic
+                // "preserve" branches copy the parent's CURRENT notes. Chord
+                // IDENTITY changes — drops, inversions — recalc via their own
+                // paths, not here.)
                 if (overColumn) {
+                    // Recalc rebuilds rows 1-7 with default template voicings,
+                    // so propagation must run AFTER it, every time.
+                    this.calculateModalInterchange();
                     this.propagateVoicingDownColumn(this.selectedCellCol);
                 }
             }
@@ -755,6 +761,9 @@ class Grid {
         const pStack = parent.getNotes();
         const pVoicing = parent.getNoteVoicing();
         if (!pStack || pStack.length === 0 || !pVoicing || pVoicing.length === 0) return;
+        // Remember where we propagated, so turning the toggle OFF can undo it
+        // (several columns can accumulate while the toggle stays ON).
+        (this._propagatedCols ||= new Set()).add(col);
         const pRoot = parent.root_53 ? parent.root_53.ft_note : pStack[0].ft_note;
         const offset = parent._transposeOff || 0;
 
@@ -796,6 +805,25 @@ class Grid {
             chord.setChordQualityFromVoicing(positions);
             cell.colorCode = chord.getColor();
         }
+    }
+
+    // Turning "Over Column" OFF: the propagated shapes would otherwise STICK —
+    // setChordQuality() preserves any existing noteVoicing (hadVoicing), so the
+    // interchange recalc never regenerates defaults on its own. Drop the voicing
+    // (and 9/11/13 tags) of every column we propagated into, then recalc once:
+    // the now-empty noteVoicing makes each chord fall back to its own template.
+    // Direct edits made to column cells AFTER this keep persisting as before.
+    resetPropagatedColumns() {
+        if (!this._propagatedCols || this._propagatedCols.size === 0) return;
+        for (const col of this._propagatedCols) {
+            for (let row = 1; row < 8; row++) {
+                const cell = this.cells[row * 8 + col];
+                cell.chord.noteVoicing = [];
+                cell.chord.extTags = {};
+            }
+        }
+        this._propagatedCols.clear();
+        this.calculateModalInterchange();
     }
 
     // Parallel mode substitution (C++ Grid.cpp lines 310-434)
@@ -908,8 +936,11 @@ class Grid {
             else if (parentId === 1 && this.parentModes[col].length > 0 && globalInversion === 0) {
                 // Handle tonic chords (function I) - C++ line 396
                 if (this.isRootPosition(col)) {
-                    // Preserve original quality for first and last tonic chords
-                    const refScale = parentCell.chord.getNotes();
+                    // Preserve original quality for first and last tonic chords —
+                    // anchored on the AS-DROPPED snapshot, not the live notes:
+                    // Voicing-Editor edits on the parent (wheel transpose) must not
+                    // leak into the column unless "Over Column" propagates them.
+                    const refScale = parentCell.chord.droppedNotes || parentCell.chord.getNotes();
                     if (refScale.length > 0) {
                         targetCell.chord.setNotes(refScale);
                         targetCell.chord.setGlobalInversion(globalInversion);
@@ -1017,7 +1048,8 @@ class Grid {
             if (col === 0) {
                 // Preserve the first chord with function 1 and its inversion
                 if (parentId === 0) { // Function 1 (tonic)
-                    targetCell.chord.setNotes(parentCell.chord.getNotes());
+                    // As-dropped snapshot — see modeSubstitution's preserve branch.
+                    targetCell.chord.setNotes(parentCell.chord.droppedNotes || parentCell.chord.getNotes());
                     targetCell.chord.setGlobalInversion(globalInversion);
                     targetCell.chord.setChordQuality();
                     // Update cell colorCode for rendering (setChordQuality calculates color)
@@ -1053,8 +1085,9 @@ class Grid {
             } else {
                 // Handle root position chords
                 if (this.isRootPosition(col)) {
-                    // Preserve tonality for important positions
-                    targetCell.chord.setNotes(parentCell.chord.getNotes());
+                    // Preserve tonality for important positions (as-dropped snapshot —
+                    // see modeSubstitution's preserve branch).
+                    targetCell.chord.setNotes(parentCell.chord.droppedNotes || parentCell.chord.getNotes());
                     targetCell.chord.setGlobalInversion(globalInversion);
                     targetCell.chord.setChordQuality();
                     // Update cell colorCode for rendering
@@ -1185,6 +1218,12 @@ class Grid {
         // C++ Grid.cpp line 697: cells[id].chord = draggedChord (full object copy)
         // Copy ALL properties from source chord - direct assignment, not setNotes()
         cell.chord.notes = notesCopy;
+        // AS-DROPPED snapshot, read by the interchange "preserve" branches: they
+        // must anchor on the chord as it landed here, NOT on the live notes —
+        // otherwise Voicing-Editor edits (wheel transpose) leak into the column's
+        // NAMES on the next recalc even with "Over Column" off, while the cells'
+        // preserved voicings keep the old sound (name/sound mismatch).
+        cell.chord.droppedNotes = notesCopy.map(n => ({ ...n }));
         cell.chord.chordQuality.notes = notesCopy;
         cell.chord.noteVoicing = voicing ? [...voicing] : [];
         cell.chord.numVoicing = voicing ? voicing.length : 0;

@@ -379,6 +379,12 @@ class OfApp {
                     if (this.audioEngine) this.audioEngine.playTick();
                 };
 
+                // "Over Column" switched OFF → the grid drops the voicings it
+                // propagated (all columns touched while ON) back to defaults.
+                this.voicingEditor.onOverColumnOff = () => {
+                    if (this.gridInitialized) this.grid.resetPropagatedColumns();
+                };
+
                 // Voicing preset (Step 5): apply the chord's OWN built-in voicing
                 // template (musical), then reload the editor from it. type → which
                 // chord tone leads (0=root,2=7th,4=5th,6=3rd on top).
