@@ -102,6 +102,11 @@ class VoicingEditor {
         this.wheelAccumAngle = 0;
         this.wheelAppliedSteps = 0;
         this.wheelTickCount = 0; // detent-sound counter, in HALF-comma grip lines (106/turn)
+        // Hard pitch range for the wheel: no note may leave C0…C5. In the 53-TET
+        // reference table C0 = −40 (the app's starting_note), so C5 = −40 + 5·53.
+        // Tighter than the octave-ring clamp (−1…4 ≈ refs −53…264) on BOTH ends.
+        this.WHEEL_MIN_TET = -40;
+        this.WHEEL_MAX_TET = -40 + 5 * this.TOTAL_STEPS;
         this.onTranspose = null; // app hook: shift the chord's notes/root by N commas (keeps the name right)
         this.onSelectVoicing = null; // app hook: apply the chord's built-in voicing(n) preset + reload
         this.onWheelTick = null; // app hook: detent "tick" sound, fired per grip line passed (2 per comma)
@@ -562,14 +567,15 @@ class VoicingEditor {
     }
 
     // Re-root: transpose EVERY note by `deltaSteps` commas (chromatic, Step 4).
-    // Blocked (returns false) if any note would leave the rings (−1…4), so the
-    // wheel stops at the boundary. Shifts rootPitchClass + threads the chord's
-    // root via onTranspose BEFORE notify, so the name transposes correctly.
+    // Blocked (returns false) if any note would leave C0…C5, so the wheel stops
+    // at the boundary instead of running off into absurd registers. Shifts
+    // rootPitchClass + threads the chord's root via onTranspose BEFORE notify,
+    // so the name transposes correctly.
     applyWheelTranspose(deltaSteps) {
         if (deltaSteps === 0) return true;
         for (const v of this.currentVoicing) {
-            const oct = this.getOctave(v.absoluteTET + deltaSteps);
-            if (oct < -1 || oct > 4) return false; // would leave the rings
+            const t = v.absoluteTET + deltaSteps;
+            if (t < this.WHEEL_MIN_TET || t > this.WHEEL_MAX_TET) return false; // would leave C0…C5
         }
         for (const v of this.currentVoicing) {
             v.absoluteTET += deltaSteps;
@@ -1541,7 +1547,7 @@ class VoicingEditor {
 
         p.noFill();
         if (active) p.stroke(...this.selectedNodeColor, 230); else p.stroke(150, 150, 150, 140);
-        p.strokeWeight(active ? 3 : 1);
+        p.strokeWeight(active ? 2 : 1);
         // p.circle(cx, cy, mid * 2);
 
         // grip ticks around the band
@@ -1551,7 +1557,7 @@ class VoicingEditor {
         p.rotate(this.wheelAccumAngle);
 
         if (active) p.stroke(...this.selectedNodeColor, 250);
-        else if (hover) p.stroke(...this.selectedNodeColor, 200);
+        else if (hover) p.stroke(...this.selectedNodeColor, 250);
         else p.stroke(150, 150, 150, 180);
         const N = 106;
         for (let i = 0; i < N; i++) {
