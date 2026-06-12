@@ -627,7 +627,7 @@ body.scene-modalstudio #eigenspace-app * {
     /* Position to the left of info button */
     background: rgba(0, 111, 229, 0.8);
     border: none;
-    color: white;
+    color: rgb(20, 20, 20);
     padding: 7px 20px;
     font-size: 12px;
     font-family: 'Fira Code', monospace;
@@ -657,7 +657,7 @@ body.scene-modalstudio #eigenspace-app * {
     left: 50%;
     transform: translate(-50%, -50%) scale(0.9);
     width: 400px;
-    background: rgba(23, 23, 23, 0.98);
+    background: rgba(240, 240, 240, 0.98);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);

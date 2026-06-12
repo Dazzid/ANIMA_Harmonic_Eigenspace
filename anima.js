@@ -463,8 +463,15 @@ const sketch = (p) => {
                 }
             }
 
-            if (typeof MIDIPianoHandler !== 'undefined') {
-                window.midiPianoHandler = new MIDIPianoHandler();
+            // Start the MIDI Piano once at launch (the handler instance comes
+            // from midi_piano.js module scope): initialize() runs a ONE-TIME
+            // input check and auto-enables when a keyboard is already connected
+            // — no trip to MIDI Settings just to click "Enabled". Guarded on the
+            // controller's midiAccess so this never fires its own browser
+            // permission prompt; without it, the panel-open path still works.
+            if (window.midiPianoHandler && !window.midiPianoHandler.midiAccess
+                && window.midiController && window.midiController.midiAccess) {
+                window.midiPianoHandler.initialize();
             }
         }, 400);
         

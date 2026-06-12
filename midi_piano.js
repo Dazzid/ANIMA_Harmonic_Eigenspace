@@ -169,10 +169,29 @@ class MidiPianoHandler {
         // Setup listeners for all MIDI inputs
         this.setupInputListeners();
 
-        this.isEnabled = false; // Start disabled, user can enable via button
-        console.log('MIDI Piano: Ready to receive input');
+        // ONE-TIME startup check (nothing watches for later plug-ins): if a
+        // usable keyboard input is already connected, start ENABLED — no trip
+        // to MIDI Settings just to click the button. A keyboard connected
+        // after startup is enabled manually, as before.
+        this.isEnabled = this.hasUsableInput();
+        console.log(this.isEnabled
+            ? 'MIDI Piano: keyboard detected → auto-enabled'
+            : 'MIDI Piano: Ready to receive input (disabled)');
 
         return true;
+    }
+
+    // A "usable" input is anything that isn't the selected output's loopback
+    // or a Launchpad — the same skip rules as setupInputListeners().
+    hasUsableInput() {
+        if (!this.midiAccess) return false;
+        const outputDeviceName = window.midiController?.selectedOutput?.name;
+        for (const input of this.midiAccess.inputs.values()) {
+            if (outputDeviceName && input.name === outputDeviceName) continue;
+            if (input.name && /launchpad/i.test(input.name)) continue;
+            return true;
+        }
+        return false;
     }
 
     // List all available MIDI input devices
@@ -559,9 +578,11 @@ function setupMidiPianoUI(isInitialized) {
         console.log('MIDI Piano: Event listener already exists, skipping');
     }
 
-    // Set initial state (disabled by default)
-    toggleBtn.textContent = 'MIDI Piano: Disabled';
-    toggleBtn.classList.add('disabled');
+    // Initial state mirrors the handler (auto-enabled at startup when a
+    // keyboard was already connected), not a hardcoded "Disabled".
+    const enabled = window.midiPianoHandler.isEnabled;
+    toggleBtn.textContent = enabled ? 'MIDI Piano: Enabled' : 'MIDI Piano: Disabled';
+    toggleBtn.classList.toggle('disabled', !enabled);
     toggleBtn.disabled = false;
 
     console.log('MIDI Piano: UI button ready');
