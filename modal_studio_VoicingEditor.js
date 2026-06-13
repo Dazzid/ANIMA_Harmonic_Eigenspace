@@ -596,6 +596,20 @@ class VoicingEditor {
         return true;
     }
 
+    // Clear back to the empty placeholder ("Click a chord to edit its voicing").
+    // Used when the grid is wiped (Clean button) so the wheel doesn't keep showing
+    // a chord that no longer exists. draw() falls back to drawEmptyPlaceholder()
+    // whenever isChordClicked is false / the voicing is empty.
+    clearChord() {
+        this.isChordClicked = false;
+        this.currentVoicing = [];
+        this.originalVoicing = [];
+        this.chordComponents = [];
+        this._notes = null;
+        this.selectedNoteId = -1;
+        this.hideMenuDom(); // drop the voicing-preset dropdown immediately
+    }
+
     // Reset (Step 8): restore the chord's default (as-loaded) voicing — drops every
     // edit (extensions, drags, drops, transpose) back to where the chord started.
     resetVoicing() {

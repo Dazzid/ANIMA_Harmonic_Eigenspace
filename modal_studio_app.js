@@ -58,7 +58,7 @@ class OfApp {
 
         this.MODE_NAMES = ['Ionian', 'Dorian', 'Phrygian', 'Lydian', 'Mixolydian', 'Aeolian', 'Locrian'];
 
-        this.scaleEditorY = 10;
+        this.scaleEditorY = 0;
         this.scaleEditorX = 0;
 
         // Audio engine
@@ -264,11 +264,12 @@ class OfApp {
         if (!this.scaleEditorInitialized && this.fiftyThree.length > 0) {
             const radius = this.scaleEditor.outerRingSize;
             const initialNodes = 7;
-            // Position Scale Editor: 10px from top and right borders
+            // Position Scale Editor: flush to the top and right borders
+            // (scaleEditorY = 0; right edge at canvasWidth - frameWidth).
             // Frame width = 2 * (radius * scaleEditor.factorSize)
             const frameWidth = 2 * (radius * this.scaleEditor.factorSize);
             const canvasWidth = this.p.width; // Use canvas width instead of window width
-            this.scaleEditorX = Math.max(10, canvasWidth - frameWidth - 24);
+            this.scaleEditorX = Math.max(0, canvasWidth - frameWidth);
 
             const topLeft = { x: this.scaleEditorX, y: this.scaleEditorY };
 
@@ -421,6 +422,15 @@ class OfApp {
                     if (this.gridInitialized) {
                         this.grid.cleanAllChords();
                     }
+                    // Clean wipes every chord, so the Voicing Editor's loaded chord
+                    // no longer exists — drop it back to the empty placeholder and
+                    // forget the selection so a later voicing edit can't target a
+                    // wiped cell.
+                    if (this.voicingEditorInitialized) {
+                        this.voicingEditor.clearChord();
+                    }
+                    this.selectedChord = null;
+                    this.selectedMode = null;
                 };
 
                 this.draggingChordsInitialized = true;
@@ -621,7 +631,7 @@ class OfApp {
             const radius = this.scaleEditor.outerRingSize;
             const frameWidth = 2 * (radius * this.scaleEditor.factorSize);
             const canvasWidth = p.width;
-            this.scaleEditorX = Math.max(10, canvasWidth - frameWidth - 24);
+            this.scaleEditorX = Math.max(0, canvasWidth - frameWidth);
 
             // Update Scale Editor center position
             const outerRadius = radius * this.scaleEditor.factorSize;

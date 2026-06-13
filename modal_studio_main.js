@@ -269,6 +269,15 @@ class OfApp {
                     if (this.gridInitialized) {
                         this.grid.cleanAllChords();
                     }
+                    // Clean wipes every chord, so the Voicing Editor's loaded chord
+                    // no longer exists — drop it back to the empty placeholder and
+                    // forget the selection so a later voicing edit can't target a
+                    // wiped cell.
+                    if (this.voicingEditorInitialized) {
+                        this.voicingEditor.clearChord();
+                    }
+                    this.selectedChord = null;
+                    this.selectedMode = null;
                 };
                 
                 this.draggingChordsInitialized = true;

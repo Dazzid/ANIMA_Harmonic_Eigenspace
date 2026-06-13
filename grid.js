@@ -29,6 +29,9 @@ let gridMuted = false; // Grid mute state
 let gridDragging = false;
 let gridDragOffset = { x: 0, y: 0 };
 // p5.js sketch in instance mode
+const canvasWidth = 490;
+const canvasHeight = 525;
+
 const createGridSketch = (p) => {
     let chordGrid;
     // Gated by the active scene (see EigenspaceScene.activateComponents). This p5
@@ -37,8 +40,6 @@ const createGridSketch = (p) => {
     let eventsEnabled = true;
     p.setup = function () {
         // Create canvas for grid
-        canvasWidth = 500;
-        canvasHeight = 520;
         const canvas = p.createCanvas(canvasWidth, canvasHeight);
         canvas.parent('grid-container');
         // Initialize grid
@@ -66,7 +67,7 @@ const createGridSketch = (p) => {
         constructor(p5Instance) {
             this.p = p5Instance;
             this.gridSize = 8; // 8x8 grid
-            this.cellSize = 50; // 50x50 pixels
+            this.cellSize = 55; // 52x52 pixels
             this.cellPadding = 2; // Space between cells
             this.cornerRadius = 5; // Rounded corners
             this.visible = true; // Visible by default when grid is shown
@@ -75,7 +76,7 @@ const createGridSketch = (p) => {
             this.totalHeight = (this.cellSize + this.cellPadding) * this.gridSize;
             // Position within canvas (centered)
             this.x = (canvasWidth - this.totalWidth) / 2;
-            this.y = 50; // Below title
+            this.y = 44; // Below title
             // Top-right control buttons (close + mute). Close sits in the corner;
             // mute sits immediately to its left.
             this.buttonSize = 24;
@@ -97,11 +98,12 @@ const createGridSketch = (p) => {
             // exactly like the user is clicking with the mouse.
             this._lpPressed = null;
             // Colors
-            this.emptyColor = [50, 50, 50];
+            this.backgroundColor = [210, 210, 210, 200];
+            this.emptyColor = [50, 50, 50, 50];
             this.filledColor = [0, 111, 229];
             this.hoverColor = [0, 150, 255];
             this.waitingColor = [255, 183, 0];
-            this.textColor = [255, 255, 255];
+            this.textColor = [20, 20, 20];
             this.isClicked = [255, 160, 0];
             this.clicked = false;
             console.log('ChordMemoryGrid initialized');
@@ -109,15 +111,20 @@ const createGridSketch = (p) => {
         draw(p) {
             p.push();
             // Draw background panel
-            p.fill(20, 20, 20, 200);
+            p.fill(...this.backgroundColor);
             p.noStroke();
             p.rect(this.x - 10, this.y - 40, this.totalWidth + 20, this.totalHeight + 50, 10);
             // Draw title
-            p.fill(255);
+            p.fill(...this.textColor);
             p.textAlign(p.CENTER);
             p.textSize(14);
             p.textFont('Fira Code');
             p.text('Chord Memory', this.x + this.totalWidth / 2, this.y - 20);
+
+            // p.noFill();
+            // p.stroke(255, 255, 255, 250);
+            // p.strokeWeight(1);
+            // p.rect(0, 0, canvasWidth, canvasHeight);
 
             // Draw close + mute buttons at top-right corner
             this.drawMuteButton(p);
@@ -139,7 +146,7 @@ const createGridSketch = (p) => {
             } else {
                 p.message = 'Clean a cell with shift + click';
             }
-            p.text(p.message, this.x + this.totalWidth / 2, this.y + this.totalHeight + 20);
+            p.text(p.message, this.x + this.totalWidth / 2, this.y + this.totalHeight + 16);
             p.pop();
 
             // Cursor affordance: show a move cursor over the draggable header.
@@ -239,16 +246,18 @@ const createGridSketch = (p) => {
                 p.fill(textColor);
                 p.textAlign(p.CENTER, p.CENTER);
                 p.textFont('Fira Code');
-                
+
+                const cx = x + this.cellSize / 2;
+
                 // Display root note on top. Prefer the real 53-TET name (resolver
                 // loaded by eigenspace.js); fall back to the 12-TET approximation.
                 const rootHz = chord.root || 220.0;
                 const rootNote = (typeof window.freqToNoteName53 === 'function' && window.freqToNoteName53(rootHz))
                     || this.frequencyToNoteName(rootHz);
                 p.textSize(11);
-                p.text(rootNote, x + this.cellSize / 2, y + this.cellSize / 2 - 8);
-                
-                // Display chord quality below (chord name or node number)
+                p.text(rootNote, cx, y + this.cellSize * 0.30);
+
+                // Display chord quality below (chord name or node number).
                 // No chord name → show nothing on the quality line (e.g. a single
                 // note has no chord quality). Only the root note shows on top.
                 let quality;
@@ -259,8 +268,28 @@ const createGridSketch = (p) => {
                 } else {
                     quality = '';
                 }
-                p.textSize(11);
-                if (quality) p.text(quality, x + this.cellSize / 2, y + this.cellSize / 2 + 8);
+                if (quality) {
+                    // Long quality names (min7b5, maj7#11, …) overflow a single
+                    // line, so wrap to fit the cell width — shrinking the font and
+                    // allowing extra lines only when wrapping isn't enough.
+                    const maxW = this.cellSize - 6;
+                    let qSize = quality.length > 7 ? 9 : 10;
+                    p.textSize(qSize);
+                    let lines = this.wrapTextToWidth(p, quality, maxW);
+                    if (lines.length > 2) {
+                        qSize = 8;
+                        p.textSize(qSize);
+                        lines = this.wrapTextToWidth(p, quality, maxW);
+                    }
+                    lines = lines.slice(0, 3);
+                    // Vertically center the wrapped block in the lower cell area.
+                    const lineH = qSize + 2;
+                    const centerY = y + this.cellSize * 0.64;
+                    const startY = centerY - (lines.length - 1) * lineH / 2;
+                    for (let i = 0; i < lines.length; i++) {
+                        p.text(lines[i], cx, startY + i * lineH);
+                    }
+                }
             }
             // Draw border on hover
             if (isHovered) {
@@ -291,6 +320,25 @@ const createGridSketch = (p) => {
             }
         }
         
+        // Break a string into lines that each fit within maxWidth at the current
+        // textSize. Chord names have no spaces, so we wrap per-character (the
+        // caller sets textSize before calling so textWidth() is accurate).
+        wrapTextToWidth(p, text, maxWidth) {
+            const lines = [];
+            let cur = '';
+            for (const ch of text) {
+                const test = cur + ch;
+                if (cur.length > 0 && p.textWidth(test) > maxWidth) {
+                    lines.push(cur);
+                    cur = ch;
+                } else {
+                    cur = test;
+                }
+            }
+            if (cur.length > 0) lines.push(cur);
+            return lines;
+        }
+
         frequencyToNoteName(frequency) {
             // Convert frequency to note name using equal temperament
             // A4 = 440 Hz is the reference
