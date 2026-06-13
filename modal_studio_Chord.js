@@ -70,7 +70,7 @@ class Chord {
         // octave (8 → 15, C1 → C2) to close the gap to its cluster; v2–v7 keep the
         // original C++ formation, where the bass is already just below the cluster
         // (v2–v4) or an intentional deep doubled-root form (v5–v7).
-        this.voicing_1 = [15, 17, 19, 21, 22]; // orig [8,17,19,21,22]
+        this.voicing_1 = [8, 17, 19, 21, 22];
         this.voicing_2 = [8, 14, 17, 19, 22];
         this.voicing_3 = [8, 14, 17, 19, 21];
         this.voicing_4 = [8, 12, 14, 17, 19, 21];
