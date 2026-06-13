@@ -629,8 +629,8 @@ function setupGridContainer() {
     container.id = 'grid-container';
     container.style.cssText = `
         position: fixed;
-        top: 50%;
-        right: 220px;
+        top: 75%;
+        right: 28px;
         transform: translateY(-50%);
         /* Above Modal Studio's surface (#modalstudio-app z-index:1000) so the
            panel floats in every scene, but below the menu (~10048) so the menu
