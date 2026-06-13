@@ -49,7 +49,7 @@ class OfApp {
 
         //Modes positioning
         this.modeXStart = 10;
-        this.modeYOffset = 35;
+        this.modeYOffset = 10;
 
         // Colors from C++ ofApp.h lines 122-130
         this.darkBackground = [230, 229, 228]; // Changed from [26, 25, 24]
@@ -440,7 +440,7 @@ class OfApp {
             // C++ ofApp.cpp line 28: Initialize Grid
             if (!this.gridInitialized) {
                 const gridX = 10;
-                const gridY = 40; // Below dragging chords (70 + ~200 for dragging area)
+                const gridY = 10; // Below dragging chords (70 + ~200 for dragging area)
 
                 // Use interModel to generate initial scale
                 const scalePositions = this.accumulateIntervals(this.interModel, this.starting_note, this.numOctaves);
@@ -581,7 +581,7 @@ class OfApp {
         if (this.currentScene === 'chord') {
             // Draw Chord Scene
             p.fill(...this.textColor);
-            p.textSize(18);
+            p.textSize(15);
             p.noStroke();
             p.text('Modes Scene', 15, 20);
 
@@ -592,9 +592,9 @@ class OfApp {
             // Draw the active editor (Scale ⇄ Voicing share one slot, §6.4)
             this.drawActiveEditor(p);
         } else if (this.currentScene === 'grid') {
-            p.textSize(18);
-            p.noStroke();
-            p.text('Modal Interchange Studio', 15, 20);
+            // p.textSize(15);
+            // p.noStroke();
+            // p.text('Modal Interchange Studio', 15, 20);
             // Draw Grid Scene first (background layer)
             if (this.gridInitialized) {
                 this.grid.draw(p, p.mouseX, p.mouseY);

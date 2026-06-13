@@ -129,8 +129,9 @@ class DraggingChords {
         const currentMode = this.modes[0];
         const modeNotes = currentMode.scale;
         
-        // Create 8 chords (7 scale degrees + 1 for spacing/future use)
-        for (let col = 0; col < 8; col++) {
+        // Create 7 draggable chords, one per scale degree. (The old 8th column was
+        // the octave repeat of degree 1 — dropped; "Empty" now takes that slot.)
+        for (let col = 0; col < 7; col++) {
             const chord = new Chord();
             const xPosition = this.startX + (col * this.xOffset);
             const yPosition = this.startY;
@@ -155,9 +156,10 @@ class DraggingChords {
             this.chords.push(chord);
         }
         
-        // Create "Empty" chord (C++ DraggingChords.cpp lines 111-119)
+        // Create "Empty" chord (C++ DraggingChords.cpp lines 111-119). Sits in the
+        // freed 8th column (where the octave-repeat chord used to be).
         const emptyChord = new Chord();
-        emptyChord.pos = { x: this.startX, y: this.startY + this.yOffset + 1 };
+        emptyChord.pos = { x: this.startX + 7 * this.xOffset, y: this.startY };
         emptyChord.size = { x: this.dragSize.x, y: this.dragSize.y };
         emptyChord.rounded = this.round;
         emptyChord.setNotes([]); // Empty notes array
@@ -165,9 +167,10 @@ class DraggingChords {
         emptyChord.setInfo("Empty"); // Sets quality and chordFunction to "Empty"
         this.chords.push(emptyChord);
         
-        // Create "Clean" button (C++ DraggingChords.cpp lines 121-127)
+        // Create "Clean" button (C++ DraggingChords.cpp lines 121-127). Moves up
+        // into the row the "Empty" button used to occupy.
         const cleanChord = new Chord();
-        cleanChord.pos = { x: this.startX, y: this.startY + (this.yOffset + 1) * 2 };
+        cleanChord.pos = { x: this.startX, y: this.startY + this.yOffset + 1 };
         cleanChord.size = { x: this.dragSize.x, y: this.dragSize.y };
         cleanChord.rounded = this.round;
         cleanChord.setNotes([]); // Empty notes array
@@ -175,7 +178,7 @@ class DraggingChords {
         cleanChord.setInfo("Clean"); // Sets quality and chordFunction to "Clean"
         this.chords.push(cleanChord);
         
-        console.log(`✓ DraggingChords: Created ${this.chords.length} chords (8 scale + Empty + Clean)`);
+        console.log(`✓ DraggingChords: Created ${this.chords.length} chords (7 scale + Empty + Clean)`);
     }
     
     // C++ DraggingChords.cpp lines 133-149 - Define scale mode
