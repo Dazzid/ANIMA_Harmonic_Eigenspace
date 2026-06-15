@@ -75,7 +75,114 @@ Each scene implements the contract: `enter / exit / draw / mousePressed / mouseD
 | MS grid session API: `OfApp.getSession/applySession`, `Grid.serializeAll/restoreAll` | modal_studio_app.js, modal_studio_Grid.js | session |
 
 ## 6. Roadmap
-This space is reserved for implementation plans. 
+
+### 6.1 — 31-TET option in Modal Studio (planning)
+
+**Goal:** let MS operate in **31-TET** as an alternative to today's **53-TET**, with the
+Scale Editor, Voicing Editor, chord building, and chord *naming* all correct in the chosen
+temperament — selectable at runtime. KL and ES stay 53-TET this phase.
+
+#### Why it's bigger than "change a 53 to a 31"
+
+`53` is hardcoded ~120× across ~11 files, carrying **four different meanings** — each needs a
+different treatment:
+
+| Kind | What it is | Example sites | Treatment |
+|------|-----------|---------------|-----------|
+| **A. Tuning math** | `2^(s/53)`, `round(53·log2 r)`, octave `+53`, `% 53` | [key_map.js:37](key_map.js#L37), [modal_studio_KeyMap.js:32](modal_studio_KeyMap.js#L32), [modal_studio_Chord.js:578](modal_studio_Chord.js#L578) | Pure function of N → parameterize |
+| **B. Reference data** | per-step frequency + name + MIDI/bend table | `53_reference_notes.json` via [modal_studio_sketch.js:67](modal_studio_sketch.js#L67) | Generate a 31-TET sibling file |
+| **C. Interval semantics** | which step = which degree / chord quality | naming maps [modal_studio_Chord.js:304](modal_studio_Chord.js#L304); component ranges [modal_studio_VoicingEditor.js:455](modal_studio_VoicingEditor.js#L455); chromatic ranges [modal_studio_KeyMap.js:85](modal_studio_KeyMap.js#L85); generator `interModel` [modal_studio_main.js:47](modal_studio_main.js#L47) | **Hard part** — re-author per temperament |
+| **D. Editor geometry** | wheels draw 53 nodes; spectrum draws 53 ticks | `TOTAL_STEPS`/`STEPS_PER_OCTAVE` [modal_studio_ScaleEditor.js:39](modal_studio_ScaleEditor.js#L39), [modal_studio_VoicingEditor.js:45](modal_studio_VoicingEditor.js#L45) | Read N from active temperament |
+
+A and D are mechanical; B is generation; **C is musicology — most of the real work.**
+
+#### Core principle — one source of truth
+
+There is no temperament abstraction today; `53` is a literal everywhere. Introduce a
+**Temperament module** (`temperament.js`) holding a registry + active selection:
+
+```
+TEMPERAMENTS = { 53: Temperament53, 31: Temperament31 }
+activeTemperament = TEMPERAMENTS[53]   // default = today's behavior
+```
+
+Each `Temperament` is the single source of truth: `N`, `stepToRatio/ratioToStep`,
+`referenceNotes` (its JSON), `interModel` (53→`[9,9,4,9,9,9,4]`, 31→`[5,5,3,5,5,5,3]`),
+`chromaticRanges`, `componentRanges`, the third/fifth/seventh `qualityMaps`,
+`chordNameTable`, `landmarks` (P4/P5/M3/#11/M6/octave), `noteName(step)`. Every other file
+reads N and these tables from `activeTemperament` instead of writing `53`.
+
+#### 53 → 31 spec (the musicology)
+
+31-EDO is **meantone** (step ≈ 38.71¢ vs 53's ≈ 22.64¢) — coarser, so 53-TET's comma
+vocabulary collapses.
+
+| Interval | 53 | 31 | | Interval | 53 | 31 |
+|---|:--:|:--:|---|---|:--:|:--:|
+| m2 | ~4 | 3 | | tritone/#11 | 26–27 | 15–16 |
+| M2 | 9 | 5 | | P5 | 31 | 18 |
+| m3 | 14 | 8 | | m6 | 35 | 21 |
+| M3 | 17 | 10 | | M6 | 40 | 23 |
+| P4 | 22 | 13 | | m7 / M7 | 44 / 49 | 25 / 28 |
+| | | | | octave | 53 | 31 |
+
+- **Generator:** `interModel` → `[5,5,3,5,5,5,3]` (whole=5, diatonic semitone=3).
+- **Quality vocabulary shrinks:** 53 resolves ~11 thirds (subminor…supermajor); 31 ~5
+  (subminor 7, minor 8, neutral 9, major 10, supermajor 11). The combinatorial
+  `chordNameTable` must be **re-authored for the smaller 31 set** — biggest content task,
+  needs musical sign-off.
+- **Naming:** 31-EDO standard meantone notation (distinct #/b, 1-step diesis, half-sharps),
+  generated from a chain-of-fifths scheme (vs 53's up/down arrows).
+
+#### Phased plan (53-TET must never break)
+
+- **Phase 0 — Safety net:** snapshot 53-TET golden outputs (generated chromatic scale,
+  chord names, voicing component types) for a fixed scale/root set → regression oracle.
+- **Phase 1 — Parameterize math (A+D), still N=53:** stand up `temperament.js` with
+  `Temperament53`; replace literal `53` in A/D sites with `activeTemperament.N`. Pure
+  refactor — goldens must still pass.
+- **Phase 2 — Lift semantics (C) into `Temperament53`, still N=53:** move `interModel`,
+  ranges, quality maps, `chordNameTable` out of their files; call sites read from
+  `activeTemperament`. Verify goldens.
+- **Phase 3 — Author `Temperament31` (content):** generate `31_reference_notes.json` (same
+  schema + **same anchor pitch** so a root stays the same Hz across temperaments; recompute
+  MIDI+bend); define 31 note-naming; fill generator, ranges, quality maps, and the smaller
+  `chordNameTable`. Needs musical review.
+- **Phase 4 — Editor + spectrum geometry (D):** wheels/ticks render `activeTemperament.N`.
+- **Phase 5 — Toggle + state policy:** 53/31 selector in MS UI; decide reset-vs-convert on
+  switch (D1); tag persisted grid state ([session.js](session.js)) with its temperament.
+- **Phase 6 — Keyboard-input scope:** MS keyboard is today the KL Lumatone 53-TET map
+  ([key_map.js:256](key_map.js#L256)); decide whether 31 gets its own input map (D2).
+- **Phase 7 — E2E:** build major/minor/dom7/half-dim/aug/extended in both temperaments;
+  verify intervals, voicings, names, spectrum, audio.
+
+#### Decisions to confirm (shape the work)
+
+- **D1 — State on switch:** *reset* scales/voicings/grid (clean, recommended — cross-EDO
+  conversion is lossy) vs *convert* by nearest cents (keeps work, re-quantizes, can rename
+  chords).
+- **D2 — Input scope:** does 31 need its own playable key/Lumatone/MIDI map (Phase 6), or is
+  v1 chord/scale/voicing-only with live input staying 53 / gated in 31 mode?
+- **D3 — 31 notation glyphs:** standard meantone #/b + half-sharps, or reuse 53's up/down
+  arrows for visual consistency?
+- **D4 — Scope:** MS only; KL + ES stay 53-TET. They share [key_map.js](key_map.js), so
+  Phase 1 must keep their behavior unchanged (KL pins `activeTemperament = 53`).
+
+#### Risks
+
+- **Shared code:** [key_map.js](key_map.js) serves KL *and* MS — parameterizing must not
+  change KL. Watch for cross-scene singleton clashes on `activeTemperament`.
+- **Naming table drives the schedule:** Phases 1–2/4 are mechanical; Phase 3's
+  `chordNameTable` is bespoke musical content.
+- **State integers are temperament-relative:** every stored `ft_note`/`reference`/`root_53`
+  is meaningless without its N — tag persisted state or risk silent mis-tuning on reload.
+- **Regression surface:** without Phase 0 goldens the refactor can silently change 53 chord
+  names — build the oracle first.
+
+**First executable step:** Phase 0 + the skeleton of Phase 1 — stand up `temperament.js`
+with `Temperament53`, route the kind-A math through it, prove the 53 goldens are unchanged.
+Nothing user-visible changes, but "53 is everywhere" becomes "N is one place," which every
+later phase depends on.
 
 
 ---
