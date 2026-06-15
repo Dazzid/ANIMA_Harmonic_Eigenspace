@@ -885,7 +885,7 @@ function createReverbIR(ctx, duration, decay) {
 // chords sound consistent across scenes — see playSingleTone.
 const KL_HARMONICS  = [1, 2, 3, 4, 5, 6];
 const KL_AMPLITUDES = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
-const MAX_VOICES = 8;
+const MAX_VOICES = 24;
 const STEAL_FADE = 0.04; // seconds — fast fade applied to stolen voice
 let activeVoices = []; // { oscs:[osc...], noteGain, endTime }
 

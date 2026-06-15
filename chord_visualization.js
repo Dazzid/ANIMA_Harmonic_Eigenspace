@@ -455,19 +455,30 @@ class ChordVisualization {
             
             // Check if this voice is doubled
             const isDoubled = this.doublingFlags[labels[i].text];
-            
+
+            // Hover detection (must match the hit-test in handleMouseClick)
+            const isHovered = p.mouseX >= buttonX && p.mouseX <= buttonX + buttonW &&
+                              p.mouseY >= buttonY && p.mouseY <= buttonY + buttonH;
+
             // Button background
             if (isDoubled) {
                 // Use the corresponding axis color when active
                 p.noStroke();
                 p.fill(labels[i].color[0], labels[i].color[1], labels[i].color[2], 255);
             } else {
-                p.fill(0, 0, 0); 
+                p.fill(0, 0, 0);
                 p.stroke(labels[i].color[0], labels[i].color[1], labels[i].color[2], 255);
             }
             p.strokeWeight(1);
             p.rect(buttonX, buttonY, buttonW, buttonH, 2);
-            
+
+            // Hover highlight: light gray overlay with alpha to enhance interaction
+            if (isHovered) {
+                p.noStroke();
+                p.fill(200, 200, 200, 60); // light gray, ~24% alpha
+                p.rect(buttonX, buttonY, buttonW, buttonH, 2);
+            }
+
             // Button text
             p.noStroke();
             p.fill(isDoubled ? 0 : 180); // Black text on orange, light gray on dark
@@ -707,7 +718,8 @@ class ChordVisualization {
     //----------------------------------------------------------------------------------------
     handleMouseClick(mouseX, mouseY) {
         // Check for [x2] button clicks first
-        const legendY = this.spectrumY + this.spectrumHeight + 25;
+        // NOTE: must match the buttonY used in drawFrequencyLabels (y = ... + 15)
+        const legendY = this.spectrumY + this.spectrumHeight + 15;
         const labels = ['R', 'α', 'β', 'γ'];
         
         for (let i = 0; i < labels.length; i++) {
