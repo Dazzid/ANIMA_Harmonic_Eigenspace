@@ -33,6 +33,12 @@ class LaunchpadHandler {
             modalstudio: { row: -1, col: -1 }
         };
         this.HIGHLIGHT_RGB = [255, 200, 0]; // orange — matches chordClicked
+
+        // The two arrow buttons just LEFT of the "Session" button (top row) → change scene:
+        // left = previous, right = next. Session = CC 93, so the arrows are CC 91 (left) and
+        // 92 (right). If yours differ, the console logs the real CC on press ("unmapped function
+        // button CC N") — set these to match (or live: launchpadHandler.NAV_CC.left = N).
+        this.NAV_CC = { left: 91, right: 92 };
     }
 
     _sceneKey() {
@@ -262,8 +268,20 @@ class LaunchpadHandler {
             console.log(`[Launchpad] status=0x${status.toString(16)} d1=${data1} d2=${data2}`);
         }
 
-        if (!isNoteOn && !isNoteOff) return;       // ignore CC (side/top buttons)
-        if (data1 < 11 || data1 > 88) return;      // grid notes only
+        // Top/side function buttons (incl. the arrows) arrive as Control Change. The left/right
+        // arrows move between scenes; everything else is logged so it can be mapped later.
+        if (command === 0xB0) {
+            if (data2 > 0) this._handleNavCC(data1);
+            return;
+        }
+
+        if (!isNoteOn && !isNoteOff) return;
+        if (data1 < 11 || data1 > 88) {
+            // Not a grid pad — e.g. an arrow/function button sent as a NOTE on some layouts.
+            // Log on press so the exact number is easy to read off the device for mapping.
+            if (isNoteOn) console.log('[Launchpad] non-grid button note ' + data1 + ' (press)');
+            return;
+        }
 
         const { row, col } = this._noteToRowCol(data1);
         if (row < 0 || row > 7 || col < 0 || col > 7) return;
@@ -273,6 +291,35 @@ class LaunchpadHandler {
         } else {
             this._dispatchRelease(row, col);
         }
+    }
+
+    // Arrow CC → change scene (left = previous, right = next). Any other function button is
+    // logged with its CC so you can identify it and map it to NAV_CC if needed.
+    _handleNavCC(cc) {
+        if (cc === this.NAV_CC.left)  return this._changeScene(-1);
+        if (cc === this.NAV_CC.right) return this._changeScene(+1);
+        console.log('[Launchpad] unmapped function button CC ' + cc +
+            ' (set launchpadHandler.NAV_CC.left/right = ' + cc + ' to use it for scene nav)');
+    }
+
+    // Step to the previous/next scene by numeric id (EIGENSPACE 0 → MODALSTUDIO 1 → KEYBOARD 2).
+    // Clamped at the ends (no wrap): left does nothing on the first scene, right on the last.
+    _changeScene(delta) {
+        // Debounce: the arrow buttons emit more than one CC per physical press, so without this
+        // a single tap advanced TWICE (ES → KL, skipping MS). Collapse rapid repeats into one step.
+        const now = (typeof performance !== 'undefined' ? performance : Date).now();
+        if (now - (this._lastNavAt || 0) < 300) return;
+        this._lastNavAt = now;
+
+        if (typeof switchScene !== 'function' || typeof Scenes === 'undefined'
+            || typeof currentScene === 'undefined') return;
+        const ids = Object.values(Scenes).sort((a, b) => a - b);
+        const idx = ids.indexOf(currentScene);
+        if (idx < 0) return;
+        const next = Math.min(ids.length - 1, Math.max(0, idx + delta));
+        if (next === idx) return;
+        switchScene(ids[next]);
+        this.refreshLeds();
     }
 
     _dispatchPress(row, col) {
