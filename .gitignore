@@ -1,0 +1,4 @@
+# Source WAVs for the in-app player are large/uncompressed — keep them locally but
+# commit only the streamable MP3s (see music_player.js / songs/). Re-encode with:
+#   ffmpeg -i songs/NAME.wav -codec:a libmp3lame -b:a 192k songs/NAME.mp3
+songs/*.wav

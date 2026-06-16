@@ -236,6 +236,16 @@
             onClick: () => { if (window.AnimaSession) window.AnimaSession.openLoadDialog(); }
         }));
         body.appendChild(session);
+
+        // ----- LISTEN (all scenes) — tracks made with ANIMA -----------------
+        const music = makeSection('Listen');
+        const musicReady = !!window.AnimaMusicPlayer;
+        const musicShown = !!(window.AnimaMusicPlayer && window.AnimaMusicPlayer.isOpen && window.AnimaMusicPlayer.isOpen());
+        music.appendChild(makeItem('Music — made with ANIMA', {
+            icon: '♫', active: musicShown, disabled: !musicReady,
+            onClick: () => { if (window.AnimaMusicPlayer) window.AnimaMusicPlayer.toggle(); }
+        }));
+        body.appendChild(music);
     }
 
     // ---- open / close ------------------------------------------------------

@@ -168,6 +168,12 @@
         // even if the app is currently in 31-TET.
         const saved = obj.temperament != null ? obj.temperament : 53;
         const active = activeTemperamentId();
+
+        // A loaded session file is authoritative — drop any queued per-temperament swap restore
+        // BEFORE the flip. setMSTemperament's generateAllModes() runs the restore hook synchronously,
+        // so a stale pending left here would get applied during the rebuild and fight the file grid.
+        window.__tetPendingGrid = null;
+
         let flipped = false;
         if (saved !== active && typeof window.setMSTemperament === 'function'
             && window.Temperament && window.Temperament.get(saved)) {
@@ -178,10 +184,6 @@
                 console.error('[session] temperament switch failed', e);
             }
         }
-
-        // A loaded session file is authoritative — drop any queued per-temperament swap
-        // restore (Phase 5a) so it can't overwrite the grid we're about to apply.
-        window.__tetPendingGrid = null;
 
         // Seed the per-temperament swap cache with BOTH tunings' grids, so after load you can
         // flip 53⇄31 and find each session intact (the inactive one is restored on switch).

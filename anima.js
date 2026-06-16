@@ -517,15 +517,30 @@ const sketch = (p) => {
                 }
             } catch (e) { console.warn('[tet-swap] park failed', e); }
 
-            // 2) Flip + full rebuild (resets the modal grid for the new tuning).
-            await window.setMSTemperament(nextId);
-
-            // 3) Queue the target tuning's parked grid (if any) to be restored the moment the
-            //    rebuilt grid initializes — see the hook in modal_studio_app.js.
+            // 2) Queue the target tuning's parked grid BEFORE the rebuild. setMSTemperament resets
+            //    the grid and then calls generateAllModes(), which re-initializes it AND runs the
+            //    restore hook — all synchronously inside the await. If we set the pending grid AFTER
+            //    the await (as before), the hook had already run with nothing queued, so the grid
+            //    came back empty and the chords stayed erased. Setting it first lets that same
+            //    re-init restore it. (setActive(nextId) runs early in setMSTemperament, so the hook's
+            //    id check matches.)
             try {
                 const raw = localStorage.getItem(TET_GRID_KEY(nextId));
                 window.__tetPendingGrid = raw ? { id: nextId, ms: JSON.parse(raw) } : null;
             } catch (e) { window.__tetPendingGrid = null; console.warn('[tet-swap] restore-queue failed', e); }
+
+            // 3) Flip + full rebuild (resets the modal grid, then the hook restores the parked one).
+            await window.setMSTemperament(nextId);
+
+            // 4) Safety net: if the grid wasn't ready when the hook ran, apply the parked grid now
+            //    that the rebuild has finished (gridInitialized is true post-generateAllModes).
+            if (window.__tetPendingGrid && window.__tetPendingGrid.id === nextId) {
+                try {
+                    if (window.app && window.app.applySession(window.__tetPendingGrid.ms)) {
+                        window.__tetPendingGrid = null;
+                    }
+                } catch (e) { console.warn('[tet-swap] post-rebuild restore failed', e); }
+            }
         };
 
         // Initialize audio on first click

@@ -292,6 +292,15 @@ later phase depends on. *(Done — see log below.)*
 
 Kept current as work lands (newest first). Each entry = what changed + how it was verified.
 
+- **2026-06-16 — FIX: per-temperament swap restored nothing (chords erased on switch).** Real
+  ordering bug, not a stale build: the restore hook runs *synchronously inside* `setMSTemperament`
+  (it calls `generateAllModes()`, which re-inits the grid and fires the hook), but
+  `switchTemperamentWithSwap` set `window.__tetPendingGrid` *after* `await setMSTemperament` — so the
+  grid always rebuilt with nothing queued and came back empty. Fix: queue the pending grid BEFORE the
+  await (setActive runs early in setMSTemperament, so the hook's id check matches), plus a
+  post-rebuild safety-net apply ([anima.js](anima.js)). [session.js](session.js) load path now clears
+  the pending grid BEFORE its own `setMSTemperament` for the same reason. `node --check` clean; flow
+  retraced: queue → setMSTemperament→generateAllModes→grid re-init→hook restores → safety net no-ops.
 - **2026-06-16 — Phase 5a complete: per-temperament sessions (switch-swap + dual-file save/load).**
   Switching 53⇄31 no longer loses either tuning's modal grid: `switchTemperamentWithSwap`
   ([anima.js](anima.js)) parks the active grid to `localStorage` (`anima_ms_grid_<id>`), flips, and
