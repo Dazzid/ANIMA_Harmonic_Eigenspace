@@ -40,6 +40,8 @@ Dissonance Visualization for Microtonal Harmony.MSCA Project 101203318.
     <div id="audio-gui-container" style="display: none;"></div>
     <div id="canvas-container"></div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <!-- Tuning resolution source of truth (53/31-TET). MUST load before all modal_studio_* modules. -->
+    <script src="temperament.js"></script>
     <script src="modal_studio_adsr.js"></script>
     <script src="midi_mpe.js"></script>
     <script src="midi_piano.js"></script>

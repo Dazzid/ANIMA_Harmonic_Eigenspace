@@ -154,6 +154,15 @@
                 icon: '♪', active: audioShown, shortcut: '⇧A',
                 onClick: () => clickLegacy('audio-toggle')
             }));
+            // Temperament toggle. Label names the TARGET tuning so it always reads as an action:
+            // in 53-TET it offers "Switch to 31-TET", in 31-TET "Switch to 53-TET".
+            if (window.Temperament && typeof window.setMSTemperament === 'function') {
+                const next = window.Temperament.active.id === 53 ? 31 : 53;
+                options.appendChild(makeItem('Switch to ' + next + '-TET', {
+                    icon: '𝄢',
+                    onClick: () => (window.switchTemperamentWithSwap || window.setMSTemperament)(next)
+                }));
+            }
         } else if (scene === S.KEYBOARD) {
             // The 53-TET chord selector (incl. the Fixed/Functional toggle) is the
             // floating #chord-panel; the menu just opens/closes it.
@@ -174,6 +183,15 @@
                 icon: '♪', active: kbAudioShown, shortcut: '⇧A',
                 onClick: () => { if (window.toggleKeyboardAudio) window.toggleKeyboardAudio(); }
             }));
+            // Temperament toggle (shared with MS, D5). Labelled by the TARGET tuning so it
+            // always reads as an action; drives setMSTemperament, which rebuilds MS + KL.
+            if (window.Temperament && typeof window.setMSTemperament === 'function') {
+                const next = window.Temperament.active.id === 53 ? 31 : 53;
+                options.appendChild(makeItem('Switch to ' + next + '-TET', {
+                    icon: '𝄢',
+                    onClick: () => (window.switchTemperamentWithSwap || window.setMSTemperament)(next)
+                }));
+            }
         }
         body.appendChild(options);
 

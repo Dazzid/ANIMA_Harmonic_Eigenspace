@@ -42,9 +42,16 @@ const MAX_RADIUS = 45; // maximum hex size cap
 //Timer
 const timer_interval = 5000; // ms
 
-// Global pitch shift applied to every hex, in 53-TET steps.
-// -53 = one octave down, +53 = one octave up.
-const OCTAVE_SHIFT = -52;
+// ── Temperament-driven KL layout (was 53-hardcoded) ──────────────────────────
+// keyboard.js was written 53-first. The pitch/vocabulary constants below now read
+// from window.Temperament.active via deriveKLTemperament(), so the SAME physical
+// hex grid (Edo53_settings_new.xml) plays either tuning. Consumers keep the names.
+let KN = 53;              // steps per octave (active N)
+let NOTE_PER_Q = 9;      // pitch steps per +q hex (a whole tone)
+let NOTE_PER_R = 5;      // pitch steps per +r hex (a chromatic semitone)
+let REF_ORIGIN = 62;     // reference at q=0, r=0
+let OCTAVE_SHIFT = -52;  // global pitch shift (≈ −1 octave), in steps
+let KL_FIFTH = 31;       // perfect fifth, in steps
 
 // Chord tone colors: root, third, fifth, seventh, ninth, eleventh
 const CHORD_COLORS = [
@@ -56,39 +63,9 @@ const CHORD_COLORS = [
   [165, 201, 56],
 ];
 
-// --- 53-TET Chord definitions ---
-// Each chord: { name, intervals: [steps from root in 53-TET] }
-// r(n) = 2^(n/53) frequency ratio — computed at playback time
-const CHORDS_53TET = (function() {
-  const chords = [{ name: 'Single note', intervals: [0] }];
-
-  // Triads: root + third + fifth(31)
-  const thirds = [
-    [20,'SM'],[19,'^M'],[18,'M'],[17,'vM'],[16,'N'],
-    [15,'n'],[14,'^m'],[13,'m'],[12,'vm'],[11,'sm']
-  ];
-  for (const [s3, n3] of thirds) {
-    chords.push({ name: `${n3} triad`, intervals: [0, s3, 31] });
-  }
-
-  // Seventh chords: root + third + fifth(31) + seventh
-  const sevenths = [
-    [51,'SM'],[50,'^M'],[49,'maj'],[48,'vM'],[47,'N'],
-    [46,'n'],[45,'^m'],[44,'m'],[43,'vm'],[42,'sm']
-  ];
-  for (const [s3, n3] of thirds) {
-    for (const [s7, n7] of sevenths) {
-      chords.push({ name: `${n3}${n7}7`, intervals: [0, s3, 31, s7] });
-    }
-  }
-
-  // Sus chords
-  chords.push({ name: '7sus4', intervals: [0, 22, 31, 44], isSus: true });
-  chords.push({ name: 'sus2',  intervals: [0, 9, 22, 31], isSus: true });
-
-  return chords;
-})();
-
+// Chord menu vocabulary (name + intervals in steps) — rebuilt per temperament by
+// deriveKLTemperament() (53: 10 comma-variant qualities; 31: the 5-quality basis).
+let CHORDS_53TET = [{ name: 'Single note', intervals: [0] }];
 let selectedChord = CHORDS_53TET[0]; // default: single note
 
 // --- Functional Disposition mode ---
@@ -99,51 +76,96 @@ let selectedChord = CHORDS_53TET[0]; // default: single note
 let functionalMode = false;
 const LETTER_TO_INDEX = { C:0, D:1, E:2, F:3, G:4, A:5, B:6 };
 const ROMAN_NUMERALS = ['I','II','III','IV','V','VI','VII'];
-// The hex's note53 (XML <note53>, equivalent to (Reference − REF_ORIGIN) mod 53,
-// REF_ORIGIN=62) differs from the JSON's note53 (json.reference mod 53)
-// because each hex displays the JSON note at hex.reference + OCTAVE_SHIFT.
-// Combining: hex.note53 = (json.note53 − REF_ORIGIN − OCTAVE_SHIFT) mod 53
-//          = (json.note53 − 62 − (−52)) mod 53 = (json.note53 − 10) mod 53.
-// (REF_ORIGIN is declared later in the file; we inline 62 here so this can
-// run at module-init time.)
+// JSON pitch class → hex-side note value: hex = (json − REF_ORIGIN − OCTAVE_SHIFT) mod N.
 function jsonNote53ToHex(n) {
-  return (((n - 62 - OCTAVE_SHIFT) % 53) + 53) % 53;
+  return (((n - REF_ORIGIN - OCTAVE_SHIFT) % KN) + KN) % KN;
 }
-// note53 anchors for natural pitches (hex-side), used by the fundamental
-// selector. JSON note53: A=0,B=9,C=13,D=22,E=31,F=35,G=44.
-const NATURAL_NOTE53 = [
-  { name:'C', note53: jsonNote53ToHex(13) },
-  { name:'D', note53: jsonNote53ToHex(22) },
-  { name:'E', note53: jsonNote53ToHex(31) },
-  { name:'F', note53: jsonNote53ToHex(35) },
-  { name:'G', note53: jsonNote53ToHex(44) },
-  { name:'A', note53: jsonNote53ToHex(0)  },
-  { name:'B', note53: jsonNote53ToHex(9)  }
-];
-let functionalFundamental = jsonNote53ToHex(13); // C
-let functionalDegreeMap = new Array(53);   // hex note53 → letter index 0..6
+
+// All of the following are rebuilt per temperament by deriveKLTemperament().
+let NATURAL_NOTE53 = [];                    // [{name, note53(hex)}] for the fundamental selector
+let functionalFundamental = 3;             // C (recomputed below)
+let functionalDegreeMap = new Array(KN);   // hex note → letter index 0..6
 let functionalDegreeChords = [];           // 7 entries: { triad, seventh, ninth, eleventh }
-let functionalScaleSet = new Set();        // hex note53 values in the active scale
+let functionalScaleSet = new Set();        // hex note values in the active scale
 
-// Chord name lookup tables
-const THIRD_NAMES = ['SM','^M','M','vM','N','n','^m','m','vm','sm'];
-const THIRD_STEPS = [20, 19, 18, 17, 16, 15, 14, 13, 12, 11];
-const SEVENTH_NAMES = ['SM','^M','maj','vM','N','n','^m','m','vm','sm'];
-const SEVENTH_STEPS = [51, 50, 49, 48, 47, 46, 45, 44, 43, 42];
-
-// 9ths = compound 2nds (octave + 2nd). M = Pythagorean major 9th (53 + 9 = 62, e.g. D above C).
-const NINTH_NAMES = ['SM','^M','M','vM','N','n','^m','m','vm','sm'];
-const NINTH_STEPS  = [64, 63, 62, 61, 60, 59, 58, 57, 56, 55];
-
-// 11ths = compound 4ths (octave + 4th). M = Pythagorean/Lydian major 11th
-// (+6 fifths − 2 oct, 53 + 27 = 80, e.g. F# above C, the #11).
-// m (= 75) is the perfect 11th (53 + 22, e.g. F above C).
-const ELEVENTH_NAMES = ['SM','^M','M','vM','N','n','^m','m','vm','sm'];
-const ELEVENTH_STEPS  = [82, 81, 80, 79, 78, 77, 76, 75, 74, 73];
+let THIRD_NAMES = [], THIRD_STEPS = [];
+let SEVENTH_NAMES = [], SEVENTH_STEPS = [];
+let NINTH_NAMES = [], NINTH_STEPS = [];
+let ELEVENTH_NAMES = [], ELEVENTH_STEPS = [];
+let SUS_CHORDS = [];
+let THIRDS_53 = {}, SEVENTHS_53 = {};      // step → quality symbol (cluster naming)
+let DEFAULT_SCALE_INTERVALS = [0, 9, 18, 22, 31, 40, 49];  // cumsum(interModel)
+let MODAL_M2 = 9, MODAL_P4 = 22, MODAL_P5 = 31;            // landmarks off the default scale
 
 // Extension state: null = off, otherwise a step value
 let selected9th = null;
 let selected11th = null;
+
+// (Re)build every temperament-dependent KL table from window.Temperament.active.
+// Called at module init and on a temperament switch (kbRebuildForTemperament).
+function deriveKLTemperament() {
+  const T = (window.Temperament && window.Temperament.active) || null;
+  if (!T) return;
+  KN = T.N;
+  const kl = T.kl || { notePerQ: 9, notePerR: 5, refOrigin: 62, octaveShift: -52 };
+  NOTE_PER_Q = kl.notePerQ; NOTE_PER_R = kl.notePerR;
+  REF_ORIGIN = kl.refOrigin; OCTAVE_SHIFT = kl.octaveShift;
+
+  const kc = T.klChords;
+  KL_FIFTH = kc.fifth;
+  THIRD_NAMES = kc.thirds.map(t => t[1]);       THIRD_STEPS = kc.thirds.map(t => t[0]);
+  SEVENTH_NAMES = kc.sevenths.map(t => t[1]);   SEVENTH_STEPS = kc.sevenths.map(t => t[0]);
+  NINTH_NAMES = kc.ninths.map(t => t[1]);       NINTH_STEPS = kc.ninths.map(t => t[0]);
+  ELEVENTH_NAMES = kc.elevenths.map(t => t[1]); ELEVENTH_STEPS = kc.elevenths.map(t => t[0]);
+  THIRDS_53 = {}; for (const [s, n] of kc.thirds) THIRDS_53[s] = n;
+  SEVENTHS_53 = {}; for (const [s, n] of kc.sevenths) SEVENTHS_53[s] = n;
+  SUS_CHORDS = kc.sus.map(s => ({ name: s.name, intervals: s.intervals.slice(), isSus: true }));
+
+  // Chord menu list: single + triads + 7ths + sus.
+  CHORDS_53TET = [{ name: 'Single note', intervals: [0] }];
+  for (const [s3, n3] of kc.thirds) CHORDS_53TET.push({ name: `${n3} triad`, intervals: [0, s3, KL_FIFTH] });
+  for (const [s3, n3] of kc.thirds)
+    for (const [s7, n7] of kc.sevenths)
+      CHORDS_53TET.push({ name: `${n3}${n7}7`, intervals: [0, s3, KL_FIFTH, s7] });
+  for (const s of SUS_CHORDS) CHORDS_53TET.push(s);
+  selectedChord = CHORDS_53TET[0];
+  selected9th = null; selected11th = null;
+
+  // Natural anchors (hex space) + fundamental = C.
+  const offset = (((REF_ORIGIN + OCTAVE_SHIFT) % KN) + KN) % KN;
+  const nat = T.klNaturals;
+  NATURAL_NOTE53 = ['C', 'D', 'E', 'F', 'G', 'A', 'B'].map(name => ({
+    name, note53: (((nat[name] - offset) % KN) + KN) % KN
+  }));
+  functionalFundamental = (((nat.C - offset) % KN) + KN) % KN;
+  functionalDegreeMap = new Array(KN);
+
+  // Default major scale = cumulative sum of the generator; M2/P4/P5 off it.
+  const im = T.interModel;
+  DEFAULT_SCALE_INTERVALS = [0];
+  for (let i = 0; i < im.length - 1; i++) DEFAULT_SCALE_INTERVALS.push(DEFAULT_SCALE_INTERVALS[i] + im[i]);
+  MODAL_M2 = DEFAULT_SCALE_INTERVALS[1];
+  MODAL_P4 = DEFAULT_SCALE_INTERVALS[3];
+  MODAL_P5 = DEFAULT_SCALE_INTERVALS[4];
+}
+deriveKLTemperament();   // Temperament loads before keyboard.js, so this is safe at module init.
+
+// noteData lookup by reference (rebuilt when noteData loads / on temperament switch).
+let noteByRef = {};
+function rebuildNoteByRef() { noteByRef = {}; for (const n of (noteData || [])) noteByRef[n.reference] = n; }
+
+// Pitch of the hex at grid (q,r) under the active temperament. Single source of truth
+// for both the XML seed buttons and the screen-filling extras (kept consistent).
+function hexPitch(q, r) {
+  const reference = REF_ORIGIN + NOTE_PER_Q * q + NOTE_PER_R * r;
+  const note53 = (((NOTE_PER_Q * q + NOTE_PER_R * r) % KN) + KN) % KN;
+  const info = noteByRef[reference + OCTAVE_SHIFT];
+  return {
+    note53, reference,
+    frequency: info ? info.frequency : 440 * Math.pow(2, (reference + OCTAVE_SHIFT - REF_ORIGIN) / KN),
+    noteName: info ? info.noteName : '?'
+  };
+}
 
 // Strip octave digits and v/^ accidental modifiers, return the bare letter (C..B).
 function letterOf(noteName) {
@@ -153,15 +175,14 @@ function letterOf(noteName) {
   return noteName[i] || null;
 }
 
-// Build functionalDegreeMap[hexNote53] = letter index 0..6, derived from
-// noteData. The hex's note53 is shifted from the JSON's by -OCTAVE_SHIFT, so
-// the letter we read off the JSON entry must be assigned to the corresponding
-// hex-side note53 (otherwise "C" would be off by one column on the grid).
+// Build functionalDegreeMap[hexNote] = letter index 0..6, derived from noteData.
+// The hex note is shifted from the JSON's by -OCTAVE_SHIFT (see jsonNote53ToHex).
 function buildDegreeMap() {
   if (!noteData || !noteData.length) return;
-  const seen = new Array(53);
+  functionalDegreeMap = new Array(KN);
+  const seen = new Array(KN);
   for (const n of noteData) {
-    const hexNote53 = jsonNote53ToHex(((n.reference % 53) + 53) % 53);
+    const hexNote53 = jsonNote53ToHex(((n.reference % KN) + KN) % KN);
     if (seen[hexNote53]) continue;
     const L = letterOf(n.noteName);
     if (L != null && LETTER_TO_INDEX[L] !== undefined) {
@@ -170,10 +191,6 @@ function buildDegreeMap() {
     }
   }
 }
-
-// Default major scale intervals from the fundamental, used when no modal
-// chord is selected (single-note, sus).
-const DEFAULT_SCALE_INTERVALS = [0, 9, 18, 22, 31, 40, 49];
 
 // Derive a 7-tone modal scale (intervals from root) from a chord that defines
 // a clear mode. Returns null for chords that do not (sus, single note).
@@ -191,11 +208,11 @@ function getModalScaleFromChord(chord) {
     seventh = chord.intervals[3];
   } else if (chord.intervals.length === 3) {
     third = chord.intervals[1];
-    seventh = third + 31;
+    seventh = third + MODAL_P5;
   } else {
     return null; // single note
   }
-  return [0, 9, third, 22, 31, seventh - 9, seventh];
+  return [0, MODAL_M2, third, MODAL_P4, MODAL_P5, seventh - MODAL_M2, seventh];
 }
 
 // Build functionalDegreeChords for the given fundamental, using the scale
@@ -203,16 +220,16 @@ function getModalScaleFromChord(chord) {
 // does not define a mode).
 function buildFunctionalChords(fundamental) {
   const intervals = getModalScaleFromChord(selectedChord) || DEFAULT_SCALE_INTERVALS;
-  const scale = intervals.map(iv => ((fundamental + iv) % 53 + 53) % 53);
+  const scale = intervals.map(iv => ((fundamental + iv) % KN + KN) % KN);
   functionalScaleSet = new Set(scale);
   functionalDegreeChords = [];
   for (let d = 0; d < 7; d++) {
     const root = scale[d];
-    const third    = ((scale[(d+2)%7] - root) % 53 + 53) % 53;
-    const fifth    = ((scale[(d+4)%7] - root) % 53 + 53) % 53;
-    const seventh  = ((scale[(d+6)%7] - root) % 53 + 53) % 53;
-    const ninth    = (((scale[(d+1)%7] - root) % 53 + 53) % 53) + 53;
-    const eleventh = (((scale[(d+3)%7] - root) % 53 + 53) % 53) + 53;
+    const third    = ((scale[(d+2)%7] - root) % KN + KN) % KN;
+    const fifth    = ((scale[(d+4)%7] - root) % KN + KN) % KN;
+    const seventh  = ((scale[(d+6)%7] - root) % KN + KN) % KN;
+    const ninth    = (((scale[(d+1)%7] - root) % KN + KN) % KN) + KN;
+    const eleventh = (((scale[(d+3)%7] - root) % KN + KN) % KN) + KN;
     functionalDegreeChords.push({
       triad:    [0, third, fifth],
       seventh:  [0, third, fifth, seventh],
@@ -265,9 +282,13 @@ function getActiveIntervals(btn) {
 
 function buildChordPanel() {
   const panel = document.getElementById('chord-panel');
+  // Static listeners bind once; the dynamic buttons below are cleared + rebuilt each
+  // call so a temperament switch can swap the vocabulary (10 qualities ↔ 5).
+  const firstBuild = !buildChordPanel._bound;
+  buildChordPanel._bound = true;
 
   // Single note button
-  document.getElementById('single-note-btn').addEventListener('click', function() {
+  if (firstBuild) document.getElementById('single-note-btn').addEventListener('click', function() {
     clearSelection();
     this.classList.add('selected');
     setSelectedChord(CHORDS_53TET[0]);
@@ -296,11 +317,14 @@ function buildChordPanel() {
     }
     if (functionalMode) buildFunctionalChords(functionalFundamental);
   }
-  modeFixedBtn.addEventListener('click', function() { setMode(false); });
-  modeFunctionalBtn.addEventListener('click', function() { setMode(true); });
+  if (firstBuild) {
+    modeFixedBtn.addEventListener('click', function() { setMode(false); });
+    modeFunctionalBtn.addEventListener('click', function() { setMode(true); });
+  }
 
   // --- Fundamental selector (C D E F G A B) ---
   const fundDiv = document.getElementById('chord-fundamental');
+  fundDiv.innerHTML = '';
   NATURAL_NOTE53.forEach(({ name, note53 }) => {
     const btn = document.createElement('button');
     btn.className = 'chord-btn' + (note53 === functionalFundamental ? ' selected' : '');
@@ -314,8 +338,9 @@ function buildChordPanel() {
     fundDiv.appendChild(btn);
   });
 
-  // --- Triads (2 rows of 5) ---
+  // --- Triads ---
   const triadsDiv = document.getElementById('chord-triads');
+  triadsDiv.innerHTML = '';
   THIRD_NAMES.forEach((n3, i) => {
     const btn = document.createElement('button');
     btn.className = 'chord-btn';
@@ -324,17 +349,15 @@ function buildChordPanel() {
     btn.addEventListener('click', function() {
       clearSelection();
       this.classList.add('selected');
-      setSelectedChord({ name: `${n3} triad`, intervals: [0, THIRD_STEPS[i], 31] });
+      setSelectedChord({ name: `${n3} triad`, intervals: [0, THIRD_STEPS[i], KL_FIFTH] });
     });
     triadsDiv.appendChild(btn);
   });
 
-  // --- Sus ---
+  // --- Sus --- (templates from the active temperament)
   const susDiv = document.getElementById('chord-sus');
-  const susChords = [
-    { name: '7sus4', intervals: [0, 22, 31, 44], isSus: true },
-    { name: 'sus2', intervals: [0, 9, 22, 31], isSus: true }
-  ];
+  susDiv.innerHTML = '';
+  const susChords = SUS_CHORDS;
   susChords.forEach(ch => {
     const btn = document.createElement('button');
     btn.className = 'chord-btn sus-btn';
@@ -350,6 +373,7 @@ function buildChordPanel() {
 
   // --- 7th chord grid ---
   const thead = document.querySelector('#chord-grid thead tr');
+  thead.innerHTML = '';   // clear the quality columns (rebuilt below; no corner cell in the HTML)
   SEVENTH_NAMES.forEach(n7 => {
     const th = document.createElement('th');
     th.textContent = n7;
@@ -357,6 +381,7 @@ function buildChordPanel() {
   });
 
   const tbody = document.querySelector('#chord-grid tbody');
+  tbody.innerHTML = '';
   THIRD_NAMES.forEach((n3, i) => {
     const tr = document.createElement('tr');
     const th = document.createElement('th');
@@ -374,7 +399,7 @@ function buildChordPanel() {
         this.classList.add('selected');
         setSelectedChord({
           name: fullName,
-          intervals: [0, THIRD_STEPS[i], 31, SEVENTH_STEPS[j]]
+          intervals: [0, THIRD_STEPS[i], KL_FIFTH, SEVENTH_STEPS[j]]
         });
       });
       td.appendChild(btn);
@@ -385,6 +410,7 @@ function buildChordPanel() {
 
   // --- 9th extension (toggle row) ---
   const ninthsDiv = document.getElementById('chord-9ths');
+  ninthsDiv.innerHTML = '';
   NINTH_NAMES.forEach((n9, i) => {
     const btn = document.createElement('button');
     btn.className = 'chord-btn ext-btn';
@@ -404,6 +430,7 @@ function buildChordPanel() {
 
   // --- 11th extension (toggle row) ---
   const eleventhsDiv = document.getElementById('chord-11ths');
+  eleventhsDiv.innerHTML = '';
   ELEVENTH_NAMES.forEach((n11, i) => {
     const btn = document.createElement('button');
     btn.className = 'chord-btn ext-btn';
@@ -441,18 +468,39 @@ function kbSetup(p) {
 
   // Build chord selector panel
   buildChordPanel();
-
-  Promise.all([
-    fetch('Edo53_settings_new.xml').then(r => r.text()),
-    fetch('53_reference_notes.json').then(r => r.json())
-  ]).then(([xmlText, jsonData]) => {
-    noteData = jsonData.notes;
-    parseXML(xmlText);
-    buildDegreeMap();
-    buildFunctionalChords(functionalFundamental);
-    computeScale();
-  });
+  kbLoadData();
 }
+
+// Cached Lumatone layout XML — the physical hex grid is shared across tunings, so
+// it's fetched once and re-parsed (with temperament-aware pitch) on a switch.
+let kbXmlText = null;
+
+// Fetch the layout + the ACTIVE temperament's reference JSON, then rebuild geometry.
+// Reused at first setup and on a temperament switch (kbRebuildForTemperament).
+function kbLoadData() {
+  const refFile = (window.Temperament && window.Temperament.active && window.Temperament.active.referenceFile)
+    || '53_reference_notes.json';
+  const xmlPromise = kbXmlText ? Promise.resolve(kbXmlText) : fetch('Edo53_settings_new.xml').then(r => r.text());
+  return Promise.all([xmlPromise, fetch('dataset/' + refFile).then(r => r.json())])
+    .then(([xmlText, jsonData]) => {
+      kbXmlText = xmlText;
+      noteData = jsonData.notes;
+      rebuildNoteByRef();          // before parseXML — hexPitch reads noteByRef
+      parseXML(xmlText);
+      buildDegreeMap();
+      buildFunctionalChords(functionalFundamental);
+      computeScale();
+    })
+    .catch(e => console.error('[KL] data load failed', e));
+}
+
+// D5 (shared temperament): rebuild the whole KL layout + chord menu for the active
+// tuning. Called by setMSTemperament so MS and KL flip together.
+window.kbRebuildForTemperament = function () {
+  deriveKLTemperament();   // re-derive generators, vocabulary, naturals, fundamental
+  buildChordPanel();       // the menu differs per tuning (53: 10 qualities, 31: 5)
+  return kbLoadData();     // re-fetch the reference JSON + recompute the grid
+};
 
 function kbWindowResized(p) {
   p.resizeCanvas(p.windowWidth, p.windowHeight);
@@ -468,8 +516,6 @@ function parseXML(xmlText) {
 
   pts.forEach(pt => {
     const id = parseInt(pt.querySelector('ID').textContent);
-    const note53 = parseInt(pt.querySelector('note53').textContent);
-    const reference = parseInt(pt.querySelector('Reference').textContent);
     const origX = parseFloat(pt.querySelector('X').textContent);
     const origY = parseFloat(pt.querySelector('Y').textContent);
 
@@ -480,14 +526,17 @@ function parseXML(xmlText) {
     const q = Math.round((49 * dx + 14 * dy) / GRID_DET);
     const r = Math.round((-13 * dx - 50 * dy) / GRID_DET);
 
-    const noteInfo = noteData.find(n => n.reference === reference + OCTAVE_SHIFT);
+    // Pitch is recomputed from (q,r) for the ACTIVE temperament — the XML's own
+    // note53/Reference are 53-TET specific, so we ignore them and reuse only the
+    // physical geometry (q,r). hexPitch keeps this identical to the extra buttons.
+    const p = hexPitch(q, r);
 
     xmlButtons.push({
-      id, note53, reference,
+      id, note53: p.note53, reference: p.reference,
       q, r,
       x: 0, y: 0,
-      frequency: noteInfo ? noteInfo.frequency : 440,
-      noteName: noteInfo ? noteInfo.noteName : '?',
+      frequency: p.frequency,
+      noteName: p.noteName,
       hover: false,
       active: false
     });
@@ -495,10 +544,9 @@ function parseXML(xmlText) {
 }
 
 // --- Position buttons on a mathematically perfect hex grid ---
-// Grid note mapping: note53 = (9*q + 5*r) mod 53, reference = 62 + 9*q + 5*r
-const NOTE_PER_Q = 9;
-const NOTE_PER_R = 5;
-const REF_ORIGIN = 62; // reference at q=0, r=0
+// Grid note mapping (per active temperament): note = (notePerQ·q + notePerR·r) mod N,
+// reference = refOrigin + notePerQ·q + notePerR·r. NOTE_PER_Q/R, REF_ORIGIN are the
+// temperament-driven `let`s declared at the top (set by deriveKLTemperament).
 
 function computeScale() {
   if (!kbP || xmlButtons.length === 0) return;
@@ -576,11 +624,8 @@ function computeScale() {
     existing.add(btn.q + ',' + btn.r);
   }
 
-  // Build noteData lookup by reference for fast access
-  const noteByRef = {};
-  for (let n of noteData) {
-    noteByRef[n.reference] = n;
-  }
+  // Build noteData lookup by reference (module-level, shared with hexPitch).
+  rebuildNoteByRef();
 
   // Find q,r range covering the screen
   const det = cosA * sinB - cosB * sinA;
@@ -613,16 +658,14 @@ function computeScale() {
       if (px - scaledRadius < 0 || px + scaledRadius > width ||
           py - scaledRadius < navH || py + scaledRadius > height) continue;
 
-      const reference = REF_ORIGIN + NOTE_PER_Q * q + NOTE_PER_R * r;
-      const note53 = ((NOTE_PER_Q * q + NOTE_PER_R * r) % 53 + 53) % 53;
-      const noteInfo = noteByRef[reference + OCTAVE_SHIFT];
+      const p = hexPitch(q, r);
 
       extraButtons.push({
-        id: -1, note53, reference,
+        id: -1, note53: p.note53, reference: p.reference,
         q, r,
         x: px, y: py,
-        frequency: noteInfo ? noteInfo.frequency : 440 * Math.pow(2, (reference + OCTAVE_SHIFT - 62) / 53),
-        noteName: noteInfo ? noteInfo.noteName : '?',
+        frequency: p.frequency,
+        noteName: p.noteName,
         hover: false,
         active: false
       });
@@ -901,20 +944,60 @@ function stealOldestVoice() {
   } catch (e) {}
 }
 
-function playNote(btn) {
-  if (window.audioMuted) return;
-  initAudio();
+// KL → MIDI out (e.g. Ableton). A hex press sends its chord to the selected MIDI device
+// and is released on key-up / mouse-up so the DAW receives clean note on/off pairs. MIDI is
+// sent even when the local audio is muted (installations often mute the browser, sound = DAW).
+const klKeyMidi = new Map();   // computer-key code → [midi noteIds]
+let klPointerMidi = [];        // mouse/touch held note ids
 
-  // Play each interval in the selected chord (+ extensions)
-  const rootFreq = btn.frequency;
-  const intervals = getActiveIntervals(btn);
-  for (const steps of intervals) {
-    const freq = rootFreq * Math.pow(2, steps / 53);
-    playSingleTone(freq);
+function klSendMidiChord(freqs) {
+  const mc = window.midiController;
+  if (!mc || !mc.midiEnabled || !mc.selectedOutput) {
+    console.log('[KL→MIDI] NOT sent — output not ready (enabled:', !!(mc && mc.midiEnabled),
+      '| output:', (mc && mc.selectedOutput) ? mc.selectedOutput.name : 'none', ')');
+    return null;
   }
-  // Note: Chord Memory capture is driven by the input handlers (mouse/keydown)
-  // via captureKeyboardChord(), so multi-key clusters can be grouped — see below.
+  if (!Array.isArray(freqs) || freqs.length === 0) return null;
+  console.log('[KL→MIDI] sent', freqs.length, 'note(s) →', mc.selectedOutput.name);
+  return mc.playChord(freqs, 5);
 }
+function klStopMidi(ids) {
+  if (ids && ids.length && window.midiController && typeof window.midiController.stopSpecificNotes === 'function') {
+    window.midiController.stopSpecificNotes(ids);
+  }
+}
+
+// Build + play the active selection (chord quality + 9/11, or single note) rooted at rootFreq.
+// Plays local audio (unless muted) and sends MIDI-out; returns the MIDI noteIds for note-off.
+// `btn` is optional — supplied for hex presses (needed for functional-mode degree); omit it for
+// the physical MIDI keyboard, which plays the fixed selected shape transposed to the played key.
+function klPlayChordAtFreq(rootFreq, btn) {
+  const intervals = getActiveIntervals(btn);
+  const freqs = [];
+  for (const steps of intervals) freqs.push(rootFreq * Math.pow(2, steps / KN));
+
+  // Local audio (skipped when muted) — MIDI is still sent below so the DAW always gets it.
+  if (!window.audioMuted) {
+    initAudio();
+    for (const freq of freqs) playSingleTone(freq);
+  }
+  // MIDI out → returns noteIds so the caller can release them on key/mouse up.
+  return klSendMidiChord(freqs);
+}
+
+function playNote(btn) {
+  // Chord Memory capture is driven separately by the input handlers via captureKeyboardChord.
+  return klPlayChordAtFreq(btn.frequency, btn);
+}
+
+// Exposed for the physical MIDI keyboard (midi_piano.js, KL scene): play the currently selected
+// chord-menu choice (quality + 9/11, or single note) rooted at the given Hz, returning the MIDI
+// noteIds so the caller releases them on note-off. Same logic as a hex press — one chord menu,
+// every trigger (hex, computer key, MIDI keyboard) plays the selected chord.
+window.klPlayMidiKeyChord = function (rootFreq) {
+  if (typeof rootFreq !== 'number' || !(rootFreq > 0)) return null;
+  return klPlayChordAtFreq(rootFreq, null);
+};
 
 // True when the "Single note" voicing is selected (one interval per key).
 function isSingleNoteMode() {
@@ -924,32 +1007,32 @@ function isSingleNoteMode() {
 // 53-TET step → quality name for the ten thirds and ten sevenths (mirrors the maps
 // used to build CHORDS_53TET, so core names match exactly). Module-scope so the
 // extension namer below can reuse them.
-const THIRDS_53 = { 20: 'SM', 19: '^M', 18: 'M', 17: 'vM', 16: 'N', 15: 'n', 14: '^m', 13: 'm', 12: 'vm', 11: 'sm' };
-const SEVENTHS_53 = { 51: 'SM', 50: '^M', 49: 'maj', 48: 'vM', 47: 'N', 46: 'n', 45: '^m', 44: 'm', 43: 'vm', 42: 'sm' };
+// THIRDS_53 / SEVENTHS_53 (step → quality symbol) are module-level lets, rebuilt
+// per temperament by deriveKLTemperament().
 
 // Try to name a held cluster by matching its pitch-class shape against the known
-// chord templates (CHORDS_53TET). Returns the chord QUALITY (e.g. "M triad",
-// "maj7") or null if the shape isn't a known chord. The root note is already
-// shown on the CM cell's top line, so we don't repeat it here (keeps it short).
-// Octave/voicing-independent: notes are reduced to 53-TET pitch classes and each
-// candidate root is tested (so inversions still match). Plain triads/7ths/sus match
-// here exactly; chords with extra notes fall through to clusterChordNameExtended,
-// which peels the extension tones and labels the 9th/11th/13th (b9 #11 b13 …).
+// chord templates (CHORDS_53TET, temperament-aware). Returns the chord QUALITY (e.g.
+// "M triad", "maj7") or null if the shape isn't a known chord. The root note is
+// already shown on the CM cell's top line, so we don't repeat it here (keeps it short).
+// Octave/voicing-independent: notes are reduced to pitch classes and each candidate
+// root is tested (so inversions still match). Plain triads/7ths/sus match here exactly;
+// in 53-TET, chords with extra notes fall through to clusterChordNameExtended (the
+// extension namer is a 53-TET heuristic; 31 clusters fall back to "cust" for now).
 function clusterChordName(rootBtns) {
-  const pcs = [...new Set(rootBtns.map(b => (((b.note53 || 0) % 53) + 53) % 53))].sort((a, b) => a - b);
+  const pcs = [...new Set(rootBtns.map(b => (((b.note53 || 0) % KN) + KN) % KN))].sort((a, b) => a - b);
   if (pcs.length < 2) return null; // a single pitch class isn't a chord
   for (const root of pcs) {
-    const rel = pcs.map(pc => (((pc - root) % 53) + 53) % 53).sort((a, b) => a - b);
+    const rel = pcs.map(pc => (((pc - root) % KN) + KN) % KN).sort((a, b) => a - b);
     for (const tmpl of CHORDS_53TET) {
       if (!tmpl.intervals || tmpl.intervals.length !== rel.length) continue;
-      const tset = tmpl.intervals.map(x => ((x % 53) + 53) % 53).sort((a, b) => a - b);
+      const tset = tmpl.intervals.map(x => ((x % KN) + KN) % KN).sort((a, b) => a - b);
       if (tset.every((v, i) => v === rel[i])) {
         // Just the quality label for CM (e.g. "M", "sm") — drop the " triad" suffix.
         return tmpl.name.replace(/\s*triad$/i, '');
       }
     }
   }
-  return clusterChordNameExtended(rootBtns, pcs);
+  return KN === 53 ? clusterChordNameExtended(rootBtns, pcs) : null;
 }
 
 // Name an extended 53-TET chord (a core triad/7th plus 9th/11th/13th tones) using the
@@ -1025,7 +1108,7 @@ function captureKeyboardChord(rootBtns, isCluster) {
   const freqs = [];
   for (const btn of rootBtns) {
     for (const steps of getActiveIntervals(btn)) {
-      const f = btn.frequency * Math.pow(2, steps / 53);
+      const f = btn.frequency * Math.pow(2, steps / KN);
       const k = Math.round(f * 100);
       if (!seen.has(k)) { seen.add(k); freqs.push(f); }
     }
@@ -1189,7 +1272,8 @@ function hitTestAndPlay(cx, cy) {
   }
   if (best) {
     best.active = true;
-    playNote(best);
+    klStopMidi(klPointerMidi);                 // release any previous pointer note
+    klPointerMidi = playNote(best) || [];
     captureKeyboardChord([best], false); // mouse plays one hex at a time
     // Playing a hex tucks the chord menu away so it's out of the way.
     const cp = document.getElementById('chord-panel');
@@ -1201,6 +1285,9 @@ function releaseAll() {
   for (let btn of gridButtons) {
     btn.active = false;
   }
+  // Release the held pointer (mouse/touch) MIDI note so the DAW doesn't drone.
+  klStopMidi(klPointerMidi);
+  klPointerMidi = [];
 }
 
 function dragTest(cx, cy) {
@@ -1222,7 +1309,8 @@ function dragTest(cx, cy) {
   }
   if (best && !best.active) {
     best.active = true;
-    playNote(best);
+    klStopMidi(klPointerMidi);                 // release the hex we dragged off
+    klPointerMidi = playNote(best) || [];
     captureKeyboardChord([best], false);
   }
 }
@@ -1371,31 +1459,30 @@ function buttonForKey(off) {
   let btn = findHexByCoord(q, r);
   if (btn) return btn;
   // Off-screen position — synthesize a virtual button so playback still works
-  const reference = REF_ORIGIN + NOTE_PER_Q * q + NOTE_PER_R * r;
-  const noteInfo = noteData.find(n => n.reference === reference + OCTAVE_SHIFT);
+  const p = hexPitch(q, r);
   return {
-    id: -1, q, r, reference,
-    note53: ((NOTE_PER_Q * q + NOTE_PER_R * r) % 53 + 53) % 53,
-    frequency: noteInfo ? noteInfo.frequency : 440 * Math.pow(2, (reference + OCTAVE_SHIFT - 62) / 53),
-    noteName: noteInfo ? noteInfo.noteName : '?',
+    id: -1, q, r, reference: p.reference,
+    note53: p.note53,
+    frequency: p.frequency,
+    noteName: p.noteName,
     x: 0, y: 0, hover: false, active: false
   };
 }
 
-// Map a computer-key code → its 53-TET note at the FIXED default octave (ignores
-// the live ↑/↓ anchor used inside KL). Exposed so EigenSpace can reuse the exact
-// same keyboard mapping (every key → a 53-TET root). Returns { frequency,
+// Map a computer-key code → its note (active temperament) at the FIXED default
+// octave (ignores the live ↑/↓ anchor used inside KL). Exposed so EigenSpace can
+// reuse the exact same keyboard mapping (every key → a root). Returns { frequency,
 // noteName } or null. Octave is fixed for now; can be expanded later.
 window.klNoteForKeyCode = function (code) {
   const off = KEY_TO_HEX[code];
   if (!off || !noteData || noteData.length === 0) return null;
-  // ES anchor: offset from KB_HOME so key '1' (Digit1) = the spectrum's low C
-  // (C2, 130.81 Hz, JSON reference 66). Shift of (-4,-2) lowers the whole layout
-  // by 46 steps so the keyboard starts at that low C; the rest follow isomorphically.
+  // ES anchor: offset from KB_HOME so key '1' (Digit1) = the spectrum's low C.
+  // Shift of (-4,-2) lowers the whole layout so the keyboard starts at that low
+  // C; the rest follow isomorphically.
   const q = (KB_HOME_Q - 4) + off.q;
   const r = (KB_HOME_R - 2) + off.r;
   const reference = REF_ORIGIN + NOTE_PER_Q * q + NOTE_PER_R * r;
-  const info = noteData.find(n => n.reference === reference + OCTAVE_SHIFT);
+  const info = noteByRef[reference + OCTAVE_SHIFT] || (noteData.find(n => n.reference === reference + OCTAVE_SHIFT));
   if (!info) return null;
   return { frequency: info.frequency, noteName: info.noteName };
 };
@@ -1444,7 +1531,8 @@ document.addEventListener('keydown', function(ev) {
   rootBtn.keyPressed = true;
   rootBtn._keyPressedAt = performance.now();
   pressedKeys.set(ev.code, rootBtn);
-  playNote(rootBtn);
+  const _klIds = playNote(rootBtn);
+  if (_klIds) klKeyMidi.set(ev.code, _klIds);   // remember for note-off on key-up
 
   // Capture into Chord Memory. In Single-note mode, several keys held at once
   // become one custom cluster ("cust"); otherwise capture this single press.
@@ -1459,6 +1547,10 @@ document.addEventListener('keydown', function(ev) {
 });
 
 document.addEventListener('keyup', function(ev) {
+  // Release this key's MIDI note(s) to the DAW (always — even if the visual btn is gone).
+  const _klIds = klKeyMidi.get(ev.code);
+  if (_klIds) { klStopMidi(_klIds); klKeyMidi.delete(ev.code); }
+
   const btn = pressedKeys.get(ev.code);
   pressedKeys.delete(ev.code);
   if (!btn) return;

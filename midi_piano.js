@@ -385,8 +385,8 @@ class MidiPianoHandler {
 
     // Handle MIDI Note On
     handleNoteOn(midiNote, velocity) {
-        if (!this.isEnabled || !this.currentScale) {
-            console.warn('MIDI Piano: Not ready to play notes');
+        if (!this.isEnabled) {
+            console.warn('MIDI Piano: input disabled');
             return;
         }
 
@@ -405,13 +405,27 @@ class MidiPianoHandler {
             this.handleNoteOff(midiNote);
         }
 
-        const frequency = this.midiNoteToFrequency(midiNote);
+        // Use the active scale's microtonal pitch when a chord/scale is loaded; otherwise
+        // fall back to plain 12-TET so the keyboard ALWAYS plays + drives MIDI-out (Ableton),
+        // even before any chord has been selected (was: bail when no scale → silent keyboard).
+        const frequency = (this.currentScale && this.rootMidiNote)
+            ? this.midiNoteToFrequency(midiNote)
+            : 440 * Math.pow(2, (midiNote - 69) / 12);
         if (!frequency) return;
 
         console.log(`MIDI Piano: Note ON - MIDI ${midiNote}, Vel ${velocity}, Freq ${frequency.toFixed(2)} Hz`);
 
-        // Play the note through the existing system
-        // This will trigger both web audio and MIDI output
+        // KL scene: the physical keyboard mirrors the hex chord menu — each key plays the
+        // SELECTED chord (quality + 9/11, or a single note in single-note mode) rooted at this
+        // key, to local audio + MIDI-out. Returns the chord's note-ids (array) for note-off.
+        if (this.isKeyboardScene() && typeof window.klPlayMidiKeyChord === 'function') {
+            const ids = window.klPlayMidiKeyChord(frequency);
+            this.activeNotes.set(midiNote, (ids && ids.length) ? ids : `viz_${midiNote}`);
+            this.captureHeldChord();
+            return;
+        }
+
+        // Other scenes: play a single note through the existing system (web audio + MIDI out).
         if (window.playNote) {
             const noteId = window.playNote(frequency);
             // Store noteId (even if null) so we can track for visualization
@@ -468,11 +482,15 @@ class MidiPianoHandler {
             window.keyboardHighlightMidiNote(midiNote, false);
         }
 
-        const noteId = this.activeNotes.get(midiNote);
-        if (noteId) {
-            // Stop the audio (only if it's a real noteId, not a visualization ID)
-            if (window.midiController && !String(noteId).startsWith('viz_')) {
-                window.midiController.stopSpecificNotes([noteId]);
+        const stored = this.activeNotes.get(midiNote);
+        if (stored) {
+            // Release the MIDI note(s). A KL chord stores an ARRAY of note-ids; a single note
+            // stores one id; a viz-only placeholder ('viz_…') has nothing to stop.
+            if (window.midiController) {
+                const ids = Array.isArray(stored)
+                    ? stored
+                    : (String(stored).startsWith('viz_') ? [] : [stored]);
+                if (ids.length) window.midiController.stopSpecificNotes(ids);
             }
             this.activeNotes.delete(midiNote);
         }

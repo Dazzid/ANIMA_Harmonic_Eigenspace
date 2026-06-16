@@ -54,20 +54,57 @@
 
     // ---- SAVE --------------------------------------------------------------
 
+    function activeTemperamentId() {
+        return (window.Temperament && window.Temperament.active && window.Temperament.active.id) || null;
+    }
+
+    // Per-temperament modal-grid cache key. MUST match anima.js switchTemperamentWithSwap, which
+    // parks/restores each tuning's grid here on a 53⇄31 switch (Phase 5a). localStorage = browser
+    // cache: no server file needed, and it survives reloads.
+    const TET_GRID_KEY = (id) => 'anima_ms_grid_' + id;
+
+    // Gather EACH tuning's modal grid for the save file: the active tuning live from the app, the
+    // others from the swap cache. So one file carries both the 53 and the 31 session.
+    function collectTetSessions(activeId, activeGrid) {
+        const out = {};
+        const temps = (window.Temperament && window.Temperament.TEMPERAMENTS) || {};
+        Object.keys(temps).forEach((idStr) => {
+            const id = parseInt(idStr, 10);
+            if (id === activeId && activeGrid && Array.isArray(activeGrid.grid)) {
+                out[id] = activeGrid;
+            } else {
+                try {
+                    const raw = localStorage.getItem(TET_GRID_KEY(id));
+                    if (raw) out[id] = JSON.parse(raw);
+                } catch (e) { /* ignore a bad cache entry */ }
+            }
+        });
+        return out;
+    }
+
     function buildSession() {
+        const activeId = activeTemperamentId();
+        let activeGrid = { grid: [] };
+        if (window.app && typeof window.app.getSession === 'function') {
+            activeGrid = window.app.getSession();
+        }
         const session = {
             signature: SIGNATURE,
             version: VERSION,
             savedAt: new Date().toISOString(),
+            // The grid/chord step integers are TEMPERAMENT-RELATIVE (a step means a different
+            // pitch in 31 vs 53). `temperament` = the tuning that was active on save, so load can
+            // flip back to it. `modalStudio` is the active grid (kept for old single-tuning files).
+            temperament: activeId,
             chordMemory: null,
-            modalStudio: { grid: [] }
+            modalStudio: activeGrid,
+            // Both tunings' grids ({ "53": {grid}, "31": {grid} }) so a single file holds both
+            // sessions. The inactive one comes from the per-temperament swap cache.
+            tetSessions: collectTetSessions(activeId, activeGrid)
         };
         const cm = chordMemoryGrid();
         if (cm && typeof cm.exportData === 'function') {
             session.chordMemory = cm.exportData();
-        }
-        if (window.app && typeof window.app.getSession === 'function') {
-            session.modalStudio = window.app.getSession();
         }
         return session;
     }
@@ -100,12 +137,63 @@
         if (ms && ms.grid && (!Array.isArray(ms.grid) || ms.grid.length !== 64)) {
             return { ok: false, error: 'Session file is corrupt (Modal grid shape).' };
         }
+        // Optional per-tuning grids (dual-session files). Each present grid must be a 64-cell array.
+        if (obj.tetSessions && typeof obj.tetSessions === 'object') {
+            for (const id of Object.keys(obj.tetSessions)) {
+                const t = obj.tetSessions[id];
+                if (t && t.grid && (!Array.isArray(t.grid) || t.grid.length !== 64)) {
+                    return { ok: false, error: 'Session file is corrupt (' + id + '-TET grid shape).' };
+                }
+            }
+        }
+        // Layer 4 — temperament filter. Optional for back-compat (old files have no tag → applied
+        // in the current tuning). If tagged, it must be a temperament we can actually switch to,
+        // else loading would replay the grid's step integers under the wrong tuning.
+        if (obj.temperament != null && !(window.Temperament && window.Temperament.get(obj.temperament))) {
+            return { ok: false, error: 'Session uses an unsupported temperament (' + obj.temperament + '-TET).' };
+        }
         return { ok: true, data: obj };
     }
 
     // Apply a validated session — REPLACE. Each part guarded so a surprise in one
     // can't abort the other or half-load. Modal grid retries if OfApp isn't ready.
-    function applySession(obj) {
+    // Async because a temperament flip reloads the reference table (await it before
+    // restoring, so the grid's step integers are read under the saved tuning).
+    // Returns { temperament, flipped } so the UI can report what happened.
+    async function applySession(obj) {
+        // 0) Temperament — flip FIRST. The grid/chord step integers below mean different
+        // pitches in 31 vs 53; switching reloads the reference table + rebuilds the editors
+        // and grid, so it must finish before we restore. Untagged files predate temperament
+        // tagging, when 53-TET was the only tuning — treat them as 53 so they load correctly
+        // even if the app is currently in 31-TET.
+        const saved = obj.temperament != null ? obj.temperament : 53;
+        const active = activeTemperamentId();
+        let flipped = false;
+        if (saved !== active && typeof window.setMSTemperament === 'function'
+            && window.Temperament && window.Temperament.get(saved)) {
+            try {
+                await window.setMSTemperament(saved);
+                flipped = true;
+            } catch (e) {
+                console.error('[session] temperament switch failed', e);
+            }
+        }
+
+        // A loaded session file is authoritative — drop any queued per-temperament swap
+        // restore (Phase 5a) so it can't overwrite the grid we're about to apply.
+        window.__tetPendingGrid = null;
+
+        // Seed the per-temperament swap cache with BOTH tunings' grids, so after load you can
+        // flip 53⇄31 and find each session intact (the inactive one is restored on switch).
+        if (obj.tetSessions && typeof obj.tetSessions === 'object') {
+            for (const id of Object.keys(obj.tetSessions)) {
+                try {
+                    const t = obj.tetSessions[id];
+                    if (t && Array.isArray(t.grid)) localStorage.setItem(TET_GRID_KEY(id), JSON.stringify(t));
+                } catch (e) { /* ignore a bad entry */ }
+            }
+        }
+
         // 1) Chord Memory
         try {
             const cm = chordMemoryGrid();
@@ -117,10 +205,14 @@
             console.error('[session] Chord Memory restore failed', e);
         }
 
-        // 2) Modal Interchange grid (retry until OfApp/Grid is ready)
-        if (obj.modalStudio && Array.isArray(obj.modalStudio.grid)) {
-            applyModalWithRetry(obj.modalStudio, 0);
+        // 2) Modal Interchange grid for the ACTIVE tuning (retry until OfApp/Grid is ready).
+        // Prefer the active tuning's per-TET grid; fall back to the legacy single grid.
+        const activeMs = (obj.tetSessions && obj.tetSessions[saved]) || obj.modalStudio;
+        if (activeMs && Array.isArray(activeMs.grid)) {
+            applyModalWithRetry(activeMs, 0);
         }
+
+        return { temperament: saved, flipped: flipped };
     }
 
     function applyModalWithRetry(ms, attempt) {
@@ -152,8 +244,10 @@
             }
             const v = validateSession(obj);
             if (!v.ok) return onResult(v);
-            applySession(v.data);
-            onResult({ ok: true });
+            applySession(v.data).then(
+                (info) => onResult({ ok: true, temperament: info && info.temperament, flipped: info && info.flipped }),
+                (e) => { console.error('[session] apply failed', e); onResult({ ok: false, error: 'Could not apply the session.' }); }
+            );
         };
         reader.readAsText(file);
     }
@@ -189,8 +283,12 @@
 
         const onResult = (res) => {
             if (res.ok) {
-                setMsg('Session loaded ✓', 'ok');
-                setTimeout(closeOverlay, 700);
+                const tet = res.temperament != null ? res.temperament + '-TET' : null;
+                const text = res.flipped
+                    ? 'Switched to ' + tet + ' · Session loaded ✓'
+                    : (tet ? 'Session loaded (' + tet + ') ✓' : 'Session loaded ✓');
+                setMsg(text, 'ok');
+                setTimeout(closeOverlay, res.flipped ? 1100 : 700);
             } else {
                 setMsg(res.error || 'Could not load the file.', 'err');
             }

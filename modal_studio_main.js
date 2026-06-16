@@ -44,8 +44,8 @@ class OfApp {
         this.size_y = 52;
         this.round = 11;
         
-        this.interModel = [9, 9, 4, 9, 9, 9, 4];
-        this.starting_note = -40; // C++ ofApp.h line 154
+        this.interModel = [...window.Temperament.active.interModel]; // 53-TET: [9,9,4,9,9,9,4]
+        this.starting_note = window.Temperament.active.startingNote; // C++ ofApp.h line 154 (C base, per temperament)
         this.numOctaves = 5; // C++ ofApp.h line 155
 
         //Modes positioning

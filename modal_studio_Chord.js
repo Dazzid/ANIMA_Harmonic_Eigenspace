@@ -34,7 +34,8 @@ class Chord {
     static THIRD_SYMBOL = {
         supermajor: 'SM', upmajor: '^M', major: 'M', downmajor: 'vM',
         neutralmajor: 'N', neutralminor: 'n', upminor: '^m', minor: 'm',
-        downminor: 'vm', subminor: 'sm'
+        downminor: 'vm', subminor: 'sm',
+        neutral: 'N'  // 31-EDO single neutral third (53 splits into neutralmajor/neutralminor)
     };
     
     constructor() {
@@ -70,13 +71,17 @@ class Chord {
         // octave (8 → 15, C1 → C2) to close the gap to its cluster; v2–v7 keep the
         // original C++ formation, where the bass is already just below the cluster
         // (v2–v4) or an intentional deep doubled-root form (v5–v7).
-        this.voicing_1 = [8, 17, 19, 21, 22];
-        this.voicing_2 = [8, 14, 17, 19, 22];
-        this.voicing_3 = [8, 14, 17, 19, 21];
-        this.voicing_4 = [8, 12, 14, 17, 19, 21];
-        this.voicing_5 = [1, 8, 12, 14, 17, 19];
-        this.voicing_6 = [1, 7, 12, 14, 17, 19];
-        this.voicing_7 = [1, 7, 10, 12, 14, 17];
+        // Voicing templates from the active temperament (53 keeps these exact defaults; 31 is
+        // tighter). Fallback to the 53 set if the temperament defines none.
+        const _V = (window.Temperament && window.Temperament.active && window.Temperament.active.voicings) ||
+            [[8,17,19,21,22],[8,14,17,19,22],[8,14,17,19,21],[8,12,14,17,19,21],[1,8,12,14,17,19],[1,7,12,14,17,19],[1,7,10,12,14,17]];
+        this.voicing_1 = [..._V[0]];
+        this.voicing_2 = [..._V[1]];
+        this.voicing_3 = [..._V[2]];
+        this.voicing_4 = [..._V[3]];
+        this.voicing_5 = [..._V[4]];
+        this.voicing_6 = [..._V[5]];
+        this.voicing_7 = [..._V[6]];
         
         // C++ Chord.hpp line 192 - potential positions for 9th in upper register
         this.upperNinth = [23, 27];
@@ -254,13 +259,14 @@ class Chord {
     qualityWithExtensions(core, intervalsFromRoot) {
         if (!core || !intervalsFromRoot || intervalsFromRoot.length === 0) return core;
         let nat9 = false, nat11 = false, nat13 = false, hasP5 = false, raised4 = false;
+        const T = window.Temperament.active, xr = T.extensionRanges, L = T.landmarks;
         for (const raw of intervalsFromRoot) {
-            const iv = ((raw % 53) + 53) % 53;
-            if (iv >= 3 && iv <= 9) nat9 = true;
-            else if (iv >= 21 && iv <= 25) nat11 = true;
-            else if (iv >= 37 && iv <= 41) nat13 = true;
-            if (iv >= 30 && iv <= 32) hasP5 = true;          // perfect 5th present
-            if (iv === 27) raised4 = true;                     // augmented 4th / tritone = #11 (26 = b5, distinct)
+            const iv = T.mod(raw);
+            if (iv >= xr.nat9.lo && iv <= xr.nat9.hi) nat9 = true;
+            else if (iv >= xr.nat11.lo && iv <= xr.nat11.hi) nat11 = true;
+            else if (iv >= xr.nat13.lo && iv <= xr.nat13.hi) nat13 = true;
+            if (iv >= xr.p5.lo && iv <= xr.p5.hi) hasP5 = true;          // perfect 5th present
+            if (iv === L.sharpEleventh) raised4 = true;                  // #11 (b5 distinct, a comma lower)
         }
         // #11 = a raised 11th (augmented 4th, step 27) ON TOP of a perfect 5th
         // (e.g. Cmaj7#11, the Lydian tonic). It is NOT a b5 — that's the diminished
@@ -301,220 +307,14 @@ class Chord {
         }
         
         // C++ interval maps from Chord.cpp lines 725-772
-        const thirdIntervals = {
-            10: "subminor", 11: "subminor", 12: "downminor", 13: "minor", 14: "upminor",
-            15: "neutralminor", 16: "neutralmajor", 17: "downmajor", 18: "major",
-            19: "upmajor", 20: "supermajor"
-        };
+        const thirdIntervals = window.Temperament.active.thirdQualityMap;
         
-        const fifthIntervals = {
-            26: "diminished", 27: "diminished", 28: "diminished", 29: "diminished",
-            30: "perfect", 31: "perfect", 32: "perfect",
-            33: "augmented", 34: "augmented", 35: "augmented", 36: "augmented"
-        };
+        const fifthIntervals = window.Temperament.active.fifthQualityMap;
         
-        const seventhIntervals = {
-            33: "subdiminished", 34: "downdiminished", 35: "diminished", 36: "updiminished",
-            42: "subminor", 43: "downminor", 44: "minor", 45: "upminor",
-            46: "neutralminor", 47: "neutralmajor", 48: "downmajor", 49: "major",
-            50: "upmajor", 51: "supermajor"
-        };
+        const seventhIntervals = window.Temperament.active.seventhQualityMap;
         
         // C++ chord name lookup table from Chord.hpp lines 287-485 (COMPLETE)
-        const chordNames = {
-            // Super-major combinations
-            "supermajor_perfect_supermajor": "SMSM7",
-            "supermajor_perfect_upmajor": "SM^M7",
-            "supermajor_perfect_major": "SMmaj7",
-            "supermajor_perfect_downmajor": "SMvM7",
-            "supermajor_perfect_neutralmajor": "SMN7",
-            "supermajor_perfect_neutralminor": "SMn7",
-            "supermajor_perfect_upminor": "SM^m7",
-            "supermajor_perfect_minor": "SMm7",
-            "supermajor_perfect_downminor": "SMvm7",
-            "supermajor_perfect_subminor": "SMsm7",
-
-            // Up-major combinations
-            "upmajor_perfect_supermajor": "^MSM7",
-            "upmajor_perfect_upmajor": "^M^M7",
-            "upmajor_perfect_major": "^Mmaj7",
-            "upmajor_perfect_downmajor": "^MvM7",
-            "upmajor_perfect_neutralmajor": "^MN7",
-            "upmajor_perfect_neutralminor": "^Mn7",
-            "upmajor_perfect_upminor": "^M^m7",
-            "upmajor_perfect_minor": "^Mm7",
-            "upmajor_perfect_downminor": "^Mvm7",
-            "upmajor_perfect_subminor": "^Msm7",
-
-            // Major combinations
-            "major_perfect_supermajor": "MSM7",
-            "major_perfect_upmajor": "M^M7",
-            "major_perfect_major": "maj7",
-            "major_perfect_downmajor": "MvM7",
-            "major_perfect_neutralmajor": "MN7",
-            "major_perfect_neutralminor": "Mn7",
-            "major_perfect_upminor": "M^m7",
-            "major_perfect_minor": "Mm7",
-            "major_perfect_downminor": "Mvm7",
-            "major_perfect_subminor": "Msm7",
-
-            // Down-major combinations
-            "downmajor_perfect_supermajor": "vMSM7",
-            "downmajor_perfect_upmajor": "vM^M7",
-            "downmajor_perfect_major": "vMmaj7",
-            "downmajor_perfect_downmajor": "vMvM7",
-            "downmajor_perfect_neutralmajor": "vMN7",
-            "downmajor_perfect_neutralminor": "vMn7",
-            "downmajor_perfect_upminor": "vM^m7",
-            "downmajor_perfect_minor": "vMm7",
-            "downmajor_perfect_downminor": "vMvm7",
-            "downmajor_perfect_subminor": "vMsm7",
-
-            // Neutral-major combinations
-            "neutralmajor_perfect_supermajor": "NSM7",
-            "neutralmajor_perfect_upmajor": "N^M7",
-            "neutralmajor_perfect_major": "Nmaj7",
-            "neutralmajor_perfect_downmajor": "NvM7",
-            "neutralmajor_perfect_neutralmajor": "NN7",
-            "neutralmajor_perfect_neutralminor": "Nn7",
-            "neutralmajor_perfect_upminor": "N^m7",
-            "neutralmajor_perfect_minor": "Nm7",
-            "neutralmajor_perfect_downminor": "Nvm7",
-            "neutralmajor_perfect_subminor": "Nsm7",
-
-            // Neutral-minor combinations
-            "neutralminor_perfect_supermajor": "nSM7",
-            "neutralminor_perfect_upmajor": "n^M7",
-            "neutralminor_perfect_major": "nmaj7",
-            "neutralminor_perfect_downmajor": "nvM7",
-            "neutralminor_perfect_neutralmajor": "nN7",
-            "neutralminor_perfect_neutralminor": "nn7",
-            "neutralminor_perfect_upminor": "n^m7",
-            "neutralminor_perfect_minor": "nm7",
-            "neutralminor_perfect_downminor": "nvm7",
-            "neutralminor_perfect_subminor": "nsm7",
-
-            // Up-minor combinations
-            "upminor_perfect_supermajor": "^mSM7",
-            "upminor_perfect_upmajor": "^m^M7",
-            "upminor_perfect_major": "^mmaj7",
-            "upminor_perfect_downmajor": "^mvM7",
-            "upminor_perfect_neutralmajor": "^mN7",
-            "upminor_perfect_neutralminor": "^mn7",
-            "upminor_perfect_upminor": "^m^m7",
-            "upminor_perfect_minor": "^mm7",
-            "upminor_perfect_downminor": "^mvm7",
-            "upminor_perfect_subminor": "^msm7",
-            
-            // Minor combinations
-            "minor_perfect_supermajor": "mSM7",
-            "minor_perfect_upmajor": "m^M7",
-            "minor_perfect_major": "mmaj7",
-            "minor_perfect_downmajor": "mvM7",
-            "minor_perfect_neutralmajor": "mN7",
-            "minor_perfect_neutralminor": "mn7",
-            "minor_perfect_upminor": "m^m7",
-            "minor_perfect_minor": "m7",
-            "minor_perfect_downminor": "mvm7",
-            "minor_perfect_subminor": "msm7",
-            "minor_downperfect_minor": "m7*",
-            "minor_upperfect_minor": "m7*",
-
-            // Down-minor combinations
-            "downminor_perfect_supermajor": "vmSM7",
-            "downminor_perfect_upmajor": "vm^M7",
-            "downminor_perfect_major": "vmmaj7",
-            "downminor_perfect_downmajor": "vmvM7",
-            "downminor_perfect_neutralmajor": "vmN7",
-            "downminor_perfect_neutralminor": "vmn7",
-            "downminor_perfect_upminor": "vm^m7",
-            "downminor_perfect_minor": "vm7",
-            "downminor_perfect_downminor": "vmvm7",
-            "downminor_perfect_subminor": "vmsm7",
-
-            // Sub-minor combinations
-            "subminor_perfect_supermajor": "smSM7",
-            "subminor_perfect_upmajor": "sm^M7",
-            "subminor_perfect_major": "smmaj7",
-            "subminor_perfect_downmajor": "smvM7",
-            "subminor_perfect_neutralmajor": "smN7",
-            "subminor_perfect_neutralminor": "smn7",
-            "subminor_perfect_upminor": "sm^m7",
-            "subminor_perfect_minor": "sm7",
-            "subminor_perfect_downminor": "smvm7",
-            "subminor_perfect_subminor": "smsm7",
-
-            // Half diminished upminor combinations
-            "upminor_diminished_supermajor": "øSM7",
-            "upminor_diminished_upmajor": "ø^M7",
-            "upminor_diminished_major": "ømaj7",
-            "upminor_diminished_downmajor": "øvM7",
-            "upminor_diminished_neutralmajor": "øN7",
-            "upminor_diminished_neutralminor": "øn7",
-            "upminor_diminished_upminor": "ø^m7",
-            "upminor_diminished_minor": "ø7",
-            "upminor_diminished_downminor": "øvm7",
-            "upminor_diminished_subminor": "øsm7",
-
-            // Half_Diminished minor combinations
-            "minor_diminished_supermajor": "øS7",
-            "minor_diminished_upmajor": "ø^M7",
-            "minor_diminished_major": "ømaj7",
-            "minor_diminished_downmajor": "øvM7",
-            "minor_diminished_neutralmajor": "øNM7",
-            "minor_diminished_neutralminor": "øn7",
-            "minor_diminished_upminor": "øv7",
-            "minor_diminished_minor": "ø7",
-            "minor_diminished_downminor": "øvm7",
-            "minor_diminished_subminor": "øsm7",
-
-            // Half Diminished downminor combinations
-            "downminor_diminished_supermajor": "vøS7",
-            "downminor_diminished_upmajor": "vø^M7",
-            "downminor_diminished_major": "vømaj7",
-            "downminor_diminished_downmajor": "vøvM7",
-            "downminor_diminished_neutralmajor": "vøN7",
-            "downminor_diminished_neutralminor": "vøn7",
-            "downminor_diminished_upminor": "vø^m7",
-            "downminor_diminished_minor": "vø7",
-            "downminor_diminished_downminor": "vøvm7",
-            "downminor_diminished_subminor": "vøsm7",
-
-            // Half Diminished subminor combinations
-            "subminor_diminished_supermajor": "søS7",
-            "subminor_diminished_upmajor": "sø^M7",
-            "subminor_diminished_major": "sømaj7",
-            "subminor_diminished_downmajor": "søvM7",
-            "subminor_diminished_neutralmajor": "søN7",
-            "subminor_diminished_neutralminor": "søn7",
-            "subminor_diminished_upminor": "sø^m7",
-            "subminor_diminished_minor": "sø7",
-            "subminor_diminished_downminor": "søvm7",
-            "subminor_diminished_subminor": "søsm7",
-            
-            // Full diminished
-            "minor_diminished_updiminished": "o^7",
-            "minor_diminished_diminished": "o7",
-            "minor_diminished_downdiminished": "ov7",
-            "minor_diminished_subdiminished": "ovv7",
-
-            // Augmented combinations
-            "major_augmented_super-major": "M+S7",
-            "major_augmented_upmajor": "M+^M7",
-            "major_augmented_major": "M+maj7",
-            "major_augmented_downmajor": "M+vM7",
-            "major_augmented_neutral-major": "M+NM7",
-            "major_augmented_neutral": "M+N7",
-            "major_augmented_neutral-minor": "M+n7",
-            "major_augmented_minor": "M+m7",
-            "major_augmented_downminor": "M+vm7",
-            "major_augmented_subminor": "M+sm7",
-
-            // Add downperfect ones
-            "downmajor_downperfect_downmajor": "vMvM*",
-            "neutralmajor_diminished_downminor": "Nøvm",
-            "neutralminor_diminished_neutralmajor": "nøN"
-        };
+        const chordNames = window.Temperament.active.chordNameTable;
         
         // C++ Chord.cpp line 962-964: Use root_53 (masterRoot) for interval calculation, not notes[0]
         const masterRoot = this.root_53;
@@ -575,7 +375,7 @@ class Chord {
             this.selectVoicingBasedOnFunction(this.chordFunction);
         }
         const rootFt = masterRoot.ft_note;
-        const voicedIntervals = this.noteVoicing.map(ft => (((ft - rootFt) % 53) + 53) % 53);
+        const voicedIntervals = this.noteVoicing.map(ft => window.Temperament.active.mod(ft - rootFt));
         const displayQuality = this.qualityWithExtensions(coreQuality, voicedIntervals);
 
         // this.quality keeps the CORE token (stable input for the color tinting in
@@ -877,122 +677,27 @@ class Chord {
         
         if (!this.root_53 || voicing.length === 0 || this.notes.length === 0) return;
         
-        let theRootReference = this.root_53.ft_note % 53;
-        if (theRootReference < 0) theRootReference += 53;
+        let theRootReference = this.root_53.ft_note % window.Temperament.active.N;
+        if (theRootReference < 0) theRootReference += window.Temperament.active.N;
         
         // Normalize voicing to intervals from root
         let normalizedVoicing = [];
         for (let i = 0; i < voicing.length; i++) {
-            let noteNum = voicing[i] % 53;
+            let noteNum = voicing[i] % window.Temperament.active.N;
             let interval = noteNum - theRootReference;
-            if (interval < 0) interval += 53;
+            if (interval < 0) interval += window.Temperament.active.N;
             normalizedVoicing.push(interval);
         }
         
         //console.log('Normalized intervals:', normalizedVoicing);
         
         // Interval maps (same as in setChordQuality)
-        const thirdIntervals = {
-            10: "subminor", 11: "subminor", 12: "downminor", 13: "minor", 14: "upminor",
-            15: "neutralminor", 16: "neutralmajor", 17: "downmajor", 18: "major",
-            19: "upmajor", 20: "supermajor"
-        };
-        const fifthIntervals = {
-            26: "diminished", 27: "diminished", 28: "diminished", 29: "diminished",
-            30: "perfect", 31: "perfect", 32: "perfect", 33: "augmented",
-            34: "augmented", 35: "augmented", 36: "augmented"
-        };
-        const seventhIntervals = {
-            33: "subdiminished", 34: "downdiminished", 35: "diminished", 36: "updiminished",
-            42: "subminor", 43: "downminor", 44: "minor", 45: "upminor",
-            46: "neutralminor", 47: "neutralmajor", 48: "downmajor", 49: "major",
-            50: "upmajor", 51: "supermajor"
-        };
+        const thirdIntervals = window.Temperament.active.thirdQualityMap;
+        const fifthIntervals = window.Temperament.active.fifthQualityMap;
+        const seventhIntervals = window.Temperament.active.seventhQualityMap;
         
         // Chord name lookup table (complete table from C++ Chord.hpp lines 287-485)
-        const chordNames = {
-            "supermajor_perfect_supermajor": "SMSM7", "supermajor_perfect_upmajor": "SM^M7",
-            "supermajor_perfect_major": "SMmaj7", "supermajor_perfect_downmajor": "SMvM7",
-            "supermajor_perfect_neutralmajor": "SMN7", "supermajor_perfect_neutralminor": "SMn7",
-            "supermajor_perfect_upminor": "SM^m7", "supermajor_perfect_minor": "SMm7",
-            "supermajor_perfect_downminor": "SMvm7", "supermajor_perfect_subminor": "SMsm7",
-            "upmajor_perfect_supermajor": "^MSM7", "upmajor_perfect_upmajor": "^M^M7",
-            "upmajor_perfect_major": "^Mmaj7", "upmajor_perfect_downmajor": "^MvM7",
-            "upmajor_perfect_neutralmajor": "^MN7", "upmajor_perfect_neutralminor": "^Mn7",
-            "upmajor_perfect_upminor": "^M^m7", "upmajor_perfect_minor": "^Mm7",
-            "upmajor_perfect_downminor": "^Mvm7", "upmajor_perfect_subminor": "^Msm7",
-            "major_perfect_supermajor": "MSM7", "major_perfect_upmajor": "M^M7",
-            "major_perfect_major": "maj7", "major_perfect_downmajor": "MvM7",
-            "major_perfect_neutralmajor": "MN7", "major_perfect_neutralminor": "Mn7",
-            "major_perfect_upminor": "M^m7", "major_perfect_minor": "Mm7",
-            "major_perfect_downminor": "Mvm7", "major_perfect_subminor": "Msm7",
-            "downmajor_perfect_supermajor": "vMSM7", "downmajor_perfect_upmajor": "vM^M7",
-            "downmajor_perfect_major": "vMmaj7", "downmajor_perfect_downmajor": "vMvM7",
-            "downmajor_perfect_neutralmajor": "vMN7", "downmajor_perfect_neutralminor": "vMn7",
-            "downmajor_perfect_upminor": "vM^m7", "downmajor_perfect_minor": "vMm7",
-            "downmajor_perfect_downminor": "vMvm7", "downmajor_perfect_subminor": "vMsm7",
-            "neutralmajor_perfect_supermajor": "NSM7", "neutralmajor_perfect_upmajor": "N^M7",
-            "neutralmajor_perfect_major": "Nmaj7", "neutralmajor_perfect_downmajor": "NvM7",
-            "neutralmajor_perfect_neutralmajor": "NN7", "neutralmajor_perfect_neutralminor": "Nn7",
-            "neutralmajor_perfect_upminor": "N^m7", "neutralmajor_perfect_minor": "Nm7",
-            "neutralmajor_perfect_downminor": "Nvm7", "neutralmajor_perfect_subminor": "Nsm7",
-            "neutralminor_perfect_supermajor": "nSM7", "neutralminor_perfect_upmajor": "n^M7",
-            "neutralminor_perfect_major": "nmaj7", "neutralminor_perfect_downmajor": "nvM7",
-            "neutralminor_perfect_neutralmajor": "nN7", "neutralminor_perfect_neutralminor": "nn7",
-            "neutralminor_perfect_upminor": "n^m7", "neutralminor_perfect_minor": "nm7",
-            "neutralminor_perfect_downminor": "nvm7", "neutralminor_perfect_subminor": "nsm7",
-            "upminor_perfect_supermajor": "^mSM7", "upminor_perfect_upmajor": "^m^M7",
-            "upminor_perfect_major": "^mmaj7", "upminor_perfect_downmajor": "^mvM7",
-            "upminor_perfect_neutralmajor": "^mN7", "upminor_perfect_neutralminor": "^mn7",
-            "upminor_perfect_upminor": "^m^m7", "upminor_perfect_minor": "^mm7",
-            "upminor_perfect_downminor": "^mvm7", "upminor_perfect_subminor": "^msm7",
-            "minor_perfect_supermajor": "mSM7", "minor_perfect_upmajor": "m^M7",
-            "minor_perfect_major": "mmaj7", "minor_perfect_downmajor": "mvM7",
-            "minor_perfect_neutralmajor": "mN7", "minor_perfect_neutralminor": "mn7",
-            "minor_perfect_upminor": "m^m7", "minor_perfect_minor": "m7",
-            "minor_perfect_downminor": "mvm7", "minor_perfect_subminor": "msm7",
-            "minor_downperfect_minor": "m7*", "minor_upperfect_minor": "m7*",
-            "downminor_perfect_supermajor": "vmSM7", "downminor_perfect_upmajor": "vm^M7",
-            "downminor_perfect_major": "vmmaj7", "downminor_perfect_downmajor": "vmvM7",
-            "downminor_perfect_neutralmajor": "vmN7", "downminor_perfect_neutralminor": "vmn7",
-            "downminor_perfect_upminor": "vm^m7", "downminor_perfect_minor": "vm7",
-            "downminor_perfect_downminor": "vmvm7", "downminor_perfect_subminor": "vmsm7",
-            "subminor_perfect_supermajor": "smSM7", "subminor_perfect_upmajor": "sm^M7",
-            "subminor_perfect_major": "smmaj7", "subminor_perfect_downmajor": "smvM7",
-            "subminor_perfect_neutralmajor": "smN7", "subminor_perfect_neutralminor": "smn7",
-            "subminor_perfect_upminor": "sm^m7", "subminor_perfect_minor": "sm7",
-            "subminor_perfect_downminor": "smvm7", "subminor_perfect_subminor": "smsm7",
-            "upminor_diminished_supermajor": "øSM7", "upminor_diminished_upmajor": "ø^M7",
-            "upminor_diminished_major": "ømaj7", "upminor_diminished_downmajor": "øvM7",
-            "upminor_diminished_neutralmajor": "øN7", "upminor_diminished_neutralminor": "øn7",
-            "upminor_diminished_upminor": "ø^m7", "upminor_diminished_minor": "ø7",
-            "upminor_diminished_downminor": "øvm7", "upminor_diminished_subminor": "øsm7",
-            "minor_diminished_supermajor": "øS7", "minor_diminished_upmajor": "ø^M7",
-            "minor_diminished_major": "ømaj7", "minor_diminished_downmajor": "øvM7",
-            "minor_diminished_neutralmajor": "øNM7", "minor_diminished_neutralminor": "øn7",
-            "minor_diminished_upminor": "øv7", "minor_diminished_minor": "ø7",
-            "minor_diminished_downminor": "øvm7", "minor_diminished_subminor": "øsm7",
-            "downminor_diminished_supermajor": "vøS7", "downminor_diminished_upmajor": "vø^M7",
-            "downminor_diminished_major": "vømaj7", "downminor_diminished_downmajor": "vøvM7",
-            "downminor_diminished_neutralmajor": "vøN7", "downminor_diminished_neutralminor": "vøn7",
-            "downminor_diminished_upminor": "vø^m7", "downminor_diminished_minor": "vø7",
-            "downminor_diminished_downminor": "vøvm7", "downminor_diminished_subminor": "vøsm7",
-            "subminor_diminished_supermajor": "søS7", "subminor_diminished_upmajor": "sø^M7",
-            "subminor_diminished_major": "sømaj7", "subminor_diminished_downmajor": "søvM7",
-            "subminor_diminished_neutralmajor": "søN7", "subminor_diminished_neutralminor": "søn7",
-            "subminor_diminished_upminor": "sø^m7", "subminor_diminished_minor": "sø7",
-            "subminor_diminished_downminor": "søvm7", "subminor_diminished_subminor": "søsm7",
-            "minor_diminished_updiminished": "o^7", "minor_diminished_diminished": "o7",
-            "minor_diminished_downdiminished": "ov7", "minor_diminished_subdiminished": "ovv7",
-            "major_augmented_super-major": "M+S7", "major_augmented_upmajor": "M+^M7",
-            "major_augmented_major": "M+maj7", "major_augmented_downmajor": "M+vM7",
-            "major_augmented_neutral-major": "M+NM7", "major_augmented_neutral": "M+N7",
-            "major_augmented_neutral-minor": "M+n7", "major_augmented_minor": "M+m7",
-            "major_augmented_downminor": "M+vm7", "major_augmented_subminor": "M+sm7",
-            "downmajor_downperfect_downmajor": "vMvM*",
-            "neutralmajor_diminished_downminor": "Nøvm",
-            "neutralminor_diminished_neutralmajor": "nøN"
-        };
+        const chordNames = window.Temperament.active.chordNameTable;
         
         let thirdQuality = "unknown";
         let fifthQuality = "perfect";
@@ -1001,24 +706,26 @@ class Chord {
         // Prefer the perfect 5th: a note at 26/27 alongside a perfect 5th is a #11
         // (an upper extension, named by qualityWithExtensions), NOT a diminished 5th.
         // Without this, Cmaj7#11 would mislabel as a b5 chord.
-        const hasPerfectFifth = normalizedVoicing.some(iv => iv >= 30 && iv <= 32);
+        // Classification windows are temperament-specific (53 fell outside in 31, collapsing
+        // every name). VR.third/fifth/seventh/p5 come from the active temperament.
+        const VR = window.Temperament.active.voicingRanges;
+        const inR = (iv, r) => iv >= r[0] && iv <= r[1];
+        const hasPerfectFifth = normalizedVoicing.some(iv => inR(iv, VR.p5));
 
         // Find qualities based on intervals
         for (const interval of normalizedVoicing) {
-            if (interval >= 10 && interval <= 20 && thirdIntervals[interval]) {
+            if (inR(interval, VR.third) && thirdIntervals[interval]) {
                 thirdQuality = thirdIntervals[interval];
             }
-            if (interval >= 26 && interval <= 36 && fifthIntervals[interval]) {
+            if (inR(interval, VR.fifth) && fifthIntervals[interval]) {
                 // If a perfect 5th exists, only let perfect-5th intervals set the 5th
-                // quality; the 26/27 note is then the #11, not the 5th.
-                if (!hasPerfectFifth || (interval >= 30 && interval <= 32)) {
+                // quality; the in-between note is then the #11, not the 5th.
+                if (!hasPerfectFifth || inR(interval, VR.p5)) {
                     fifthQuality = fifthIntervals[interval];
                 }
             }
-            if ((interval >= 33 && interval <= 36) || (interval >= 42 && interval <= 51)) {
-                if (seventhIntervals[interval]) {
-                    seventhQuality = seventhIntervals[interval];
-                }
+            if (VR.seventh.some(r => inR(interval, r)) && seventhIntervals[interval]) {
+                seventhQuality = seventhIntervals[interval];
             }
         }
         

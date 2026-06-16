@@ -43,8 +43,8 @@ class OfApp {
         this.size_y = 52;
         this.round = 11;
 
-        this.interModel = [9, 9, 4, 9, 9, 9, 4];
-        this.starting_note = -40; // C++ ofApp.h line 154
+        this.interModel = [...window.Temperament.active.interModel]; // 53-TET: [9,9,4,9,9,9,4]
+        this.starting_note = window.Temperament.active.startingNote; // C++ ofApp.h line 154 (C base, per temperament)
         this.numOctaves = 5; // C++ ofApp.h line 155
 
         //Modes positioning
@@ -524,6 +524,17 @@ class OfApp {
 
                 this.gridInitialized = true;
                 console.log('✅ Grid initialized');
+
+                // Phase 5a — per-temperament session swap: if a temperament switch parked a
+                // modal grid for THIS tuning, restore it now that the grid is ready (works no
+                // matter which scene the switch happened in). See switchTemperamentWithSwap.
+                try {
+                    const pend = window.__tetPendingGrid;
+                    if (pend && pend.ms && window.Temperament && pend.id === window.Temperament.active.id) {
+                        this.applySession(pend.ms);
+                        window.__tetPendingGrid = null;
+                    }
+                } catch (e) { console.warn('[tet-swap] grid restore on init failed', e); }
             }
 
             // Initialize KeyMap and sync chromatic notes on first load
@@ -581,9 +592,9 @@ class OfApp {
         if (this.currentScene === 'chord') {
             // Draw Chord Scene
             p.fill(...this.textColor);
-            p.textSize(15);
+            p.textSize(12);
             p.noStroke();
-            p.text('Modes Scene', 15, 20);
+            p.text('Modes Scene', 15, 8);
 
             for (let i = 0; i < this.modes.length; i++) {
                 this.modes[i].draw(p, p.mouseX, p.mouseY);

@@ -33,16 +33,15 @@ let currentKeyboardMap = {};
 // Track active notes for note-off
 let activeKeyNotes = {}; // key -> noteId mapping
 
-// 53-TET calculation function
+// Tuning math now delegates to the active temperament (temperament.js). During
+// Phase 1 the active temperament is always 53-TET, so results are byte-identical.
 function get53tetRatio(steps) {
-    return Math.pow(2, steps / 53.0);
+    return window.Temperament.active.stepToRatio(steps);
 }
 
-// Find closest 53-TET step for a given frequency ratio relative to root
+// Find closest step for a given frequency ratio relative to root.
 function findClosest53TETStep(ratio) {
-    // Convert ratio to 53-TET steps
-    const steps = Math.round(53 * Math.log2(ratio));
-    return steps;
+    return window.Temperament.active.ratioToStep(ratio);
 }
 
 // Calculate 12-note scale from 4 chord notes using 53-TET
@@ -171,13 +170,13 @@ function calculateDynamic12Notes(chordFreqs) {
             } else if (prevPos >= 0) {
                 // Fill from last defined note to octave
                 const prevStep = scale12Steps[prevPos];
-                const range = rootStep + 53 - prevStep;
+                const range = rootStep + window.Temperament.active.octave - prevStep;
                 const positions = 12 - prevPos;
                 const offset = i - prevPos;
                 scale12Steps[i] = Math.round(prevStep + (range * offset / positions));
             } else {
                 // Fill from root (shouldn't happen)
-                scale12Steps[i] = rootStep + Math.round((i / 12) * 53);
+                scale12Steps[i] = rootStep + Math.round((i / 12) * window.Temperament.active.N);
             }
         }
     }
@@ -200,9 +199,9 @@ function calculateDynamic12Notes(chordFreqs) {
         };
     });
 
-    // ALWAYS add 13th note: root + octave (MUST be rootStep + 53)
+    // ALWAYS add 13th note: root + octave (MUST be rootStep + N)
     // This ensures the ',' key is ALWAYS the octave up, regardless of scale calculation
-    const octaveStep = rootStep + 53;
+    const octaveStep = rootStep + window.Temperament.active.octave;
     const octaveRatio = get53tetRatio(octaveStep);
     const octaveFreq = rootFreq * octaveRatio;
     scale12Notes.push({
@@ -244,7 +243,7 @@ function getRootNoteStep(freq) {
     // A4 = 440 Hz is step 0 in our reference system
     const A4 = 440.0;
     const ratio = freq / A4;
-    const steps = Math.round(53 * Math.log2(ratio));
+    const steps = window.Temperament.active.ratioToStep(ratio);
     return steps;
 }
 

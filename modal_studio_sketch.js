@@ -64,7 +64,7 @@ const sketch = (p) => {
             }
         });
         
-        await app.loadJSONData('53_reference_notes.json');
+        await app.loadJSONData(window.Temperament.active.referenceFile);
         app.setupReferenceMap();
         app.generateAllModes(p);
         

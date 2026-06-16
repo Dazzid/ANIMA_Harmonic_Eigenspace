@@ -25,7 +25,7 @@ class ScaleEditor {
         // C++ ScaleEditor.cpp lines 10-18
         this.selectedNode = -1;
         this.numNodes = 0;
-        this.startingStep = -40;  // Start at C0
+        this.startingStep = window.Temperament.active.startingNote;  // C base of the reference table
         this.rootRotation = 0.0;  // INITIAL_ROTATION
         this.previousAngle = 0.0;
         this.isRotating = false;
@@ -36,11 +36,13 @@ class ScaleEditor {
         this.outerRingSize = 160; // Radius of the main 53-step circle with nodes
         
         // C++ ScaleEditor.hpp lines 87-103 - Constants
-        this.TOTAL_STEPS = 53;
+        // Steps-per-octave from the active temperament (53 today; re-derived on
+        // temperament switch in Phase 4). See temperament.js.
+        this.TOTAL_STEPS = window.Temperament.active.N;
         this.MIN_NODES = 3;
         this.MAX_NODES = 17;
         this.MAX_OCTAVES = 2;
-        this.STEPS_PER_OCTAVE = 53;
+        this.STEPS_PER_OCTAVE = window.Temperament.active.N;
         this.NODE_RADIUS = 15.0;
         this.SELECTION_RADIUS = 10.0;
         this.ROTATION_RADIUS = 0.45;
@@ -54,8 +56,11 @@ class ScaleEditor {
         this.LABEL_PADDING = 12;
         this.FTTnotesSize = 11;
         
-        // C++ ScaleEditor.hpp lines 105 - Step pattern for 12-tone octave division
-        this.STEP_PATTERN = [0, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5];
+        // 12-note chromatic pattern (which ring steps get a note-name label) — from the active
+        // temperament so 31's ring labels its own chromatic, not the 53 step layout. C++ origin:
+        // ScaleEditor.hpp line 105 (the hardcoded 53 pattern, kept as the fallback).
+        this.STEP_PATTERN = (window.Temperament.active && window.Temperament.active.chromaticStepPattern)
+            || [0, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5];
         
         // C++ ScaleEditor.hpp lines 115-125 - Inversion state
         this.isAnimatingInversion = false;
@@ -117,7 +122,8 @@ class ScaleEditor {
             this.ORANGE = [255, 149, 0];
             this.MID_ORANGE = [255, 187, 79];
             this.LIGHT_ORANGE = [254, 245, 177];
-            
+            this.RED_ORANGE = [255, 90, 0];   // 31-EDO supermajor (3rd/7th)
+
             this.BLUE_GREEN = [8, 160, 255];
             this.MID_BLUE_GREEN = [93, 200, 254];
             this.DIST_BLUE_GREEN = [0, 213, 255];
@@ -137,7 +143,8 @@ class ScaleEditor {
             this.ORANGE = [255, 149, 0]; //rgba(255, 149, 0, 1)
             this.MID_ORANGE = [255, 187, 79]; //rgba(255, 187, 79, 1)
             this.LIGHT_ORANGE = [255, 172, 18];
-            
+            this.RED_ORANGE = [255, 90, 0];   // 31-EDO supermajor (3rd/7th)
+
             this.BLUE_GREEN = [3, 158, 255];
             this.MID_BLUE_GREEN = [73, 157, 200];
             this.DIST_BLUE_GREEN = [0, 213, 255]; //rgba(0, 213, 255, 1)
@@ -192,7 +199,13 @@ class ScaleEditor {
     
     // C++ ScaleEditor.cpp lines 409-466 - Initialize interval markers
     initializeIntervalMarkers() {
-        this.intervalMarkers = [
+        // Per-temperament marker table (names + quality colors). 53 keeps its 10-degree
+        // comma-variant table; 31 uses the 5-quality table (subminor cyan … supermajor red-orange).
+        this.intervalMarkers = (window.Temperament.active.N === 31) ? this._markers31() : this._markers53();
+    }
+
+    _markers53() {
+        return [
             {steps: 0, name: "Root", color: this.WHITE},
             {steps: 1, name: "^1", color: this.LIGHT_GREY},
             {steps: 2, name: "^^1", color: this.DIST_BLUE_GREEN},
@@ -246,6 +259,45 @@ class ScaleEditor {
             {steps: 50, name: "^M7", color: this.ORANGE},
             {steps: 51, name: "^^M7", color: this.ORANGE},
             {steps: 52, name: "v8", color: this.LIGHT_GREY}
+        ];
+    }
+
+    // 31-EDO interval markers — 5-quality color scheme. Perfect intervals white; minor
+    // flavor blue, major flavor orange, neutral grey; the 3rd (7–11) and 7th (25–29) carry
+    // the full subminor→supermajor palette (cyan → red-orange) to read chord quality.
+    _markers31() {
+        return [
+            {steps: 0,  name:   "Root",   color: this.WHITE},
+            { steps: 1, name:   "^1",     color: this.LIGHT_GREY },
+            { steps: 2, name:   "A1",     color: this.LIGHT_GREY },
+            {steps: 3,  name:   "m2",     color: this.BLUE_GREEN},
+            { steps: 4, name:   "N2",     color: this.NEUTRAL_MAJOR },
+            {steps: 5,  name:   "M2",     color: this.MID_ORANGE},
+            {steps: 6,  name:   "^M2",    color: this.LIGHT_GREY},
+            {steps: 7,  name:   "sm3",    color: this.DIST_BLUE_GREEN},
+            {steps: 8,  name:   "m3",     color: this.BLUE_GREEN},
+            {steps: 9,  name:   "N3",     color: this.NEUTRAL_MAJOR},
+            { steps: 10, name:  "M3",     color: this.MID_ORANGE },
+            {steps: 11, name:   "SM3",    color: this.ORANGE},
+            {steps: 12, name:   "^M3",    color: this.LIGHT_GREY},
+            {steps: 13, name:   "P4",     color: this.WHITE},
+            {steps: 14, name:   "^4",     color: this.LIGHT_GREY},
+            {steps: 15, name:   "A4",     color: this.LIGHT_GREY},
+            {steps: 16, name:   "d5",     color: this.LIGHT_GREY},
+            {steps: 17, name:   "v5",     color: this.LIGHT_GREY},
+            {steps: 18, name:   "P5",     color: this.WHITE},
+            { steps: 19, name:  "^5",     color: this.LIGHT_GREY },
+            { steps: 20, name:  "A5",     color: this.DIST_BLUE_GREEN },
+            {steps: 21, name:   "m6",     color: this.BLUE_GREEN},
+            {steps: 22, name:   "N6",     color: this.NEUTRAL_MAJOR},
+            {steps: 23, name:   "M6",     color: this.MID_ORANGE},
+            {steps: 24, name:   "^M6",    color: this.ORANGE},
+            {steps: 25, name:   "sm7",    color: this.DIST_BLUE_GREEN},
+            {steps: 26, name:   "m7",     color: this.BLUE_GREEN},
+            { steps: 27, name:  "N7",     color: this.NEUTRAL_MAJOR },
+            { steps: 28, name:  "M7",     color: this.MID_ORANGE },
+            {steps: 29, name:   "SM7",    color: this.ORANGE},
+            {steps: 30, name:   "v8",     color: this.LIGHT_GREY}
         ];
     }
     
@@ -406,9 +458,9 @@ class ScaleEditor {
         
         if (this.rootRotation < 0) {
             const negativeSteps = (this.rootRotation * this.STEPS_PER_OCTAVE) / (Math.PI * 2);
-            this.startingStep = -40 + Math.floor(negativeSteps);
+            this.startingStep = window.Temperament.active.startingNote + Math.floor(negativeSteps);
         } else {
-            this.startingStep = -40 + (this.currentOctave * this.STEPS_PER_OCTAVE) + this.rootNote;
+            this.startingStep = window.Temperament.active.startingNote + (this.currentOctave * this.STEPS_PER_OCTAVE) + this.rootNote;
         }
         
         // Resync chromatic notes when root changes (recalculates intervals from new root)
@@ -915,7 +967,7 @@ class ScaleEditor {
             if (!this.shouldDrawNoteAtStep(i)) continue;
             
             const labelPos = this.calculateLabelPosition(innerRadius, i);
-            const adjustedStep = -40 + i;
+            const adjustedStep = window.Temperament.active.startingNote + i;
             const noteName = this.getNoteNameForStep(adjustedStep, false);
             
             if (noteName) {
@@ -1322,9 +1374,8 @@ class ScaleEditor {
             // Convert it to interval from root (0-52)
             const rootStep = keyMapScale[0].step; // Root is always first in KeyMap scale
             let interval = note.step - rootStep;
-            // Normalize to 0-52 range
-            while (interval < 0) interval += 53;
-            while (interval >= 53) interval -= 53;
+            // Normalize to [0, N)
+            interval = window.Temperament.active.mod(interval);
             return interval;
         });
         

@@ -28,15 +28,15 @@ class ModalStudioKeyMap {
         this.rootFrequency = null;
     }
 
-    // 53-TET calculation function
+    // Tuning math delegates to the active temperament (temperament.js); Phase 1
+    // keeps it at 53-TET so results are identical.
     get53tetRatio(steps) {
-        return Math.pow(2, steps / 53.0);
+        return window.Temperament.active.stepToRatio(steps);
     }
 
-    // Find closest 53-TET step for a given frequency ratio relative to root
+    // Find closest step for a given frequency ratio relative to root.
     findClosest53TETStep(ratio) {
-        const steps = Math.round(53 * Math.log2(ratio));
-        return steps;
+        return window.Temperament.active.ratioToStep(ratio);
     }
 
     // Calculate 12-note chromatic scale from 7 modal scale notes using 53-TET
@@ -80,45 +80,7 @@ class ModalStudioKeyMap {
         // Map scale notes to chromatic positions based on 53-TET interval classification
         // Following the Scale Editor wheel ranges from your diagram
         scaleIntervals.forEach((interval, idx) => {
-            let pos = null;
-
-            if (interval === 0) {
-                // Root (C)
-                pos = 0;
-            } else if (interval >= 3 && interval <= 7) {
-                // Minor 2nd region (C# / Db) - steps 3-7
-                pos = 1;
-            } else if (interval >= 8 && interval <= 10) {
-                // Major 2nd region (D) - steps 8-10
-                pos = 2;
-            } else if (interval >= 11 && interval <= 15) {
-                // Minor 3rd region (Eb) - steps 11-15
-                pos = 3;
-            } else if (interval >= 16 && interval <= 20) {
-                // Major 3rd region (E) - steps 16-20
-                pos = 4;
-            } else if (interval >= 21 && interval <= 24) {
-                // Perfect 4th region (F) - steps ~22
-                pos = 5;
-            } else if (interval >= 25 && interval <= 28) {
-                // Augmented 4th / Tritone region (F#) - steps 25-28
-                pos = 6;
-            } else if (interval >= 29 && interval <= 33) {
-                // Perfect 5th region (G) - steps ~31
-                pos = 7;
-            } else if (interval >= 34 && interval <= 37) {
-                // Minor 6th region (Ab) - steps 34-37
-                pos = 8;
-            } else if (interval >= 38 && interval <= 41) {
-                // Major 6th region (A) - steps 38-41
-                pos = 9;
-            } else if (interval >= 42 && interval <= 46) {
-                // Minor 7th region (Bb) - steps 42-46 (includes neutral 7th)
-                pos = 10;
-            } else if (interval >= 47 && interval <= 51) {
-                // Major 7th region (B) - steps 47-51
-                pos = 11;
-            }
+            let pos = window.Temperament.active.chromaticPosition(interval);
 
             if (pos !== null && pos < 12) {
                 scale12Steps[pos] = rootStep + interval;
@@ -155,7 +117,7 @@ class ModalStudioKeyMap {
                 } else if (prevPos >= 0) {
                     // Fill from last defined note to octave
                     const prevStep = scale12Steps[prevPos];
-                    const range = (rootStep + 53) - prevStep;
+                    const range = (rootStep + window.Temperament.active.octave) - prevStep;
                     const positions = 12 - prevPos;
                     const offset = i - prevPos;
                     scale12Steps[i] = Math.round(prevStep + (range * offset / positions));
@@ -168,7 +130,7 @@ class ModalStudioKeyMap {
                     scale12Steps[i] = Math.round(rootStep + (range * offset / positions));
                 } else {
                     // Fallback (shouldn't happen with 7 modal notes)
-                    scale12Steps[i] = rootStep + Math.round((i / 12) * 53);
+                    scale12Steps[i] = rootStep + Math.round((i / 12) * window.Temperament.active.N);
                 }
             }
         }
@@ -187,8 +149,8 @@ class ModalStudioKeyMap {
             };
         });
 
-        // Add 13th note: octave (root + 53 steps)
-        const octaveStep = rootStep + 53;
+        // Add 13th note: octave (root + N steps)
+        const octaveStep = rootStep + window.Temperament.active.octave;
         const octaveRatio = this.get53tetRatio(octaveStep);
         const octaveFreq = rootFreq * octaveRatio;
         scale12Notes.push({

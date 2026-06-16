@@ -42,11 +42,15 @@ class VoicingEditor {
         // Constants (from .hpp lines 142-145)
         this.NODE_RADIUS = 9.0;
         this.SELECTION_RADIUS = 10.0;
-        this.STEPS_PER_OCTAVE = 53;
-        this.TOTAL_STEPS = 53;
+        // Steps-per-octave from the active temperament (53 today; re-derived on
+        // temperament switch in Phase 4). See temperament.js.
+        this.STEPS_PER_OCTAVE = window.Temperament.active.N;
+        this.TOTAL_STEPS = window.Temperament.active.N;
         
-        // 12-TET pattern for reference notes (from .hpp line 146)
-        this.STEP_PATTERN = [0, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5];
+        // 12-note chromatic pattern (which ring steps get a note-name label) — from the active
+        // temperament so 31 labels its own chromatic (C C# D Eb …) instead of the 53 step layout.
+        this.STEP_PATTERN = (window.Temperament.active && window.Temperament.active.chromaticStepPattern)
+            || [0, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5];
         
         // Display properties 
         this.radius = 0;
@@ -105,8 +109,8 @@ class VoicingEditor {
         // Hard pitch range for the wheel: no note may leave C0…C5. In the 53-TET
         // reference table C0 = −40 (the app's starting_note), so C5 = −40 + 5·53.
         // Tighter than the octave-ring clamp (−1…4 ≈ refs −53…264) on BOTH ends.
-        this.WHEEL_MIN_TET = -40;
-        this.WHEEL_MAX_TET = -40 + 5 * this.TOTAL_STEPS;
+        this.WHEEL_MIN_TET = window.Temperament.active.startingNote;
+        this.WHEEL_MAX_TET = window.Temperament.active.startingNote + 5 * this.TOTAL_STEPS;
         this.onTranspose = null; // app hook: shift the chord's notes/root by N commas (keeps the name right)
         this.onSelectVoicing = null; // app hook: apply the chord's built-in voicing(n) preset + reload
         this.onWheelTick = null; // app hook: detent "tick" sound, fired per grip line passed (2 per comma)
@@ -453,15 +457,11 @@ class VoicingEditor {
     }
     
     determineComponentType(interval) {
-        // These intervals are specific to 53TET
-        if (interval === 0) return ChordComponentType.ROOT;
-        if (interval >= 11 && interval <= 20) return ChordComponentType.THIRD;
-        if (interval >= 27 && interval <= 35) return ChordComponentType.FIFTH;
-        if (interval >= 42 && interval <= 52) return ChordComponentType.SEVENTH;
-        if (interval >= 3 && interval <= 10) return ChordComponentType.NINTH;
-        if (interval >= 21 && interval <= 25) return ChordComponentType.ELEVENTH;
-        if (interval === 26) return ChordComponentType.SHARP_ELEVENTH;
-        if (interval >= 33 && interval <= 41) return ChordComponentType.THIRTEENTH;
+        // Interval-class ranges come from the active temperament (temperament.js);
+        // map its token back to this scene's ChordComponentType enum. Falls through
+        // to the UNKNOWN return below when unclassified.
+        const ct = window.Temperament.active.componentType(interval);
+        if (ct !== 'UNKNOWN' && ChordComponentType[ct] !== undefined) return ChordComponentType[ct];
         
         return ChordComponentType.UNKNOWN;
     }
@@ -509,22 +509,25 @@ class VoicingEditor {
         // so default the 11th to #11 (Lydian). The #11 = the augmented 4th / tritone
         // = step 27 in 53-TET (NOT 26 — that's the diminished 5th, a comma lower).
         // Non-major chords keep the diatonic 11 (perfect 4th = 22).
-        const eleventhInterval = this.isMajorChord() ? 27 : degInterval(3, 22);
+        const L = window.Temperament.active.landmarks;
+        const eleventhInterval = this.isMajorChord() ? L.sharpEleventh : degInterval(3, L.eleventh);
         const exts = [
-            { type: ChordComponentType.NINTH,      interval: degInterval(1, 9)  },
-            { type: ChordComponentType.ELEVENTH,   interval: eleventhInterval   },
-            { type: ChordComponentType.THIRTEENTH, interval: degInterval(5, 40) },
+            { type: ChordComponentType.NINTH,      interval: degInterval(1, L.ninth)      },
+            { type: ChordComponentType.ELEVENTH,   interval: eleventhInterval             },
+            { type: ChordComponentType.THIRTEENTH, interval: degInterval(5, L.thirteenth) },
         ];
 
         const MAX_OCTAVE = 4; // outermost ring — nothing may go beyond it
+        const topOct = this.getOctave(topAbs);
         for (const e of exts) {
             // Place the extension's pitch class just ABOVE the current top note (the
             // upper note of the voicing)…
             let abs = rootAbs + e.interval;
             while (abs <= topAbs) abs += this.TOTAL_STEPS;
-            // …but HARD-CLAMP to the rings so a spread voicing can't fling it off the
-            // widget (was producing notes ~17 rings up). Drop octaves until on a ring.
-            while (this.getOctave(abs) > MAX_OCTAVE) abs -= this.TOTAL_STEPS;
+            // …but keep it within ONE octave of the top chord tone (compact voicing — no
+            // flinging the 9/11/13 to the outermost ring), and never past the last ring.
+            const cap = Math.min(MAX_OCTAVE, topOct + 1);
+            while (this.getOctave(abs) > cap) abs -= this.TOTAL_STEPS;
             let pc = ((abs % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS;
             this.chordComponents.push({
                 type: e.type,
@@ -639,12 +642,19 @@ class VoicingEditor {
     //   7th  → C3 B3 C4 E4 G4 B4
     buildLeadingVoicing(lead) {
         const ivOf = (v) => (((v.normalizedTET - this.rootPitchClass) % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS;
+        // Tone-detection windows come from the active temperament (53: 3rd 11-20, 5th 26-35,
+        // 7th 42-52; 31: 3rd 7-11, 5th 16-20, 7th 24-29). Hardcoding 53 here meant 31's tones
+        // fell outside every window → only the root got placed (the "voicing type does nothing
+        // in 31-TET" bug). Fall back to the 53 windows if a temperament omits the table.
+        const LVR = (window.Temperament.active && window.Temperament.active.leadVoicingRanges)
+            || { third: [11, 20], fifth: [26, 35], seventh: [42, 52] };
+        const inRange = (iv, w) => iv >= w[0] && iv <= w[1];
         const tones = { root: 0 };
         for (const v of this.currentVoicing) {
             const iv = ivOf(v);
-            if (iv >= 11 && iv <= 20 && tones.third === undefined) tones.third = iv;
-            else if (iv >= 26 && iv <= 35 && tones.fifth === undefined) tones.fifth = iv;
-            else if (iv >= 42 && iv <= 52 && tones.seventh === undefined) tones.seventh = iv;
+            if (inRange(iv, LVR.third) && tones.third === undefined) tones.third = iv;
+            else if (inRange(iv, LVR.fifth) && tones.fifth === undefined) tones.fifth = iv;
+            else if (inRange(iv, LVR.seventh) && tones.seventh === undefined) tones.seventh = iv;
         }
         // [tone, octaveOffset] — literal transcription of the table.
         const SPECS = {
@@ -703,11 +713,14 @@ class VoicingEditor {
     // over a dominant the natural 11 is fine (the G11 / sus-dominant). So: major 3rd
     // present AND no flat (minor) 7th (42–46).
     isMajorChord() {
+        // #11 reserved to maj7: a major 3rd present AND no flat (minor/dom) 7th. Windows are
+        // temperament-specific (53: 3rd 17-20, b7 42-46; 31: 3rd 10-11, b7 24-26).
+        const VR = window.Temperament.active.voicingRanges;
         let hasMajorThird = false, hasFlatSeventh = false;
         for (const v of this.currentVoicing) {
             const iv = (((v.normalizedTET - this.rootPitchClass) % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS;
-            if (iv >= 17 && iv <= 20) hasMajorThird = true;       // major 3rd
-            else if (iv >= 42 && iv <= 46) hasFlatSeventh = true; // minor / dominant 7th
+            if (iv >= VR.majorThird[0] && iv <= VR.majorThird[1]) hasMajorThird = true;
+            else if (iv >= VR.flatSeventh[0] && iv <= VR.flatSeventh[1]) hasFlatSeventh = true;
         }
         return hasMajorThird && !hasFlatSeventh;
     }
@@ -1058,13 +1071,18 @@ class VoicingEditor {
                 // Only draw reference points and labels for the innermost wheel
                 if (octave === -1) {
                     if (this.shouldDrawNoteAtStep(step)) {
-                        let angle = (TWO_PI * ((step + 13) % this.TOTAL_STEPS) / this.TOTAL_STEPS) - PI;
+                        // `step` is C-anchored (0 = C). Convert to the A-anchored pitch class to get
+                        // the on-circle angle (C at top): add C's pitch class = ((startingNote%N)+N)%N
+                        // — 13 in 53-TET, 8 in 31-TET. (Old code hardcoded 13.)
+                        const startN = window.Temperament.active.startingNote;
+                        const cOffset = ((startN % this.TOTAL_STEPS) + this.TOTAL_STEPS) % this.TOTAL_STEPS;
+                        let angle = (TWO_PI * ((step + cOffset) % this.TOTAL_STEPS) / this.TOTAL_STEPS) - PI;
                         // p.fill(...this.subScale);
                         // p.noStroke();
                         // p.circle(outerPos.x, outerPos.y, 5);
-                        
-                        // Use reference relative to C0
-                        let reference = step - 40; // Adjust to match C at top
+
+                        // Reference into the per-temperament table, C0-anchored (53: -40, 31: -23).
+                        let reference = step + startN;
                         let noteName = this.getNoteNameForStep(reference, false);
                         if (noteName !== "") {
                             let labelRadius = r - 15.0;
@@ -1533,6 +1551,20 @@ class VoicingEditor {
     }
 
     hideMenuDom() { if (this._menuWrap) { this._menuWrap.style.display = 'none'; this._setMenuOpen(false); } }
+
+    // Remove this editor's voicing-preset dropdown from the DOM entirely. The menu is appended
+    // to document.body (not to a container that goes away with the editor), so when the app
+    // REPLACES the VoicingEditor — e.g. setMSTemperament recreates the editors on a temperament
+    // switch — the old instance's menu would otherwise stay orphaned in the body, still visible,
+    // and "follow" the user into the EigenSpace / Keyboard scenes. Call this before dropping the
+    // instance so the trapped "Voicing types" button can't survive the swap.
+    disposeMenuDom() {
+        if (this._menuWrap) {
+            if (this._menuWrap.parentNode) this._menuWrap.parentNode.removeChild(this._menuWrap);
+            this._menuWrap = null;
+        }
+        this._setMenuOpen(false);
+    }
 
     // Inner/outer radius of the re-root wheel band — centered on the outermost
     // note ring (octave 4 at 1.35·r), so the wheel is the same size as the outer ring.

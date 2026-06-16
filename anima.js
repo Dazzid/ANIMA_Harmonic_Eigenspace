@@ -291,6 +291,15 @@ window.playChordFrequencies = function (freqs) {
             }
             break;
     }
+
+    // Also drive the external MIDI device (e.g. Ableton). Chord Memory must reach the DAW
+    // in EVERY scene, not just the MS grid. The per-scene handlers above are audio-only
+    // (no MIDI), so there's no double-trigger. Notes sustain until the next chord — same as
+    // the MS grid — and stopChordNotes() clears the previous chord first.
+    if (window.midiController && window.midiController.midiEnabled && window.midiController.selectedOutput) {
+        window.midiController.stopChordNotes();
+        window.midiController.playChord(freqs, 5);
+    }
 };
 
 // midi_piano.js broadcasts the currently-held MIDI notes (exact Hz, in the active
@@ -425,10 +434,100 @@ const sketch = (p) => {
             });
         }
         
-        await app.loadJSONData('53_reference_notes.json');
+        await app.loadJSONData(window.Temperament.active.referenceFile);
         app.setupReferenceMap();
         app.generateAllModes(p);
-        
+
+        // Dev/test hook (Phase 5 will wrap this in the editor toggle + full reset): switch the MS
+        // temperament at runtime — reloads the reference table, forces the editors/grid to re-init,
+        // and regenerates the modes from the active generator. Try `setMSTemperament(31)` in console.
+        window.setMSTemperament = async function (id) {
+            const t = window.Temperament.setActive(id);
+            await app.loadJSONData(t.referenceFile);
+            app.setupReferenceMap();
+            // Refresh the generator from the active temperament (was stale at the 53 default
+            // [9,9,4,9,9,9,4]; the editor lays out setIntervals(interModel) in an N-step octave,
+            // so a 53-sum scale in a 31 wheel broke the nodes/lines/inversion wheel).
+            app.interModel = [...t.interModel];
+            app.starting_note = t.startingNote;   // C base differs per temperament (53:-40, 31:-23)
+            // Full reset (D1): recreate the editors + grid so they re-read N (wheel resolution)
+            // in their constructors and drop stale state from the previous temperament (whose
+            // step indices map to different pitches here). Then regenerate modes from the
+            // active generator.
+            // First tear down the outgoing VoicingEditor's body-level dropdown — it's appended
+            // to document.body, so replacing the editor would otherwise orphan it (a "Voicing
+            // types" button stuck visible across ES/KL). See VoicingEditor.disposeMenuDom.
+            if (app.voicingEditor && typeof app.voicingEditor.disposeMenuDom === 'function') {
+                app.voicingEditor.disposeMenuDom();
+            }
+            app.scaleEditor = new ScaleEditor();
+            app.voicingEditor = new VoicingEditor();
+            app.grid = new Grid();
+            app.scaleEditorInitialized = false;
+            app.voicingEditorInitialized = false;
+            app.gridInitialized = false;
+            app.draggingChordsInitialized = false;  // rebuild the palette too — else dragged
+                                                    // chords keep 53-TET refs (3rd at ~17 →
+                                                    // unclassified in 31 → bare "C" column)
+            app.selectedChord = null;
+            app.selectedMode = null;
+            app.generateAllModes(p);
+            // D5 (shared temperament): flip the KL hex keyboard to the same tuning so MS
+            // and KL stay in sync — rebuilds its layout, reference table, and chord menu.
+            if (typeof window.kbRebuildForTemperament === 'function') {
+                try { window.kbRebuildForTemperament(); }
+                catch (e) { console.warn('[KL] rebuild on temperament switch failed', e); }
+            }
+            console.log(`🎛️ MS temperament → ${t.name} (${t.referenceFile})`);
+            // Diagnostic for the chord-octave issue: dump a sample chord's note references.
+            try {
+                const m = app.modes && app.modes[0];
+                if (m && m.chords) {
+                    console.log('[chord names]', m.chords.slice(0, 7).map(ch => ch.quality || '(unnamed)').join('  |  '));
+                    const c = m.chords[0];
+                    if (c) console.log('[chord0]', '| voicing:', (c.noteVoicing || []).join(','),
+                        '| startingNote:', app.starting_note);
+                }
+            } catch (e) { console.warn('[sample chord] diag failed', e); }
+            return t.name;
+        };
+        // The temperament toggle now lives in the menu under OPTIONS (Modal Studio scene),
+        // labelled by its TARGET ("Switch to 31-TET" / "Switch to 53-TET"). See menu.js.
+
+        // Phase 5a — per-temperament session swap. Each tuning keeps its own modal grid in
+        // localStorage; switching parks the current one and brings the other's back, so flipping
+        // 53⇄31 no longer silently discards work (no confirmation dialog — just state that follows
+        // you). The grid is what setMSTemperament rebuilds/wipes; Chord Memory is absolute Hz and
+        // already survives a switch, so it's left shared. localStorage (not a host tmp file — a
+        // browser can't write one silently) also makes the parked grids survive a page reload.
+        const TET_GRID_KEY = (id) => 'anima_ms_grid_' + id;
+        window.switchTemperamentWithSwap = async function (nextId) {
+            if (!window.Temperament || typeof window.setMSTemperament !== 'function') return;
+            const curId = window.Temperament.active.id;
+            if (curId === nextId) return;
+
+            // 1) Park the CURRENT tuning's modal grid — only when it actually holds data, so a
+            //    rapid double-switch (grid not yet re-shown → getSession empty) can't wipe a stash.
+            try {
+                if (window.app && typeof window.app.getSession === 'function') {
+                    const ms = window.app.getSession();
+                    if (ms && Array.isArray(ms.grid) && ms.grid.length > 0) {
+                        localStorage.setItem(TET_GRID_KEY(curId), JSON.stringify(ms));
+                    }
+                }
+            } catch (e) { console.warn('[tet-swap] park failed', e); }
+
+            // 2) Flip + full rebuild (resets the modal grid for the new tuning).
+            await window.setMSTemperament(nextId);
+
+            // 3) Queue the target tuning's parked grid (if any) to be restored the moment the
+            //    rebuilt grid initializes — see the hook in modal_studio_app.js.
+            try {
+                const raw = localStorage.getItem(TET_GRID_KEY(nextId));
+                window.__tetPendingGrid = raw ? { id: nextId, ms: JSON.parse(raw) } : null;
+            } catch (e) { window.__tetPendingGrid = null; console.warn('[tet-swap] restore-queue failed', e); }
+        };
+
         // Initialize audio on first click
         document.addEventListener('click', async () => {
             if (!app.audioEngine.audioInitialized) {
