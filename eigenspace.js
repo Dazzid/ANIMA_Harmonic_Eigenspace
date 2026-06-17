@@ -1772,6 +1772,92 @@ function createVisualization(data, baseFreq, numNodes = 15) {
         }
     }, { capture: true, passive: false });
 
+    // --- Two-finger pinch-zoom + pan (touchscreens) -----------------------------------
+    // Plotly's gl3d only ROTATES on touch (1 finger); it doesn't pinch-zoom or two-finger
+    // pan. So we intercept two-finger gestures BEFORE Plotly (capture + stopImmediatePropagation)
+    // and drive the same scene camera: pinch = zoom (scale the eye→center distance, clamped),
+    // two-finger drag = pan (translate eye+center in the screen plane). One finger still falls
+    // through to Plotly's native rotate.
+    const MIN_EYE_DISTANCE = 0.4; // zoom-in cap (pairs with MAX_EYE_DISTANCE)
+    plotDiv.style.touchAction = 'none'; // stop the browser claiming pinch/scroll on the plot
+
+    let _twoFinger = null;                       // { dist, mx, my } while two fingers are down
+    let _pendingCam = null, _rafQueued = false;  // coalesce relayouts to one per frame
+    const _len = (x, y, z) => Math.sqrt(x * x + y * y + z * z);
+    const _fingerDist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+    function _commitCamera(cam) {
+        _pendingCam = cam;
+        if (_rafQueued) return;
+        _rafQueued = true;
+        requestAnimationFrame(() => {
+            _rafQueued = false;
+            if (_pendingCam) { Plotly.relayout(plotDiv, { 'scene.camera': _pendingCam }); _pendingCam = null; }
+        });
+    }
+
+    // pinchRatio < 1 → fingers moved apart → zoom IN. dxPx/dyPx = midpoint drag in pixels.
+    function _applyPinchPan(pinchRatio, dxPx, dyPx) {
+        const cam = getLiveCamera();
+        if (!cam || !cam.eye || !cam.center) return;
+        const cx = cam.center.x, cy = cam.center.y, cz = cam.center.z;
+        const vx = cam.eye.x - cx, vy = cam.eye.y - cy, vz = cam.eye.z - cz;
+        const dist = _len(vx, vy, vz) || 1e-6;
+        const up = cam.up || { x: 0, y: 0, z: 1 };
+
+        // Camera screen basis: forward = -v, right = forward×up, camUp = right×forward.
+        let fx = -vx, fy = -vy, fz = -vz; const fl = _len(fx, fy, fz) || 1e-6; fx /= fl; fy /= fl; fz /= fl;
+        let rx = fy * up.z - fz * up.y, ry = fz * up.x - fx * up.z, rz = fx * up.y - fy * up.x;
+        const rl = _len(rx, ry, rz) || 1e-6; rx /= rl; ry /= rl; rz /= rl;
+        const ux = ry * fz - rz * fy, uy = rz * fx - rx * fz, uz = rx * fy - ry * fx;
+
+        // Pan: drag content WITH the fingers (move camera opposite along right, with screen-y).
+        const panScale = dist * 0.0022;
+        const tx = (-dxPx * rx + dyPx * ux) * panScale;
+        const ty = (-dxPx * ry + dyPx * uy) * panScale;
+        const tz = (-dxPx * rz + dyPx * uz) * panScale;
+        const ncx = cx + tx, ncy = cy + ty, ncz = cz + tz;
+
+        // Zoom: scale the eye distance, clamped to [MIN, MAX].
+        let nd = dist * pinchRatio;
+        nd = Math.max(MIN_EYE_DISTANCE, Math.min(MAX_EYE_DISTANCE, nd));
+        const s = nd / dist;
+
+        _commitCamera({
+            center: { x: ncx, y: ncy, z: ncz },
+            eye: { x: ncx + vx * s, y: ncy + vy * s, z: ncz + vz * s },
+            up: cam.up,
+            projection: cam.projection
+        });
+    }
+
+    plotDiv.addEventListener('touchstart', function (e) {
+        if (currentScene !== Scenes.EIGENSPACE) return;
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            e.stopImmediatePropagation();        // take over from Plotly's 1-finger rotate
+            const t0 = e.touches[0], t1 = e.touches[1];
+            _twoFinger = { dist: _fingerDist(t0, t1), mx: (t0.clientX + t1.clientX) / 2, my: (t0.clientY + t1.clientY) / 2 };
+        } else {
+            _twoFinger = null;                   // 0/1 finger → let Plotly rotate
+        }
+    }, { capture: true, passive: false });
+
+    plotDiv.addEventListener('touchmove', function (e) {
+        if (currentScene !== Scenes.EIGENSPACE || !_twoFinger || e.touches.length !== 2) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const t0 = e.touches[0], t1 = e.touches[1];
+        const nd = _fingerDist(t0, t1) || 1e-6;
+        const nmx = (t0.clientX + t1.clientX) / 2, nmy = (t0.clientY + t1.clientY) / 2;
+        _applyPinchPan(_twoFinger.dist / nd, nmx - _twoFinger.mx, nmy - _twoFinger.my);
+        _twoFinger = { dist: nd, mx: nmx, my: nmy };
+    }, { capture: true, passive: false });
+
+    const _endTwoFinger = (e) => { if (!e.touches || e.touches.length < 2) _twoFinger = null; };
+    plotDiv.addEventListener('touchend', _endTwoFinger, { capture: true, passive: false });
+    plotDiv.addEventListener('touchcancel', _endTwoFinger, { capture: true, passive: false });
+
     // Safety net for non-wheel paths and the small overshoot from the wheel
     // tick that first crosses the cap. Fires on interaction end only, so it
     // can't race wheel events tick-by-tick.

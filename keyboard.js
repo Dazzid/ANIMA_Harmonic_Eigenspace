@@ -1256,56 +1256,37 @@ function playSingleTone(frequency) {
 // p5's built-in events only fire on canvas clicks, but the canvas is behind page content.
 // We use document listeners and map clientX/clientY to canvas coords (canvas is fixed at 0,0).
 
-function hitTestAndPlay(cx, cy) {
-  // Find the single closest hex within hit radius (hex inscribed circles
-  // slightly overlap, so iterating all buttons could trigger two notes).
+// Closest hex within hit radius (inscribed circles overlap slightly, so pick the nearest).
+function hexAt(cx, cy) {
   const rLimit = scaledRadius * 0.88;
-  let best = null;
-  let bestD = Infinity;
+  let best = null, bestD = Infinity;
   for (let btn of gridButtons) {
     const dx = cx - btn.x, dy = cy - btn.y;
     const d = Math.sqrt(dx * dx + dy * dy);
-    if (d <= rLimit && d < bestD) {
-      bestD = d;
-      best = btn;
-    }
+    if (d <= rLimit && d < bestD) { bestD = d; best = btn; }
   }
+  return best;
+}
+
+// --- Mouse: a SINGLE pointer (klPointerMidi). Touch is independent + multitouch (below). ---
+function hitTestAndPlay(cx, cy) {
+  const best = hexAt(cx, cy);
   if (best) {
     best.active = true;
     klStopMidi(klPointerMidi);                 // release any previous pointer note
     klPointerMidi = playNote(best) || [];
-    captureKeyboardChord([best], false); // mouse plays one hex at a time
+    captureKeyboardChord([best], false);
     // Playing a hex tucks the chord menu away so it's out of the way.
     const cp = document.getElementById('chord-panel');
     if (cp) cp.classList.remove('visible');
   }
 }
 
-function releaseAll() {
-  for (let btn of gridButtons) {
-    btn.active = false;
-  }
-  // Release the held pointer (mouse/touch) MIDI note so the DAW doesn't drone.
-  klStopMidi(klPointerMidi);
-  klPointerMidi = [];
-}
-
 function dragTest(cx, cy) {
-  // Find closest hex under the cursor
-  const rLimit = scaledRadius * 0.88;
-  let best = null;
-  let bestD = Infinity;
+  const best = hexAt(cx, cy);
+  // Deactivate the previous mouse hex (but never a hex a finger is still holding).
   for (let btn of gridButtons) {
-    const dx = cx - btn.x, dy = cy - btn.y;
-    const d = Math.sqrt(dx * dx + dy * dy);
-    if (d <= rLimit && d < bestD) {
-      bestD = d;
-      best = btn;
-    }
-  }
-  // Deactivate any previously active hex that is no longer the target
-  for (let btn of gridButtons) {
-    if (btn.active && btn !== best) btn.active = false;
+    if (btn.active && btn !== best && touchesOnBtn(btn) === 0) btn.active = false;
   }
   if (best && !best.active) {
     best.active = true;
@@ -1313,6 +1294,62 @@ function dragTest(cx, cy) {
     klPointerMidi = playNote(best) || [];
     captureKeyboardChord([best], false);
   }
+}
+
+function releaseAll() {
+  for (let btn of gridButtons) {
+    btn.active = false;
+  }
+  // Release the mouse pointer's MIDI note so the DAW doesn't drone.
+  klStopMidi(klPointerMidi);
+  klPointerMidi = [];
+  // Cleanup/scene-leave safety: release every held finger too.
+  for (const t of klTouches.values()) klStopMidi(t.ids);
+  klTouches.clear();
+}
+
+// --- True MULTITOUCH: each finger plays its own hex, released when THAT finger lifts. ---
+// Keyed by Touch.identifier → { btn, ids } (ids = the hex's MIDI note-ids for note-off).
+const klTouches = new Map();
+
+// How many fingers are currently on a hex (so its highlight/note survive until the last lifts).
+function touchesOnBtn(btn) {
+  let n = 0;
+  for (const t of klTouches.values()) if (t.btn === btn) n++;
+  return n;
+}
+
+function touchStartAt(id, cx, cy) {
+  const btn = hexAt(cx, cy);
+  if (!btn) return;
+  btn.active = true;
+  const ids = playNote(btn) || [];
+  klTouches.set(id, { btn: btn, ids: ids });
+  // Capture the union of held hexes (a multitouch chord) into Chord Memory.
+  const held = [...klTouches.values()].map(t => t.btn);
+  captureKeyboardChord(held, held.length > 1);
+  const cp = document.getElementById('chord-panel');
+  if (cp) cp.classList.remove('visible');
+}
+
+function touchMoveAt(id, cx, cy) {
+  const cur = klTouches.get(id);
+  if (!cur) return;
+  const btn = hexAt(cx, cy);
+  if (!btn || btn === cur.btn) return;         // same hex / off-grid → keep sounding
+  klStopMidi(cur.ids);                          // slid onto a new hex: release old, play new
+  if (touchesOnBtn(cur.btn) <= 1) cur.btn.active = false;
+  cur.btn = btn;
+  btn.active = true;
+  cur.ids = playNote(btn) || [];
+}
+
+function touchEndId(id) {
+  const cur = klTouches.get(id);
+  if (!cur) return;
+  klStopMidi(cur.ids);
+  klTouches.delete(id);
+  if (touchesOnBtn(cur.btn) === 0) cur.btn.active = false;
 }
 
 // Gate all keyboard input to the Keyboard scene being active. (Named isOnHero
@@ -1359,21 +1396,23 @@ document.addEventListener('mousemove', function(ev) {
 document.addEventListener('touchstart', function(ev) {
   if (!isOnHero()) return;
   if (isInsidePanel(ev)) { activateKeyboard(); return; }
+  ev.preventDefault();   // suppress the synthetic mouse events (so mouseup→releaseAll can't
+                         // kill other held fingers) AND page scroll/zoom while playing
   initAudio();
   scrollLocked = false;
   activateKeyboard();
-  for (let t of ev.changedTouches) {
-    hitTestAndPlay(t.clientX, t.clientY);
-  }
+  for (let t of ev.changedTouches) touchStartAt(t.identifier, t.clientX, t.clientY);
 }, { passive: false });
-document.addEventListener('touchend', function() {
-  releaseAll();
-}, { passive: true });
 document.addEventListener('touchmove', function(ev) {
   if (isInsidePanel(ev)) return;
-  for (let t of ev.changedTouches) {
-    dragTest(t.clientX, t.clientY);
-  }
+  ev.preventDefault();
+  for (let t of ev.changedTouches) touchMoveAt(t.identifier, t.clientX, t.clientY);
+}, { passive: false });
+document.addEventListener('touchend', function(ev) {
+  for (let t of ev.changedTouches) touchEndId(t.identifier);   // release only the lifted finger
+}, { passive: true });
+document.addEventListener('touchcancel', function(ev) {
+  for (let t of ev.changedTouches) touchEndId(t.identifier);
 }, { passive: true });
 
 // --- Keyboard / hero crossfade based on mouse activity ---
