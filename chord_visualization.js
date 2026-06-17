@@ -294,9 +294,13 @@ class ChordVisualization {
         p.noStroke();
         for (let note of this.midiActiveNotes) {
             const freq = note.freq;
+            // Only draw notes inside the spectrum's range. Notes below C3 / above C6 still SOUND
+            // (audio is handled separately by midi_piano) — we just don't draw them off-frame,
+            // which was leaving stray bars below the visualization. Matches the other draw blocks.
+            if (freq < this.minFreq || freq > this.maxFreq) continue;
             const y = this.freqToY(freq);
             const rectHeight = 12;
-            
+
             // Subtle white rectangle with 20% alpha (51 = 0.2 * 255)
             p.fill(255, 255, 255, 51);
             p.rect(bgX + 5, y - rectHeight/2, bgWidth - 10, rectHeight, 8);
