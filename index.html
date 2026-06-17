@@ -155,6 +155,30 @@ Dissonance Visualization for Microtonal Harmony.MSCA Project 101203318.
     <script src="anima.js"></script>
     <!-- Navigation menu (reads window.ANIMA, so it loads after the router) -->
     <script src="menu.js"></script>
+
+    <!-- Touch diagnostic: add ?touchdebug to the URL to see, on-screen, how many touch points
+         the browser/OS actually delivers. If "max" is 1 (or "peak" never reaches 2 with two
+         fingers down), the device/OS is single-touch — NOT fixable in the web app. (Notably,
+         macOS reports external USB touchscreens as single-touch / mouse.) Off unless requested. -->
+    <script>
+    (function () {
+        if (!/[?&]touchdebug/i.test(location.search)) return;
+        var hud = document.createElement('div');
+        hud.style.cssText = 'position:fixed;top:8px;left:8px;z-index:2147483647;background:rgba(0,0,0,.82);' +
+            'color:#3f6;font:14px/1.5 monospace;padding:8px 11px;border-radius:6px;pointer-events:none;white-space:pre';
+        var live = 0, peak = 0;
+        var render = function () {
+            hud.textContent = 'maxTouchPoints: ' + (navigator.maxTouchPoints || 0) +
+                '\nfingers now: ' + live + '    peak: ' + peak;
+        };
+        var upd = function (e) { live = e.touches ? e.touches.length : 0; if (live > peak) peak = live; render(); };
+        ['touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(function (t) {
+            document.addEventListener(t, upd, { passive: true, capture: true });
+        });
+        var add = function () { document.body.appendChild(hud); render(); };
+        if (document.body) add(); else document.addEventListener('DOMContentLoaded', add);
+    })();
+    </script>
 </body>
 
 </html>
