@@ -1778,6 +1778,11 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     // and drive the same scene camera: pinch = zoom (scale the eye→center distance, clamped),
     // two-finger drag = pan (translate eye+center in the screen plane). One finger still falls
     // through to Plotly's native rotate.
+    // Engage ONLY on real multitouch hardware. On single-touch screens (e.g. macOS external
+    // touchscreens) this block is skipped entirely, so Plotly's native one-finger rotate is left
+    // exactly as it was — setting touch-action:none there had suppressed the mouse-emulation
+    // Plotly rotates with, turning a one-finger drag into a zoom.
+    if (navigator.maxTouchPoints > 1) {
     const MIN_EYE_DISTANCE = 0.4; // zoom-in cap (pairs with MAX_EYE_DISTANCE)
     plotDiv.style.touchAction = 'none'; // stop the browser claiming pinch/scroll on the plot
 
@@ -1857,6 +1862,7 @@ function createVisualization(data, baseFreq, numNodes = 15) {
     const _endTwoFinger = (e) => { if (!e.touches || e.touches.length < 2) _twoFinger = null; };
     plotDiv.addEventListener('touchend', _endTwoFinger, { capture: true, passive: false });
     plotDiv.addEventListener('touchcancel', _endTwoFinger, { capture: true, passive: false });
+    } // end multitouch-only (navigator.maxTouchPoints > 1)
 
     // Safety net for non-wheel paths and the small overshoot from the wheel
     // tick that first crosses the cap. Fires on interaction end only, so it
