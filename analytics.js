@@ -30,7 +30,7 @@
     // ---- CONFIG (fill these two in — see ANALYTICS.md) ---------------------
     const CONFIG = {
         cfBeaconToken:    '',     // Cloudflare Web Analytics site token
-        behaviorEndpoint: '',     // Google Apps Script Web App URL (…/exec)
+        behaviorEndpoint: 'https://script.google.com/macros/s/AKfycbwWuFpNr54bqkoO4ywTGGyjpUQD-k7G4Pd-mLQjKOql3ghlHGA7CF6ua7NiAdXv92RP0w/exec',
         enabled:          true,   // master off-switch for behaviour events
         captureClicks:    true,   // record what users click
         captureAttention: true,   // record active time-on-page (dwell)
