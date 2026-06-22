@@ -12,9 +12,11 @@
 //   2. BEHAVIOUR — anonymous interaction events (clicks + attention/dwell)
 //      POSTed to a Google Apps Script Web App that appends one row per event
 //      to a Google Sheet → exportable as CSV into dataset/. NO personal data:
-//      no IP, no cookies, no names — only a random per-tab session id so we
-//      can group one visit's clicks together. The Apps Script request never
-//      receives the client IP, so it cannot be stored.
+//      no IP, no cookies, no names. Two random ids only — a persistent visitor
+//      id (uid, localStorage) so we can COUNT DISTINCT USERS and see returning
+//      behaviour, and a per-tab session id (sid, sessionStorage) so we can
+//      group one visit's events. Neither is linked to any identity, and the
+//      Apps Script request never receives the client IP, so it cannot be stored.
 //
 // Touches ZERO app logic: clicks are captured with one delegated listener and
 // attention with visibility/idle timers. To get cleaner labels on a specific
@@ -32,6 +34,9 @@
         cfBeaconToken:    '',     // Cloudflare Web Analytics site token
         behaviorEndpoint: 'https://script.google.com/macros/s/AKfycbwWuFpNr54bqkoO4ywTGGyjpUQD-k7G4Pd-mLQjKOql3ghlHGA7CF6ua7NiAdXv92RP0w/exec',
         enabled:          true,   // master off-switch for behaviour events
+        persistentVisitorId: true,// persistent uid (localStorage) ⇒ count distinct
+                                  // users & returns. false ⇒ per-tab id only, which
+                                  // typically needs no consent banner (see ANALYTICS.md).
         captureClicks:    true,   // record what users click
         captureAttention: true,   // record active time-on-page (dwell)
         idleAfterMs:      60000,  // no input for this long ⇒ "not paying attention"
@@ -42,22 +47,48 @@
         debug:            false,  // console.log every event locally
     };
 
+    function randomId(prefix) {
+        return (window.crypto && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : prefix + '-' + Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
+    }
+
     // ---- anonymous, per-tab session id (no cookie, no PII) -----------------
+    // Lives in sessionStorage ⇒ one id per tab, wiped when the tab closes.
+    // Used only to group the events of a single visit together.
     function sessionId() {
         try {
             let id = sessionStorage.getItem('anima_sid');
-            if (!id) {
-                id = (window.crypto && crypto.randomUUID)
-                    ? crypto.randomUUID()
-                    : 'sid-' + Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
-                sessionStorage.setItem('anima_sid', id);
-            }
+            if (!id) { id = randomId('sid'); sessionStorage.setItem('anima_sid', id); }
             return id;
         } catch (e) {
             return 'sid-nostorage';   // private mode / storage blocked
         }
     }
+
+    // ---- persistent, anonymous visitor id (no cookie, no PII) --------------
+    // Lives in localStorage ⇒ survives tab close and future visits, so we can
+    // COUNT DISTINCT USERS and recognise a returning one — WITHOUT knowing who
+    // they are. It is a random UUID, carries no identity, and is never linked
+    // to a name, email or IP. `visit` increments once per page load so we can
+    // tell new from returning at a glance.
+    let VISIT = 1;
+    function visitorId() {
+        // Opt-out ⇒ reuse the per-tab session id, so nothing persists past the tab.
+        if (!CONFIG.persistentVisitorId) return SID;
+        try {
+            let id = localStorage.getItem('anima_uid');
+            if (!id) { id = randomId('uid'); localStorage.setItem('anima_uid', id); }
+            VISIT = (parseInt(localStorage.getItem('anima_visits'), 10) || 0) + 1;
+            localStorage.setItem('anima_visits', String(VISIT));
+            return id;
+        } catch (e) {
+            return 'uid-nostorage';   // private mode / storage blocked
+        }
+    }
+
     const SID  = sessionId();
+    const UID  = visitorId();
     const PAGE = (location.pathname.split('/').pop() || 'index.html');
 
     // ---- 1. CLOUDFLARE WEB ANALYTICS (visits) ------------------------------
@@ -81,6 +112,7 @@
             return;
         }
         queue.push({
+            uid:   UID,
             sid:   SID,
             event: String(event),
             page:  PAGE,
@@ -217,7 +249,7 @@
         });
         window.addEventListener('pagehide', function () { bankAttention(true); flush(true); });
 
-        track('page_view', { ref: document.referrer || '' });
+        track('page_view', { ref: document.referrer || '', visit: VISIT, returning: VISIT > 1 });
     }
 
     if (document.readyState === 'loading') {
@@ -234,4 +266,5 @@
     window.Anima.flush  = function () { bankAttention(true); flush(true); };
     window.Anima.config = CONFIG;
     window.Anima.sid    = SID;
+    window.Anima.uid    = UID;
 })();

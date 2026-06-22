@@ -15,9 +15,13 @@ CSV — no third-party analytics service is needed. This is hosting-independent 
 works fine on GitHub Pages (`dazzid.github.io`). Cloudflare Web Analytics is
 **optional** (see below) and left off by default.
 
-The only identifier is a **random per-tab session id** (sessionStorage), used
-solely to group one visit's clicks together. It is not a cookie and carries no
-identity.
+Two random identifiers, neither a cookie, neither carrying any identity:
+- **`uid`** — a persistent **visitor id** (localStorage). Survives tab close and
+  future visits, so we can **count distinct users** and recognise a returning one
+  *without knowing who they are*. `page_view` also carries `visit` (a per-visitor
+  load counter) and `returning` (true after the first visit).
+- **`sid`** — a per-tab **session id** (sessionStorage), used solely to group one
+  visit's events together.
 
 ---
 
@@ -47,7 +51,10 @@ GitHub Pages:
 
 ## What gets collected
 
-Per event, one row: `received_at, event_ts, sid, event, page, target, props`.
+Per event, one row: `received_at, event_ts, uid, sid, event, page, target, props`.
+
+`uid` lets you count distinct users (`COUNT(DISTINCT uid)`) and follow one visitor
+across sessions; `sid` groups the events of a single tab/visit.
 
 **This app is canvas-rendered (p5.js / WebGL).** A raw DOM click on the `<canvas>`
 is meaningless — the note/chord/keyboard live in pixels, not the DOM. So the
@@ -55,7 +62,9 @@ useful data comes from **semantic events emitted by the app's own handlers**, no
 from generic click capture.
 
 Generic events:
-- **`page_view`** — once per page load (`props.ref` = referrer). Doubles as visit count.
+- **`page_view`** — once per page load (`props.ref` = referrer, `props.visit` =
+  this visitor's load count, `props.returning` = true after first visit). Doubles
+  as visit count.
 - **`click`** — **only real UI controls** (button / link / label / `[data-track]`).
   Clicks on the canvas/background are ignored on purpose. Input/textarea values are
   never read.
@@ -96,7 +105,15 @@ For a clickable DOM control, label it instead of relying on auto-capture:
 ---
 
 ## Privacy / ethics note (MSCA / GDPR)
-Collection is anonymous: no IP (Apps Script never receives it), no cookies, no
-names — only a random session id and UI-level interaction labels. This is designed
-to fall outside personal-data handling. If the data model ever changes (e.g. adding
-identifiers or linking to a participant), revisit consent and ethics approval first.
+No directly identifying data is collected: no IP (Apps Script never receives it),
+no cookies, no names — only two random ids and UI-level interaction labels.
+
+Note that `uid` is a **persistent** identifier (localStorage), which lets us single
+out and follow one visitor over time. Even though it is random and never linked to a
+real identity, under GDPR/ePrivacy a persistent identifier used to track behaviour is
+generally treated as **pseudonymous personal data**, and storing it is not "strictly
+necessary" — so depending on your MSCA ethics framework you may need a short consent
+notice / cookie-style banner. (The per-tab `sid` and aggregate visit counts do not.)
+If you want to stay in the no-consent zone, set `CONFIG.persistentVisitorId = false`
+to fall back to a per-tab id only. Before linking `uid` to any participant record,
+revisit consent and ethics approval first.

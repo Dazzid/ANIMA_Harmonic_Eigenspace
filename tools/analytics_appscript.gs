@@ -25,7 +25,7 @@
 // Target spreadsheet (opened by ID so the script works standalone or bound).
 var SHEET_ID   = '1Ad0pfAWjMt5xtuCP2Yh8fNsdV9B_KEoeb2-NtE0N4qQ';
 var SHEET_NAME = 'events';
-var HEADERS    = ['received_at', 'event_ts', 'sid', 'event', 'page', 'target', 'props'];
+var HEADERS    = ['received_at', 'event_ts', 'uid', 'sid', 'event', 'page', 'target', 'props'];
 
 // Optional shared secret for the CSV export endpoint. Leave '' to disable export.
 var EXPORT_KEY = '';
@@ -58,6 +58,7 @@ function doPost(e) {
       return [
         now,
         ev.ts || '',
+        ev.uid || '',
         ev.sid || '',
         ev.event || '',
         ev.page || '',
