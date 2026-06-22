@@ -133,8 +133,12 @@
     // of <input>/<textarea>/contenteditable, so no user-typed content leaks.
     function describe(el) {
         if (!el || el === document) return null;
-        const ctl = el.closest('[data-track],button,a,[role="button"],input[type="button"],input[type="submit"],.btn,label');
-        const node = ctl || el;
+        // Only log clicks on real UI controls. This app is canvas-rendered, so a
+        // raw click on the <canvas> carries no meaning (which note/chord lives in
+        // pixels, not the DOM). Musical actions are captured as SEMANTIC events
+        // (chord_play, scene_switch, …) emitted from the app's own handlers.
+        const node = el.closest('[data-track],button,a,[role="button"],input[type="button"],input[type="submit"],.btn,label,select');
+        if (!node) return null;
 
         if (node.dataset && node.dataset.track) return node.dataset.track;
 

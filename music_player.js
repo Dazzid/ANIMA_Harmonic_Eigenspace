@@ -71,6 +71,7 @@
         current = i;
         audioEl.src = TRACKS[i].src;
         nowEl.textContent = '♪ ' + TRACKS[i].title;
+        if (window.Anima) window.Anima.track('song_play', { title: TRACKS[i].title });
         markPlaying(i, true);
         const p = audioEl.play();
         if (p && p.catch) p.catch((err) => {

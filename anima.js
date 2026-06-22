@@ -69,6 +69,7 @@ SceneManager.register(Scenes.KEYBOARD, KeyboardScene);
 
 // Thin wrapper kept for existing callers (nav buttons, window.ANIMA, init).
 function switchScene(newScene) {
+    if (window.Anima) window.Anima.track('scene_switch', { to: newScene });
     SceneManager.switchTo(newScene);
 }
 
@@ -505,6 +506,8 @@ const sketch = (p) => {
             if (!window.Temperament || typeof window.setMSTemperament !== 'function') return;
             const curId = window.Temperament.active.id;
             if (curId === nextId) return;
+
+            if (window.Anima) window.Anima.track('temperament_switch', { from: curId, to: nextId });
 
             // 1) Park the CURRENT tuning's modal grid — only when it actually holds data, so a
             //    rapid double-switch (grid not yet re-shown → getSession empty) can't wipe a stash.

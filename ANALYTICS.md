@@ -49,21 +49,35 @@ GitHub Pages:
 
 Per event, one row: `received_at, event_ts, sid, event, page, target, props`.
 
-- **`page_view`** — once per page load (`props.ref` = referrer).
-- **`click`** — every click; `target` is the control's `data-track`, else its
-  `aria-label`/`title`/id/class/text (capped). Input/textarea **values are never
-  read**, so no typed content leaks.
-- **`attention`** — banked active time (`props.active_ms`): time the tab is
-  visible *and* the user interacted within the last 60 s. Idle time is excluded,
-  so this is a real attention/dwell measure, not wall-clock.
+**This app is canvas-rendered (p5.js / WebGL).** A raw DOM click on the `<canvas>`
+is meaningless — the note/chord/keyboard live in pixels, not the DOM. So the
+useful data comes from **semantic events emitted by the app's own handlers**, not
+from generic click capture.
 
-### Custom events
-Call from anywhere once the page is loaded:
+Generic events:
+- **`page_view`** — once per page load (`props.ref` = referrer). Doubles as visit count.
+- **`click`** — **only real UI controls** (button / link / label / `[data-track]`).
+  Clicks on the canvas/background are ignored on purpose. Input/textarea values are
+  never read.
+- **`attention`** — banked active time (`props.active_ms`): time the tab is visible
+  *and* the user interacted within the last 60 s. Idle excluded → real dwell.
+
+Semantic events (wired into the code):
+- **`chord_play`** — `{alpha, beta, gamma, baseFreq, tet}` — every chord played in
+  EigenSpace, with its eigen-coordinates. The core research signal. ([eigenspace.js](eigenspace.js))
+- **`temperament_switch`** — `{from, to}` — 53 ↔ 31-TET. ([anima.js](anima.js))
+- **`scene_switch`** — `{to}` — EigenSpace / Modal Studio / Keyboard. ([anima.js](anima.js))
+- **`song_play`** — `{title}` — track played in the music player. ([music_player.js](music_player.js))
+
+Not yet instrumented: individual note presses (keyboard/MIDI), Modal Studio chord
+triggers. Add with `window.Anima.track(...)` at their handlers if needed.
+
+### Adding more events
+From anywhere after load:
 ```js
-window.Anima.track('temperament_switch', { from: 53, to: 31 });
-window.Anima.track('song_play', { id: 'ballad-01' });
+window.Anima.track('event_name', { any: 'props' });
 ```
-For cleaner click labels on a specific control, annotate it:
+For a clickable DOM control, label it instead of relying on auto-capture:
 ```html
 <button data-track="play-chord">▶</button>
 ```

@@ -337,6 +337,12 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
     }
     lastClickTime = now;
 
+    // Analytics: a chord's eigen-coordinates (α,β,γ) are the core research signal.
+    if (window.Anima) window.Anima.track('chord_play', {
+        alpha: alpha, beta: beta, gamma: gamma, baseFreq: baseFreq,
+        tet: (window.Temperament && window.Temperament.active && window.Temperament.active.id) || null
+    });
+
     if (!audioInitialized) {
         await initAudio();
         // If initialization failed, don't continue
