@@ -637,6 +637,17 @@ class Chord {
     // C++ Chord.hpp line 92 - set clicked state
     setChordClicked(isClicked) {
         this.mouseClicked = isClicked;
+        // Analytics: store the chord the user makes/selects in Modal Studio.
+        if (isClicked && window.Anima) {
+            try {
+                window.Anima.track('ms_chord', {
+                    quality: this.quality || '',
+                    root: (this.root && this.root.name) || (this.notes[0] && this.notes[0].name) || '',
+                    notes: (this.notes || []).map(n => n && n.name).filter(Boolean),
+                    tet: (window.Temperament && window.Temperament.active && window.Temperament.active.id) || null
+                });
+            } catch (e) { /* never let analytics break a chord click */ }
+        }
     }
     
     // C++ Chord.hpp line 65 - get clicked state
