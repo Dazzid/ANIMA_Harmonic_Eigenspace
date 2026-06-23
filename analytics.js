@@ -1,38 +1,32 @@
 // ============================================================================
-// ANALYTICS  —  visits (Cloudflare) + anonymous behaviour events (→ CSV)
+// ANALYTICS  —  visits + visitors + behaviour, all into one Google Sheet
 // ============================================================================
 // © 2025 David Dalmazzo. All Rights Reserved. ANIMA MSCA Postdoctoral
 // Fellowship (Project ID: 101203318), EU Horizon Europe.
 // ----------------------------------------------------------------------------
-// Two independent jobs, kept apart on purpose (see ANALYTICS.md):
-//
-//   1. VISITS  — Cloudflare Web Analytics beacon. Aggregate, cookieless,
-//      no consent banner needed. Just "how many people, from where".
-//
-//   2. BEHAVIOUR — anonymous interaction events (clicks + attention/dwell)
-//      POSTed to a Google Apps Script Web App that appends one row per event
-//      to a Google Sheet → exportable as CSV into dataset/. NO personal data:
-//      no IP, no cookies, no names. Two random ids only — a persistent visitor
-//      id (uid, localStorage) so we can COUNT DISTINCT USERS and see returning
-//      behaviour, and a per-tab session id (sid, sessionStorage) so we can
-//      group one visit's events. Neither is linked to any identity, and the
-//      Apps Script request never receives the client IP, so it cannot be stored.
+// One pipeline → a Google Apps Script Web App → one row per event in a Google
+// Sheet (CSV-exportable into dataset/). NO personal data: no cookies, no names.
+// Two random ids only:
+//   • uid — persistent VISITOR id (localStorage) ⇒ COUNT DISTINCT USERS and see
+//     returning behaviour. page_view also carries visit# / returning.
+//   • sid — per-tab SESSION id (sessionStorage) ⇒ group one visit's events.
+// Neither is linked to any identity. "From where" is a coarse country resolved
+// client-side and stored in the Sheet; the client IP itself is never stored.
 //
 // Touches ZERO app logic: clicks are captured with one delegated listener and
-// attention with visibility/idle timers. To get cleaner labels on a specific
-// control, add  data-track="my-control-name"  to its element.
-//
-// SETUP: fill in the two CONFIG values below (see ANALYTICS.md). Until then
-// visits + behaviour stay dormant and nothing is sent.
+// attention with visibility/idle timers. Musical actions come as SEMANTIC events
+// (chord_play, ms_chord, …) emitted by the app — this app is canvas-rendered, so
+// a raw canvas click is noise. For cleaner click labels on a DOM control, add
+// data-track="my-control-name" to its element.
 // ============================================================================
 
 (function () {
     'use strict';
 
-    // ---- CONFIG (fill these two in — see ANALYTICS.md) ---------------------
+    // ---- CONFIG (see ANALYTICS.md) ----------------------------------------
     const CONFIG = {
-        cfBeaconToken:    '',     // Cloudflare Web Analytics site token
         behaviorEndpoint: 'https://script.google.com/macros/s/AKfycbwWuFpNr54bqkoO4ywTGGyjpUQD-k7G4Pd-mLQjKOql3ghlHGA7CF6ua7NiAdXv92RP0w/exec',
+        geoEndpoint:      'https://get.geojs.io/v1/ip/geo.json', // resolves country only; the IP is never stored
         enabled:          true,   // master off-switch for behaviour events
         persistentVisitorId: true,// persistent uid (localStorage) ⇒ count distinct
                                   // users & returns. false ⇒ per-tab id only, which
@@ -91,14 +85,35 @@
     const UID  = visitorId();
     const PAGE = (location.pathname.split('/').pop() || 'index.html');
 
-    // ---- 1. CLOUDFLARE WEB ANALYTICS (visits) ------------------------------
-    function injectCloudflare() {
-        if (!CONFIG.cfBeaconToken) return;
-        const s = document.createElement('script');
-        s.defer = true;
-        s.src = 'https://static.cloudflareinsights.com/beacon.min.js';
-        s.setAttribute('data-cf-beacon', JSON.stringify({ token: CONFIG.cfBeaconToken }));
-        document.head.appendChild(s);
+    // ---- 1. GEO: country only (answers "from where"), IP never stored ------
+    // Resolved client-side, cached per tab session ⇒ at most one API call per
+    // visit. No third-party dashboard — the country lands in your own Sheet.
+    function resolveGeo(cb) {
+        try {
+            const c = sessionStorage.getItem('anima_geo');
+            if (c) { cb(JSON.parse(c)); return; }
+        } catch (e) { /* ignore */ }
+        let done = false;
+        const finish = function (g) {
+            if (done) return; done = true;
+            try { sessionStorage.setItem('anima_geo', JSON.stringify(g)); } catch (e) { /* ignore */ }
+            cb(g);
+        };
+        const to = setTimeout(function () { finish({}); }, 2000); // never block the visit record
+        try {
+            fetch(CONFIG.geoEndpoint)
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    clearTimeout(to);
+                    finish({                       // coarse geo ONLY — never d.ip / latitude / longitude
+                        country:      d.country || '',
+                        country_code: d.country_code || '',
+                        region:       d.region || '',
+                        city:         d.city || ''
+                    });
+                })
+                .catch(function () { clearTimeout(to); finish({}); });
+        } catch (e) { clearTimeout(to); finish({}); }
     }
 
     // ---- 2. BEHAVIOUR EVENT QUEUE ------------------------------------------
@@ -228,8 +243,6 @@
 
     // ---- init --------------------------------------------------------------
     function init() {
-        injectCloudflare();
-
         if (CONFIG.captureClicks) {
             document.addEventListener('click', onClick, true);
         }
@@ -249,7 +262,17 @@
         });
         window.addEventListener('pagehide', function () { bankAttention(true); flush(true); });
 
-        track('page_view', { ref: document.referrer || '', visit: VISIT, returning: VISIT > 1 });
+        // Record the visit immediately (counts never lost on a fast bounce). Attach
+        // country if already cached this session; otherwise resolve it and emit a
+        // 'geo' row (joinable by uid/sid). page_view doubles as the visit record.
+        let geoCached = null;
+        try { geoCached = JSON.parse(sessionStorage.getItem('anima_geo') || 'null'); } catch (e) { /* ignore */ }
+        track('page_view', Object.assign({ ref: document.referrer || '', visit: VISIT, returning: VISIT > 1 }, geoCached || {}));
+        if (!geoCached) {
+            resolveGeo(function (geo) {
+                if (geo && (geo.country || geo.country_code)) track('geo', geo);
+            });
+        }
     }
 
     if (document.readyState === 'loading') {

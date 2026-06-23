@@ -1,19 +1,16 @@
 # Analytics & Visit Tracking
 
-Two **separate** systems, on purpose — they answer different questions and have
-different privacy profiles. Both are **cookieless** and store **no personal data**
-(no IP, no names). See header docs in [analytics.js](analytics.js).
+One pipeline, one Google Sheet. Visits, distinct visitors, geography and behaviour
+all flow through [analytics.js](analytics.js) → Google Apps Script → Sheet
+(CSV-exportable into `dataset/`). No third-party analytics service. Cookieless,
+works on GitHub Pages (`dazzid.github.io`).
 
-| | What it answers | Tool | Where data lives |
-|---|---|---|---|
-| **Visits** | how many people, from where, which page | built-in `page_view` event | same Google Sheet → CSV |
-| **Behaviour** | what people click, where attention goes | `analytics.js` → Google Apps Script | Google Sheet → CSV in `dataset/` |
-
-Visits and behaviour share **one** pipeline: `analytics.js` already sends a
-`page_view` row (with referrer) on every load, so visit counts live in the same
-CSV — no third-party analytics service is needed. This is hosting-independent and
-works fine on GitHub Pages (`dazzid.github.io`). Cloudflare Web Analytics is
-**optional** (see below) and left off by default.
+| What it answers | From |
+|---|---|
+| how many visits / which page | `page_view` rows |
+| how many distinct visitors / returning | persistent `uid` + `page_view` visit#/returning |
+| from where (country/region) | `geo` row — resolved client-side, **IP never stored** |
+| what people click / play / attend to | `click`, semantic events, `attention` |
 
 Two random identifiers, neither a cookie, neither carrying any identity:
 - **`uid`** — a persistent **visitor id** (localStorage). Survives tab close and
@@ -38,14 +35,10 @@ That's it — `page_view` rows give you visits and the click/attention rows give
 behaviour, all in the same sheet. Until the URL is filled in, nothing is sent and
 the app behaves exactly as before.
 
-### (Optional) prettier visit dashboard
-The built-in `page_view` counting needs no service. If you ever want a hosted
-dashboard with country/device charts, add a one-line snippet — both work on
-GitHub Pages:
-- **Cloudflare Web Analytics** — free, cookieless. Register hostname
-  `dazzid.github.io`, copy the site token into `CONFIG.cfBeaconToken`. (Works on
-  GitHub Pages despite not using Cloudflare DNS — it's a pure client-side beacon.)
-- **GoatCounter** — free, open-source, you own the data.
+### Geography
+"From where" uses a free, keyless geo-IP endpoint (`CONFIG.geoEndpoint`,
+[geojs.io](https://www.geojs.io/)), called once per session. The code keeps only
+country/region/city — never the IP or coordinates.
 
 ---
 
@@ -62,24 +55,26 @@ useful data comes from **semantic events emitted by the app's own handlers**, no
 from generic click capture.
 
 Generic events:
-- **`page_view`** — once per page load (`props.ref` = referrer, `props.visit` =
-  this visitor's load count, `props.returning` = true after first visit). Doubles
-  as visit count.
+- **`page_view`** — once per load (`props.ref` = referrer, `props.visit` = this
+  visitor's load count, `props.returning` = true after first visit). Visit record.
+- **`geo`** — `{country, country_code, region, city}` — once per session on first
+  load. "From where", joinable by `uid`/`sid`. **No IP, no coordinates.**
 - **`click`** — **only real UI controls** (button / link / label / `[data-track]`).
-  Clicks on the canvas/background are ignored on purpose. Input/textarea values are
-  never read.
-- **`attention`** — banked active time (`props.active_ms`): time the tab is visible
-  *and* the user interacted within the last 60 s. Idle excluded → real dwell.
+  Canvas/background clicks are ignored on purpose. Input values are never read.
+- **`attention`** — banked active time (`props.active_ms`): tab visible *and* user
+  interacted within the last 60 s. Idle excluded → real dwell.
 
 Semantic events (wired into the code):
-- **`chord_play`** — `{alpha, beta, gamma, baseFreq, tet}` — every chord played in
-  EigenSpace, with its eigen-coordinates. The core research signal. ([eigenspace.js](eigenspace.js))
+- **`chord_play`** — `{alpha, beta, gamma, baseFreq, tet}` — chord played in
+  EigenSpace, with its eigen-coordinates. Core research signal. ([eigenspace.js](eigenspace.js))
+- **`ms_chord`** — `{quality, root, notes, tet}` — chord made/selected in **Modal
+  Studio** (e.g. "Cmaj7"). ([modal_studio_Chord.js](modal_studio_Chord.js))
 - **`temperament_switch`** — `{from, to}` — 53 ↔ 31-TET. ([anima.js](anima.js))
 - **`scene_switch`** — `{to}` — EigenSpace / Modal Studio / Keyboard. ([anima.js](anima.js))
 - **`song_play`** — `{title}` — track played in the music player. ([music_player.js](music_player.js))
 
-Not yet instrumented: individual note presses (keyboard/MIDI), Modal Studio chord
-triggers. Add with `window.Anima.track(...)` at their handlers if needed.
+Not yet instrumented: individual note presses (keyboard/MIDI). Add with
+`window.Anima.track(...)` at their handlers if needed.
 
 ### Adding more events
 From anywhere after load:
@@ -105,8 +100,10 @@ For a clickable DOM control, label it instead of relying on auto-capture:
 ---
 
 ## Privacy / ethics note (MSCA / GDPR)
-No directly identifying data is collected: no IP (Apps Script never receives it),
-no cookies, no names — only two random ids and UI-level interaction labels.
+No directly identifying data is collected: no IP is stored, no cookies, no names —
+only two random ids and UI-level interaction labels. Geography is coarse
+(country/region); the IP is used only momentarily by the client-side geo lookup and
+is never sent to the Sheet or kept.
 
 Note that `uid` is a **persistent** identifier (localStorage), which lets us single
 out and follow one visitor over time. Even though it is random and never linked to a
