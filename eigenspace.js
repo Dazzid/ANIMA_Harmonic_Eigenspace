@@ -44,7 +44,7 @@ window.audioMuted = false;
 // Dissonance calculation (Plomp-Levelt)
 // Global storage for computed dissonance data
 let globalDissonanceData = null;
-let currentBaseFreq = 220.0;
+let currentBaseFreq = 20.0;
 let cachedHarmonicNodes = null; // Cache node positions (in ratio space)
 let visualizationMode = 'full3d'; // 'sectioned' or 'full3d'
 
@@ -2397,7 +2397,7 @@ window.addEventListener('load', async () => {
     try {
         globalDissonanceData = await loadDissonanceMap(currentBaseFreq, zoneNodes, onProgress);
     } catch (e) {
-        console.warn('Precomputed dataset failed to load, falling back to compute:', e);
+        // console.warn('Precomputed dataset failed to load, falling back to compute:', e);
         if (progressText) progressText.textContent = 'Computing dissonance map (this may take a while)…';
         globalDissonanceData = await calculate3dDissonanceMap(currentBaseFreq, 1.0, 2.0, zoneNodes, harmonics, "min");
     }

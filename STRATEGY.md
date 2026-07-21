@@ -76,6 +76,16 @@ Each scene implements the contract: `enter / exit / draw / mousePressed / mouseD
 
 ## 6. Roadmap
 
+### 6.2 — Fifth-gradation chord families (planned, next after 6.1)
+
+Extend the 53-TET chord vocabulary by applying the ten-fold quality gradation to the FIFTH as
+well (today the fifth takes one of three fixed values: 31 main grid / 26 half-diminished / 35
+augmented). Third x seventh x fifth gradation completes the combinatorial family (up to 10x10x10)
+and populates the Eigenspace regions between the current families. Wanted by David 2026-07-13;
+also cited as planned future work in the paper (§7.3) and in the R2 response (the reviewer's
+"why not 1000?" arithmetic is exactly this family). Scope: chord catalogue + naming + Eigenspace
+node placement; interacts with the Temperament module from 6.1.
+
 ### 6.1 — 31-TET option in Modal Studio + Keyboard (in progress)
 
 > **Progress (2026-06-16):** Phase 0 ✓ · Phase 1 (MS) ✓ · Phase 2 ✓ · **Phase 3 ✓ (MS + KL)** ·
