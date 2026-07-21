@@ -306,8 +306,8 @@ async function playNote(frequency) {
     }
 
     const t = audioCtx.currentTime + 0.01;
-    const harmonics = [1, 2, 3, 4, 5, 6];
-    const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
+    const harmonics = [1, 2, 3, 4, 5, 6, 7];
+    const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11, 0.09];
 
     // console.log(`[playNote] Creating note at ${frequency.toFixed(2)} Hz, startTime: ${t.toFixed(3)}`);
 
@@ -362,8 +362,8 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
     }
 
     const t = audioCtx.currentTime + 0.06; // Small delay to allow fadeout
-    const harmonics = [1, 2, 3, 4, 5, 6];
-    const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
+    const harmonics = [1, 2, 3, 4, 5, 6, 7];
+    const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11, 0.09];
 
     // Get doubling flags from chord visualization
     const doublingFlags = typeof window.getDoublingFlags === 'function' ?
@@ -392,7 +392,7 @@ async function playChord(alpha, beta, gamma, baseFreq = 220.0) {
         window.midiController.stopChordNotes();
 
         // Calculate dissonance for velocity mapping
-        const dissonance = calculateDissonanceAt(alpha, beta, gamma, baseFreq, 6);
+        const dissonance = calculateDissonanceAt(alpha, beta, gamma, baseFreq, 7);
 
         // Send MIDI note-on with doubled frequencies
         window.midiController.playChord(actualFrequencies, dissonance);
@@ -428,8 +428,8 @@ window.eigenspacePlayFrequencies = async function (freqs) {
     }
     if (!audioCtx || !reverbNode || window.audioMuted) return;
     const t = audioCtx.currentTime + 0.06;
-    const harmonics = [1, 2, 3, 4, 5, 6];
-    const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
+    const harmonics = [1, 2, 3, 4, 5, 6, 7];
+    const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11, 0.09];
     for (const freq of freqs) {
         if (typeof freq === 'number' && freq > 0) {
             createNote(freq, harmonics, amplitudes, t);
@@ -885,13 +885,13 @@ function get53TETChordPositions() {
 
     // Augmented combinations
     chords.push(
-        ["M+S7", r(18), r(35), r(51)],
+        ["M+SM7", r(18), r(35), r(51)],
         ["M+^M7", r(18), r(35), r(50)],
         ["M+maj7", r(18), r(35), r(49)],
         ["M+vM7", r(18), r(35), r(48)],
-        ["M+NM7", r(18), r(35), r(47)],
-        ["M+N7", r(18), r(35), r(46)],
-        ["M+n7", r(18), r(35), r(45)],
+        ["M+N7", r(18), r(35), r(47)],
+        ["M+n7", r(18), r(35), r(46)],
+        ["M+^m7", r(18), r(35), r(45)],
         ["M+m7", r(18), r(35), r(44)],
         ["M+vm7", r(18), r(35), r(43)],
         ["M+sm7", r(18), r(35), r(42)]
@@ -2376,7 +2376,7 @@ window.testRootChange = function (newFreq) {
 window.addEventListener('load', async () => {
     currentBaseFreq = 220.0;
     const localNodes = 77;
-    const harmonics = 6;
+    const harmonics = 7;
     const zoneNodes = 500;
 
     // Try to load pre-computed data first, with progress bar updates
@@ -2395,7 +2395,7 @@ window.addEventListener('load', async () => {
     };
 
     try {
-        globalDissonanceData = await loadDissonanceMap(currentBaseFreq, zoneNodes, onProgress);
+        globalDissonanceData = await loadDissonanceMap(currentBaseFreq, zoneNodes, onProgress, "-7p");
     } catch (e) {
         // console.warn('Precomputed dataset failed to load, falling back to compute:', e);
         if (progressText) progressText.textContent = 'Computing dissonance map (this may take a while)…';

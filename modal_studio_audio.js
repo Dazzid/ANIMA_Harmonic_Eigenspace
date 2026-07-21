@@ -104,8 +104,8 @@ class AudioEngine {
         if (!this.audioCtx || !this.reverbNode) return;
         
         const t = this.audioCtx.currentTime + 0.01;
-        const harmonics = [1, 2, 3, 4, 5, 6];
-        const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
+        const harmonics = [1, 2, 3, 4, 5, 6, 7];
+        const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11, 0.09];
         
         this.createNote(frequency, harmonics, amplitudes, t);
     }
@@ -129,8 +129,8 @@ class AudioEngine {
         // this.stopAll();
         
         const t = this.audioCtx.currentTime + 0.06;
-        const harmonics = [1, 2, 3, 4, 5, 6];
-        const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
+        const harmonics = [1, 2, 3, 4, 5, 6, 7];
+        const amplitudes = [1, 0.41, 0.333, 0.27, 0.13, 0.11, 0.09];
         
         // Play each note in the chord
         for (let freq of frequencies) {

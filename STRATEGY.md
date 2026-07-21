@@ -61,7 +61,7 @@ Each scene implements the contract: `enter / exit / draw / mousePressed / mouseD
 
 **Chord Memory (CM)** — `grid.js`, an app-wide 8×8 compositional memory (its own p5 instance, scene-independent). Chords auto-capture from every scene via `window.captureChord({frequencies, root, chordName, cellColor, sourceScene})` and store as **absolute Hz**. Recall plays through the active scene's synth (`window.playChordFrequencies` routes ES/MS/KL); full ES visual reconstruction happens only when in ES. Serializes via `getGrid().exportData()/importData()`. Surfaced in the menu (all scenes) + `Shift+M`; the panel is draggable and clamped to the viewport.
 
-**Audio** — three engines, intentionally **not** merged: ES `playChord`/`createNote` (6-harmonic additive), MS `AudioEngine.playChord(freqs)`, KL `playSingleTone` (additive, matched to ES so recalled chords sound consistent). `window.playNote` (external triggers from key_map / MIDI piano) routes to MS's engine. Envelope/waveform come from the shared ADSR (`adsr.js`), kept in sync across `audioParams` (ES local) and `window.audioParams` (MS/KL).
+**Audio** — three engines, intentionally **not** merged: ES `playChord`/`createNote` (7-harmonic additive), MS `AudioEngine.playChord(freqs)`, KL `playSingleTone` (additive, matched to ES so recalled chords sound consistent). `window.playNote` (external triggers from key_map / MIDI piano) routes to MS's engine. Envelope/waveform come from the shared ADSR (`adsr.js`), kept in sync across `audioParams` (ES local) and `window.audioParams` (MS/KL).
 - Caveat: ES `×2` octave-doubling is applied at play time but CM stores the *un-doubled* base Hz, so a doubled ES chord recalled in KL/MS plays the base octave.
 
 **Cross-file interface:**
@@ -302,6 +302,19 @@ later phase depends on. *(Done — see log below.)*
 
 Kept current as work lands (newest first). Each entry = what changed + how it was verified.
 
+- **2026-07-21 — Sound engine follows the model to 7 partials.** The "moving into 7th partials"
+  checkpoint took the *dissonance model/dataset* to 7 harmonics (`harmonics = 7`, `-7p` dataset)
+  but the *audio synthesis* still stacked only 6. Extended the additive stack to 7 across all three
+  engines — ES `createNote` (3 recipe sites in [eigenspace.js](eigenspace.js)), MS
+  `AudioEngine.playNote`/`playChord` ([modal_studio_audio.js](modal_studio_audio.js)), KL
+  `playSingleTone` (`KL_HARMONICS`/`KL_AMPLITUDES` in [keyboard.js](keyboard.js)) — adding a 7th
+  partial at amplitude **0.09** (continuing the envelope's ~0.85 per-step decay: …0.13, 0.11, 0.09).
+  Also bumped the MIDI-velocity `calculateDissonanceAt(…, 6)` → `7` so velocity tracks the same
+  spectrum. Docs synced: README + info-overlay "6 harmonics" → 7, and the overlay's derived figures
+  recomputed against the committed 7p grid — 276 → **378** harmonic pairs (4 tones × 7), colorbar
+  p5–p95 "14 to 22" → "≈18 to 28" (measured p5=18.35 / p95=27.58 over the 20.96 M valid simplex
+  points). Verified: `node --check` clean on the three engine files; grep confirms no `1, 2, 3, 4, 5, 6`
+  audio recipe or `0.13, 0.11]` (6-term amplitude) remains.
 - **2026-06-16 — FIX: per-temperament swap restored nothing (chords erased on switch).** Real
   ordering bug, not a stale build: the restore hook runs *synchronously inside* `setMSTemperament`
   (it calls `generateAllModes()`, which re-inits the grid and fires the hook), but

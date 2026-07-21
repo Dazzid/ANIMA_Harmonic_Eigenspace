@@ -924,10 +924,10 @@ function createReverbIR(ctx, duration, decay) {
 // A FIFO voice pool caps simultaneous notes so dragging across the grid
 // cannot saturate the output. When the pool is full, the oldest voice is
 // quickly faded out and replaced.
-// Additive timbre: each note is 6 harmonics (matches EigenSpace's createNote) so
+// Additive timbre: each note is 7 harmonics (matches EigenSpace's createNote) so
 // chords sound consistent across scenes — see playSingleTone.
-const KL_HARMONICS  = [1, 2, 3, 4, 5, 6];
-const KL_AMPLITUDES = [1, 0.41, 0.333, 0.27, 0.13, 0.11];
+const KL_HARMONICS  = [1, 2, 3, 4, 5, 6, 7];
+const KL_AMPLITUDES = [1, 0.41, 0.333, 0.27, 0.13, 0.11, 0.09];
 const MAX_VOICES = 24;
 const STEAL_FADE = 0.04; // seconds — fast fade applied to stolen voice
 let activeVoices = []; // { oscs:[osc...], noteGain, endTime }
@@ -1183,7 +1183,7 @@ window.keyboardHighlightMidiNote = function (midiNote, on, freq) {
   }
 };
 
-// Play one note as an additive stack of 6 harmonics with an exponential ADSR —
+// Play one note as an additive stack of 7 harmonics with an exponential ADSR —
 // the same recipe EigenSpace uses (createNote), so a chord recalled from Chord
 // Memory sounds the same here as it does in EigenSpace. Envelope/waveType come
 // from window.audioParams (kept in sync with EigenSpace by the shared ADSR GUI).

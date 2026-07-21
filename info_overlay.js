@@ -113,13 +113,13 @@ class InfoOverlay {
                 <div class="section">
                     <h3>Mathematical Foundation</h3>
                     <p>
-                        The dissonance values range precisely from 14 to 22 due to the specific parameters of this visualization:
+                        The dissonance values range approximately from 18 to 28 due to the specific parameters of this visualization:
                     </p>
                     <p>
-                        • Base Parameters: 220 Hz fundamental, 6 harmonics, frequency ratios [1.0-2.0]<br>
+                        • Base Parameters: 220 Hz fundamental, 7 harmonics, frequency ratios [1.0-2.0]<br>
                         • Plomp-Levelt Formula: <div class="formula">D = Σ<sub>pairs</sub> a × [5·e<sup>−3.51·S·Δf</sup> − 5·e<sup>−5.75·S·Δf</sup>]</div><br>
-                        • Lower Bound (≈14): Perfect consonances (2:1, 3:2) with 276 harmonic pairs contributing minimal residual roughness<br>
-                        • Upper Bound (≈22): Maximum clustering within critical bands, limited by exponential decay saturation
+                        • Lower Bound (≈18): Perfect consonances (2:1, 3:2) with 378 harmonic pairs contributing minimal residual roughness<br>
+                        • Upper Bound (≈28): Maximum clustering within critical bands, limited by exponential decay saturation
                     </p>
                     <p>
                         These bounds emerge from psychoacoustic constants; a mathematical structure of the human auditory perception as modeled by <a href="https://pubs.aip.org/asa/jasa/article-abstract/38/4/548/615274/Tonal-Consonance-and-Critical-Bandwidth" target="_blank">Plomp and Levelt</a>.

@@ -41,7 +41,7 @@ async function loadBinaryFile(url) {
  * @param {(percent:number, text:string)=>void} [onProgress] - Optional progress callback
  * @returns {Promise<{alphaRange: Float32Array, betaRange: Float32Array, gammaRange: Float32Array, dissonance3d: Float32Array[][][], nodes: Array<{alpha: number, beta: number, gamma: number, dissonance: number}>}>}
  */
-async function loadDissonanceMap(baseFreq = 220, nodes = 400, onProgress) {
+async function loadDissonanceMap(baseFreq = 220, nodes = 400, onProgress, tag = "") {
     if (!Number.isFinite(baseFreq) || baseFreq <= 0) {
         throw new Error('Invalid base frequency');
     }
@@ -51,7 +51,7 @@ async function loadDissonanceMap(baseFreq = 220, nodes = 400, onProgress) {
 
     try {
         console.log('Loading dissonance map from binary files...');
-        const baseFilename = `harmonic-${baseFreq}Hz-${nodes}nodes`;
+        const baseFilename = `harmonic-${baseFreq}Hz-${nodes}nodes${tag}`;
 
         // Load metadata
         if (typeof onProgress === 'function') onProgress(1, 'Loading metadata…');
