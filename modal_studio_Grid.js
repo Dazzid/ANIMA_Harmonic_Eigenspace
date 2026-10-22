@@ -1228,6 +1228,7 @@ class Grid {
         cell.chord.noteVoicing = voicing ? [...voicing] : [];
         cell.chord.numVoicing = voicing ? voicing.length : 0;
         cell.chord.voicingType = sourceChord.voicingType;
+        cell.chord.bassDouble = (typeof sourceChord.bassDouble === 'number') ? sourceChord.bassDouble : null;
         cell.chord.root = notesCopy.length > 0 ? notesCopy[0] : null;
         cell.chord.setGlobalInversion(inversion);
         cell.chord.chordFunction = sourceChord.chordFunction;
@@ -1315,6 +1316,7 @@ class Grid {
                 })),
                 noteVoicing: [...(c.getNoteVoicing() || [])],
                 voicingType: c.voicingType,
+                bassDouble: (typeof c.bassDouble === 'number') ? c.bassDouble : null,
                 globalInversion: c.getGlobalInversion(),
                 chordFunction: c.chordFunction,
                 quality: c.quality,
@@ -1362,6 +1364,7 @@ class Grid {
             c.noteVoicing = Array.isArray(d.noteVoicing) ? [...d.noteVoicing] : [];
             c.numVoicing = c.noteVoicing.length;
             c.voicingType = d.voicingType;
+            c.bassDouble = (typeof d.bassDouble === 'number') ? d.bassDouble : null;
             c.root = notesCopy.length > 0 ? notesCopy[0] : null;
             c.root_53 = d.root_53;
             c.note_53 = d.note_53;

@@ -45,6 +45,7 @@ class Chord {
         this.pos = { x: 0, y: 0 };
         this.size = { x: 160, y: 50 };
         this.noteVoicing = [];
+        this.bassDouble = null; // ft of the octave-double inserted by applyBassDouble(), or null
         this.numVoicing = 0;
         this.voicingType = 0; // Which voicing template (0-6) is being used - preserves across note changes
         this.chordFunction = 'I'; // Roman numeral function (I, II, III, etc.)
@@ -67,10 +68,11 @@ class Chord {
         // Voicing arrays (1-indexed positions into the chord's own scale stack, so
         // 1/8/15 = the chord ROOT at C0/C1/C2 register and anything else is another
         // degree — the bass position must stay ≡ 1 (mod 7) or the chord gets the
-        // wrong root in the bass (e.g. Dm7 over C). Only v1's bass was raised an
-        // octave (8 → 15, C1 → C2) to close the gap to its cluster; v2–v7 keep the
-        // original C++ formation, where the bass is already just below the cluster
-        // (v2–v4) or an intentional deep doubled-root form (v5–v7).
+        // wrong root in the bass (e.g. Dm7 over C). All seven are the original C++
+        // formation. DO NOT raise a template's bass to close the gap to its cluster
+        // (8 → 15 was tried and reverted, ff52cd3): the bass stays where it is and
+        // applyBassDouble() DOUBLES it one octave up when that note still fits below
+        // the cluster. v5–v7 already carry a doubled root in the template itself.
         // Voicing templates from the active temperament (53 keeps these exact defaults; 31 is
         // tighter). Fallback to the 53 set if the temperament defines none.
         const _V = (window.Temperament && window.Temperament.active && window.Temperament.active.voicings) ||
@@ -469,6 +471,7 @@ class Chord {
         this.voicingType = type;
         
         this.noteVoicing = [];
+        this.bassDouble = null;
         let baseVoicing = [];
         
         // Get base voicing based on type
@@ -493,10 +496,35 @@ class Chord {
                 this.noteVoicing.push(this.notes[pos].ft_note);
             }
         }
+        this.applyBassDouble();
     }
     
     getNoteVoicing() {
         return this.noteVoicing;
+    }
+
+    // Bass doubling. The bass (root position OR whatever the inversion wheel put
+    // in the bass) is NEVER moved. After it is set, if bass + 1 octave is still
+    // below the lowest of the other notes, that octave is inserted as the 2nd
+    // voice — one copy. If it would land on or above the group, nothing is added.
+    //   Cmaj7 v1  C1 | E3 G3 B3 C3  →  C1 C2 | E3 G3 B3 C3
+    //   1st inv   E1 | E3 G3 B3 C3  →  E1 E2 | E3 G3 B3 C3
+    //   Dm7 v2    D2 | C2 F3 A3 D4  →  unchanged (D3 would sit above C2)
+    // The inserted ft is remembered in this.bassDouble so a later inversion change
+    // removes the previous double before the new bass is evaluated.
+    applyBassDouble() {
+        const nv = this.noteVoicing;
+        if (this.bassDouble !== null) {
+            if (nv.length > 1 && nv[1] === this.bassDouble) nv.splice(1, 1);
+            this.bassDouble = null;
+        }
+        if (nv.length < 2) return;
+        const dbl = nv[0] + window.Temperament.active.octave;
+        const lowestUpper = Math.min(...nv.slice(1));
+        if (dbl < lowestUpper) {
+            nv.splice(1, 0, dbl);
+            this.bassDouble = dbl;
+        }
     }
     
     // C++ Chord.cpp lines 280-338 - setInversion method  
@@ -539,6 +567,8 @@ class Chord {
             this.finalInfo = this.chordQuality.note + this.chordQuality.quality + '/' + newRootName + '[' + this.chordQuality.function + ']';
             //console.log(`    ✅ setInversion: INVERSION ${interval} - finalInfo="${this.finalInfo}"`);
         }
+        // Bass changed → drop the previous octave-double, re-evaluate for the new bass.
+        this.applyBassDouble();
     }
     
     // C++ Chord.cpp lines 340-368 - handleInversions method

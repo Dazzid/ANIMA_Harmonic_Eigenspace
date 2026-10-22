@@ -302,6 +302,19 @@ later phase depends on. *(Done — see log below.)*
 
 Kept current as work lands (newest first). Each entry = what changed + how it was verified.
 
+- **2026-10-22 — Bass doubling (the "buried bass" voicing error, finally as specified).** Previous
+  attempts *moved* the bass (v1 template 8 → 15, ceda468, reverted ff52cd3) — wrong. Spec: the bass
+  is never moved; it is **doubled** one octave up, only when that note still fits below the group,
+  in root position and in every inversion alike. `Chord.applyBassDouble()`
+  ([modal_studio_Chord.js](modal_studio_Chord.js)) runs at the end of `voicing()` and `setInversion()`;
+  it inserts `bass + octave` as the 2nd voice when `bass + octave < min(other notes)`, remembers it
+  in `chord.bassDouble`, and removes that note again before the next inversion is evaluated.
+  `bassDouble` is carried through the Grid's by-value copies (drop, session export/import).
+  Result (53, table names): Cmaj7 `C1 E3 G3 B3 C3` → `C1 C2 E3 G3 B3 C3`; 1st inv `E1 E3 …` →
+  `E1 E2 E3 …`; Dm7 after the wheel `D1 C2 F3 A3 D4` → `D1 D2 C2 …`; fresh Dm7 `D2 C2 …` and
+  v5–v7 (template already doubles) unchanged. Verified headlessly with the real Chord class over all
+  wheel positions and round trips, in 53 and 31; naming goldens green (a doubled bass is interval 0).
+  Stale Chord ctor comment that still described the 8 → 15 move was rewritten so it is not redone.
 - **2026-07-21 — Sound engine follows the model to 7 partials.** The "moving into 7th partials"
   checkpoint took the *dissonance model/dataset* to 7 harmonics (`harmonics = 7`, `-7p` dataset)
   but the *audio synthesis* still stacked only 6. Extended the additive stack to 7 across all three
